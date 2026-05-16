@@ -1,0 +1,42 @@
+{
+  "ended_at": "2026-05-16T14:45:13.888862Z",
+  "git_sha": "afab849b920e7b75d48138df3d3040d12c65f395",
+  "hparams": {
+    "anneal_lr": true,
+    "clip_coef": 0.2,
+    "ent_coef": 0.01,
+    "eval_episodes": 10,
+    "gae_lambda": 0.95,
+    "gamma": 0.99,
+    "learning_rate": 0.00025,
+    "max_grad_norm": 0.5,
+    "minibatch_size": 128,
+    "n_envs": 4,
+    "n_epochs": 4,
+    "n_steps": 128,
+    "vf_coef": 0.5
+  },
+  "started_at": "2026-05-16T14:38:35.362341Z",
+  "summary": {
+    "best_return": [
+      0.0,
+      0.0,
+      -0.3800000064074993
+    ],
+    "domain": "minecart-mlp",
+    "env_id": "minecart-v0",
+    "env_steps": 1000448,
+    "final_param_checksum": "b3c5e07dae4cec8d",
+    "final_return": [
+      0.0,
+      0.0,
+      -0.3800000064074993
+    ],
+    "initial_param_checksum": "430f9466c19cc307",
+    "n_evals": 21,
+    "params_changed": true,
+    "seed": 0,
+    "status": "completed",
+    "wallclock_s": 398.52652493299684
+  }
+}
