@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# uv / venv
+.venv/
+.python-version
+
+# Build
+build/
+dist/
+*.egg
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Claude Code per-machine settings (project-shared settings.json may be committed)
+.claude/settings.local.json
+
+# RL artifacts
+runs/
+wandb/
+outputs/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.npz
+*.h5
+*.tfevents.*
+
+# Logs
+*.log
+
+# Notebooks
+.ipynb_checkpoints/
