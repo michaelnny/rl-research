@@ -23,9 +23,10 @@ the repo can reproduce the loop bit-for-bit.
   prompts (strict, source-of-truth anchored) and skill invariants
   (validate-before-append, etc.) are the enforcement layer. Downstream
   failures and git-diff audit catch the rest.
-- Not observability infrastructure. Per-run `cost.json` + `trace.jsonl`
-  derived from transcripts at iteration end is sufficient; we do not
-  stand up an OpenTelemetry backend.
+- Not observability infrastructure. Claude Code's built-in OpenTelemetry
+  console exporter writes to a local file; a per-iteration skill rolls
+  that up into `cost.json` + `trace.jsonl`. We do NOT stand up an OTel
+  backend (no Prometheus, no Jaeger, no OTLP collector).
 - Not a multi-agent orchestrator UI. The four roles are sequential
   (file-handoff), not real-time peer debate. See §2.
 
@@ -85,19 +86,20 @@ generative-breadth directive):
 - **Source of truth (read every invocation):** `docs/charter.md`,
   `docs/roles/researcher.md`, `docs/loop.md` §Researcher, `docs/contract.md`,
   `lab/lessons.md`, `lab/threads/*.md`, last 50 lines of `lab/ledger.jsonl`.
-- **Two phases.** Phase 1 = write `lab/runs/<run_id>/hypothesis.md`; halt.
+- **Two phases.** Phase 1 = write `lab/runs/<run_id>/hypothesis.md` AND
+  `lab/runs/<run_id>/run_id.txt` (single line: the run_id), then halt.
   Allocate `run_id` via
   `uv run python -c "from rl_research.contract import next_run_id; print(next_run_id('<thread-slug>'))"`.
   Phase 2 = write `lab/runs/<run_id>/train.py`; only after Reviewer wrote
   `verdict: novel-direction` in `review.md`.
 - **Generative discipline — propose freely.** The Researcher's job is
   breadth and creativity, not pre-filtering. Propose any direction that
-  is structurally interesting, including ideas that look obvious or naive.
-  The Reviewer is the gate (~30s text check); self-censoring at the
-  Researcher stage kills the loop's ability to surface non-obvious
-  directions.
-- **Awareness — what the Reviewer will reject as `known-rebadge`.** The
-  four charter §Disqualifiers are listed *for awareness*, not as a filter:
+  is structurally interesting, *including ideas that look obvious or
+  silly*. The Reviewer is the gate (~30s text check); self-censoring at
+  the Researcher stage kills the loop's ability to surface non-obvious
+  directions. **The disqualifier list below is the Reviewer's rejection
+  checklist — listed here for awareness, NOT as a filter on what you may
+  propose.**
   - `∇ log π(a|s) · A(s,a)` as the learning signal
   - `r + γ Q(s', a') - Q(s, a)` as the primary update target
   - the Bellman fixed-point as the optimization target
@@ -238,13 +240,18 @@ model: sonnet
 
 Body is a state-machine prompt to the orchestrator:
 
+0. **Curator pre-check.** Bash:
+   `uv run python -c "from rl_research.contract import count_uncurated; print(count_uncurated())"`.
+   If ≥ 10, spawn `curator` with `"Run a curation pass per
+   docs/roles/curator.md."` BEFORE starting the iteration. This keeps the
+   corpus fresh for the Researcher's `lab/lessons.md` read in step 1.
 1. **Researcher Phase 1.** Spawn `researcher` with
    `"Propose a hypothesis (Phase 1 only). Halt after writing
-   lab/runs/<run_id>/hypothesis.md. Thread hint (may be empty):
-   $ARGUMENTS"`.
-   The Researcher's return message must end with a line of the form
-   `RUN_ID: <run_id>` so the orchestrator can parse it. As a fallback,
-   the orchestrator reads the newest dir under `lab/runs/`.
+   lab/runs/<run_id>/hypothesis.md AND lab/runs/<run_id>/run_id.txt.
+   Thread hint (may be empty): $ARGUMENTS"`.
+   Recover the `run_id` by reading the most recently modified
+   `lab/runs/*/run_id.txt` (file-based handoff is more reliable than
+   parsing return text).
 2. **Reviewer.** Spawn `reviewer` with
    `"Review lab/runs/<run_id>/hypothesis.md. Write review.md."`.
    Read `review.md` frontmatter; parse `verdict`.
@@ -254,21 +261,19 @@ Body is a state-machine prompt to the orchestrator:
      prompt → step 2.
    - `known-rebadge` (≤ 2 cycles) → re-spawn `researcher` with revision
      prompt → step 2.
-   - Cycles exhausted → end iteration, append a ledger line with
-     `status="abandoned-{rebadge,sharpening}"`.
+   - Cycles exhausted → write a minimal `result.json` with
+     `status="abandoned-rebadge"` or `"abandoned-sharpening"` (per
+     `docs/contract.md` status enum), invoke skill
+     `validate-and-record-run`, then end iteration.
 4. **Researcher Phase 2.** Re-spawn `researcher` with `"Reviewer
    approved. Now write lab/runs/<run_id>/train.py per docs/contract.md.
    Halt."`.
 5. **Operator.** Spawn `operator` with `"Execute lab/runs/<run_id>/
    train.py per docs/roles/operator.md. Stage A then (if pass) Stage B.
    Write config.json + result.json. Invoke skill validate-and-record-run."`.
-6. **Curator check.** Bash:
-   `uv run python -c "from rl_research.contract import count_uncurated; print(count_uncurated())"`.
-   If ≥ 10, spawn `curator` with `"Run a curation pass per
-   docs/roles/curator.md."`.
-7. **Cost/trace derivation.** Invoke skill `derive-cost-trace` with
+6. **Cost/trace derivation.** Invoke skill `derive-cost-trace` with
    `run_id`. Non-blocking — do not fail the iteration if the skill errors.
-8. **Output.** One-line summary: `run_id`, terminal status, verdict (if
+7. **Output.** One-line summary: `run_id`, terminal status, verdict (if
    any), wallclock seconds.
 
 **Halt conditions** (any → end iteration immediately): revision budget
@@ -372,42 +377,64 @@ orchestrator's last step.
 ```yaml
 ---
 name: derive-cost-trace
-description: NON-BLOCKING. Derive per-run cost.json and trace.jsonl from Claude Code session transcripts. Failures log to violations.jsonl but never fail the iteration.
+description: NON-BLOCKING. Roll up the iteration's OpenTelemetry log into per-run cost.json and trace.jsonl. Failures log to violations.jsonl but never fail the iteration.
 disable-model-invocation: true
 ---
 ```
 
 `disable-model-invocation: true` so only the orchestrator invokes it.
 
+**Why OTel, not transcript-JSONL parsing.** Claude Code's *documented*
+mechanism for per-subagent cost/token attribution is OpenTelemetry —
+metrics like `claude_code.cost.usage` and `claude_code.token.usage`
+carry the `query_source` attribute (`main` | `subagent` | `auxiliary`)
+and the `agent.name` attribute. Parsing
+`~/.claude/projects/<project-hash>/<session>.jsonl` is undocumented and
+the per-subagent breakdown is brittle. The wrapper (§7) enables OTel
+with a console exporter writing to a per-iteration log file; the skill
+parses that file. No backend, no network.
+
 Body covers:
 
 - **Inputs:** `$1` = run_id.
 - **Procedure:**
-  1. Locate the four subagent transcripts under
-     `~/.claude/projects/<project-hash>/<session>.jsonl` whose tool calls
-     touched `lab/runs/$1/`.
-  2. Extract usage events (input/output/cache tokens, model_id, role) and
-     tool_call events (tool, truncated input, timestamp).
-  3. Write `lab/runs/$1/cost.json` and `lab/runs/$1/trace.jsonl` per the
+  1. Locate the iteration's OTel log file (the wrapper sets
+     `OTEL_LOG_FILE=lab/.otel/<iteration_ts>.log` and ensures the path
+     exists; the skill reads the most recent file written during this
+     iteration).
+  2. Parse usage events. Group by `agent.name` (researcher | reviewer |
+     operator | curator); sum `claude_code.token.usage` by `type`
+     (`input` | `output` | `cacheRead` | `cacheCreation`) and
+     `claude_code.cost.usage` (USD) per agent.
+  3. Parse tool-call events; emit one line per call to `trace.jsonl`
+     with `ts`, `role` (= `agent.name`), `tool`, `input_excerpt`
+     (truncated to 200 chars), `status`, `duration_ms`.
+  4. Write `lab/runs/$1/cost.json` and `lab/runs/$1/trace.jsonl` per the
      schemas in §6.
 - **Hard constraints (per the observability directive):**
   - Total runtime ≤ 5 seconds. If exceeded, log violation and exit.
-  - No network calls. No new Claude invocations. Read-only file ops.
+  - No network calls. No new Claude invocations. Read-only file ops
+    (plus the two output writes).
   - On ANY exception: append one line to `lab/violations.jsonl` with
     `type="cost-trace-derivation"` + the error, exit 0. **Never propagate.**
   - The iteration is already complete when this skill runs.
+  - If the OTel log file is missing or empty (telemetry disabled or
+    failed to start), write `cost.json` with `status="otel-unavailable"`
+    and zeroed totals; do not fail.
 
 ## 6. Observability artifacts
 
-No hooks. No OpenTelemetry. Three committed files plus one gitignored
-log. Derived from transcripts that Claude Code already writes — zero new
-infrastructure.
+No hooks. No OTel backend. Three committed files plus two gitignored
+logs (the iteration log and the raw OTel console output). The committed
+artifacts are derived from Claude Code's built-in OTel console exporter
+— zero new infrastructure, no network.
 
 ### `lab/runs/<run_id>/cost.json` (committed)
 
 ```json
 {
   "run_id": "0007-energy-credit",
+  "status": "ok",
   "by_role": {
     "researcher": {"input": 12480, "output": 3120, "cache_read": 8200,
                    "cache_creation": 4200, "model": "claude-opus-4-7", "usd": 0.142},
@@ -419,6 +446,10 @@ infrastructure.
   "total_tokens": 91200
 }
 ```
+
+`status` is `"ok"` on a clean roll-up or `"otel-unavailable"` when the
+iteration's OTel log is missing/empty (in which case `by_role` and
+totals are zero — fail-open per §5.3).
 
 ### `lab/runs/<run_id>/trace.jsonl` (committed)
 
@@ -464,7 +495,15 @@ set -euo pipefail
 
 LOOP_DAILY_HOURS=${LOOP_DAILY_HOURS:-16}
 LOOP_COOLDOWN_S=${LOOP_COOLDOWN_S:-60}
-LOOP_USD_CAP=${LOOP_USD_CAP:-50}   # daily soft cap, sourced from cost.json totals
+LOOP_USD_CAP=${LOOP_USD_CAP:-50}     # daily soft cap
+LOOP_MAX_RETRIES=${LOOP_MAX_RETRIES:-3}
+
+# Built-in OTel console exporter — derive-cost-trace parses these files.
+# No backend, no network.
+export CLAUDE_CODE_ENABLE_TELEMETRY=1
+export OTEL_METRICS_EXPORTER=console
+export OTEL_LOGS_EXPORTER=console
+mkdir -p lab/.otel
 
 start_ts=$(date +%s)
 deadline=$((start_ts + LOOP_DAILY_HOURS * 3600))
@@ -478,15 +517,34 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
     break
   fi
 
-  claude -p '/iterate' --output-format json \
-    | tee -a lab/iterations.log
+  iter_ts=$(date +%s)
+  export OTEL_LOG_FILE="lab/.otel/${iter_ts}.log"
+
+  # Retry with exponential backoff on transient API errors (429/5xx).
+  attempt=0
+  until [ "$attempt" -ge "$LOOP_MAX_RETRIES" ]; do
+    if claude -p '/iterate' --output-format json \
+         > >(tee -a lab/iterations.log) \
+         2> "$OTEL_LOG_FILE"; then
+      break
+    fi
+    attempt=$((attempt + 1))
+    sleep_s=$((30 * attempt * attempt))   # 30s, 120s, 270s
+    echo "$(date -Iseconds) /iterate failed (attempt $attempt), sleeping ${sleep_s}s" \
+      | tee -a lab/iterations.log
+    sleep "$sleep_s"
+  done
 
   sleep "$LOOP_COOLDOWN_S"
 done
 ```
 
 `usd_spent_today()` is a small new helper in `src/rl_research/contract.py`
-that sums today's `cost.json` totals.
+that sums today's `cost.json` totals. **Fallback when cost.json is
+missing or stale** (e.g., `derive-cost-trace` failed): scan today's
+`lab/.otel/*.log` files and sum the `claude_code.cost.usage` metric. If
+both fail, return 0.0 and emit a one-line warning to
+`lab/iterations.log` — fail-open, never block the loop.
 
 ## 8. File layout
 
@@ -510,21 +568,26 @@ noted):
 scripts/
   loop.sh                                          # +x
 src/rl_research/
-  contract.py                                      # +count_uncurated, +usd_spent_today
+  contract.py                                      # +count_uncurated, +usd_spent_today,
+                                                   #  +abandoned-{rebadge,sharpening} status
 lab/
   violations.jsonl                                 # committed, append-only (skills only)
   iterations.log                                   # gitignored
+  .otel/                                           # gitignored — raw OTel console logs
   runs/<run_id>/
+    run_id.txt                                     # written by Researcher Phase 1
     cost.json                                      # per-run, committed
     trace.jsonl                                    # per-run, committed
-docs/superpowers/specs/
-  2026-05-16-claude-code-harness-design.md         # this doc
+docs/
+  contract.md                                      # +abandoned-* status enum entries
+  superpowers/specs/
+    2026-05-16-claude-code-harness-design.md       # this doc
 ```
 
-`.gitignore` adds one line: `lab/iterations.log`. The existing
-`.claude/settings.local.json` ignore stays. **No `.claude/settings.json`
-is added** — the user's existing Claude Code configuration is sufficient
-and remains unchanged.
+`.gitignore` adds two lines: `lab/iterations.log` and `lab/.otel/`. The
+existing `.claude/settings.local.json` ignore stays. **No
+`.claude/settings.json` is added** — the user's existing Claude Code
+configuration is sufficient and remains unchanged.
 
 ## 9. Out of scope (explicit)
 
@@ -536,8 +599,11 @@ and remains unchanged.
   `ANTHROPIC_BASE_URL` from the shell with no special handling.
 - **Multi-Researcher parallelism.** Deferred until ≥ 1 working candidate
   exists per `docs/loop.md` §Concurrency.
-- **OpenTelemetry / Prometheus.** Per-run committed artifacts are the
-  reproducibility slice; live observability is `/cost` + transcripts.
+- **OpenTelemetry backend.** We enable Claude Code's built-in OTel
+  console exporter (write-to-file only) so the per-iteration roll-up
+  has reliable per-subagent attribution. We do NOT run OTLP collectors,
+  Prometheus, Jaeger, or any external service. The `lab/.otel/` log
+  files stay local and gitignored.
 - **Slash commands beyond `/iterate` and `/curate`.** `/iterate-thread`,
   `/replay`, `/inspect`, `/status` may be added when research surfaces a
   real need.
@@ -546,17 +612,24 @@ and remains unchanged.
 
 When the implementation plan is written, expect this order:
 
-1. **`src/rl_research/contract.py` helpers.** Add `count_uncurated()` and
-   `usd_spent_today()`. Tests.
-2. **Agent files.** Four `.claude/agents/*.md`. Self-test by manually
+1. **`docs/contract.md` + `lab/result.schema.json` updates.** Extend the
+   `status` enum with `abandoned-rebadge` and `abandoned-sharpening`.
+   The orchestrator (§4.1 step 3) writes minimal `result.json`s with
+   these statuses; the schema must accept them.
+2. **`src/rl_research/contract.py` helpers.** Add `count_uncurated()`,
+   `usd_spent_today()` (with OTel-log fallback), and any
+   minimal-result.json writer needed by the abandoned-* branch. Tests.
+3. **Agent files.** Four `.claude/agents/*.md`. Self-test by manually
    spawning each agent against a stub `lab/runs/test/` dir.
-3. **Skill files.** Three `.claude/skills/*/SKILL.md`. Each has a small
-   smoke test invocation.
-4. **Slash commands.** Two `.claude/commands/*.md`. Smoke-test
+4. **Skill files.** Three `.claude/skills/*/SKILL.md`. Each has a small
+   smoke test invocation. `derive-cost-trace` is tested against a
+   recorded OTel log fixture.
+5. **Slash commands.** Two `.claude/commands/*.md`. Smoke-test
    `/iterate` against a tiny stub hypothesis.
-5. **Headless wrapper.** `scripts/loop.sh`. Run for one iteration in
-   tmux to verify; check `lab/iterations.log` and per-run artifacts.
-6. **`.gitignore` update.** One line.
+6. **Headless wrapper.** `scripts/loop.sh`. Run for one iteration in
+   tmux to verify; check `lab/iterations.log`, `lab/.otel/*.log`, and
+   per-run artifacts.
+7. **`.gitignore` update.** Two lines.
 
 The implementation plan (writing-plans skill) breaks each into TDD-style
 steps with verification points.
