@@ -25,8 +25,10 @@ dist/
 # Claude Code per-machine settings (project-shared settings.json may be committed)
 .claude/settings.local.json
 
-# RL artifacts
-runs/
+# RL artifacts. `/runs/` is anchored to repo root: it ignores the top-level
+# scratch dir for ad-hoc TB logs but NOT `lab/runs/`, which is the committed
+# research corpus.
+/runs/
 wandb/
 outputs/
 checkpoints/

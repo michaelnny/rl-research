@@ -12,6 +12,7 @@ dependencies = [
     "tensorboard==2.20.0",
     # Environment libraries (no algorithm libs by design — agents implement their own)
     "gymnasium[classic-control,box2d,mujoco,atari,other]==1.3.0",
+    "mo-gymnasium==1.3.2",
     "mujoco==3.8.0",
     "dm-control==1.0.40",
     "ale-py==0.11.2",
