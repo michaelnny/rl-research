@@ -1,7 +1,7 @@
 # Run artifact contract
 
 Every run is a directory `lab/runs/<run_id>/` containing exactly the files specified
-below. Any deviation is a contract violation; the Operator must refuse to record
+below. Any deviation is a contract violation; the Engineer must refuse to record
 runs that violate it.
 
 This contract is the basis for the corpus being navigable, comparable across runs,
@@ -14,13 +14,13 @@ lab/runs/<run_id>/
   hypothesis.md     # Researcher-authored, see template
   review.md         # Reviewer-authored verdict
   train.py          # Researcher-authored, self-contained, runs end-to-end
-  config.json       # Operator-written; CLI args + env info + library versions
-  result.json       # Operator-written; see schema below
+  config.json       # Engineer-written; CLI args + env info + library versions
+  result.json       # Engineer-written; see schema below
   stdout.log        # captured during run
   stderr.log        # captured during run
   tb/               # TensorBoard event files written by train.py
   sanity/           # Stage A artifacts (per-env subdirs with logs)
-  fix-N.md          # Operator-written; one per debug retry on Stage A
+  fix-N.md          # Engineer-written; one per debug retry on Stage A
 ```
 
 ## run_id format
@@ -30,7 +30,7 @@ naming the research thread.
 
 Examples: `0001-energy-credit`, `0042-vector-decomp`, `0107-trajectory-em`.
 
-The Operator allocates the run_id at iteration start by inspecting `lab/ledger.jsonl`.
+The Engineer allocates the run_id at iteration start by inspecting `lab/ledger.jsonl`.
 
 ## hypothesis.md (template)
 
@@ -72,13 +72,13 @@ What observation would convince you this idea is wrong?
 - Be self-contained. Allowed imports: `torch`, `numpy`, `gymnasium`, `dm_control`,
   `mo_gymnasium`, `ale_py`, `tensorboard`, anything in `src/rl_research/`.
 - **Forbid**: `stable_baselines3`, `cleanrl` (or copies), `tianshou`, `ray.rllib`,
-  `acme`, `coax`, `garage`. Reviewer/Operator block on import detection.
+  `acme`, `coax`, `garage`. Reviewer/Engineer block on import detection.
 - Accept these CLI flags (parsed by `argparse`):
   - `--env <env_id>` — required
   - `--seed <int>` — required
   - `--total-env-steps <int>` — required
   - `--logdir <path>` — required (where TB event files + `result.json` go)
-  - `--max-wallclock-s <int>` — required (Operator passes the budget)
+  - `--max-wallclock-s <int>` — required (Engineer passes the budget)
 - Honor `--max-wallclock-s` by checking elapsed wallclock at every eval and exiting
   cleanly (writing `result.json`) before the SIGTERM grace deadline.
 - Log the required TensorBoard scalars (below).
@@ -136,17 +136,38 @@ The operational schema lives at `lab/result.schema.json`. Conceptually:
 ```
 
 `stage` ∈ {`A-only`, `A+B`}. `status` ∈ {`sanity-failed`, `benchmark-failed`,
-`killed-budget`, `killed-error`, `completed`}.
+`killed-budget`, `killed-error`, `killed-stalled`, `killed-diverged`,
+`completed`, `abandoned-rebadge`, `abandoned-sharpening`}.
+
+`killed-stalled` and `killed-diverged` are written by the external sidecar
+`rl_research.run_monitor` when a Stage B run stops emitting TB events for
+longer than the stall threshold, fails to advance `progress/param_checksum`
+across N consecutive checks, or surfaces NaN in any logged loss/return —
+the goal is to recycle wallclock when the run has clearly hung or diverged
+without overhauling a slow-but-real run.
+
+The `abandoned-*` statuses are written by the orchestrator (not by `train.py`)
+when the Reviewer rejects a hypothesis past its revision-cycle limit. In that
+case `stage="A-only"`, `env_steps=0`, `wallclock_s≈0`, `seeds=[]` is *not*
+allowed by the schema (seeds must be non-empty); use the seeds from the
+hypothesis frontmatter (or `[0]` as a placeholder when none was written).
+The minimal abandoned record exists so every iteration leaves a ledger trail.
 
 ## Ledger
 
-After `result.json` is written, the Operator appends one line to `lab/ledger.jsonl`:
+After `result.json` is written, the Engineer appends one line to `lab/ledger.jsonl`:
 
 ```json
 {"run_id":"0001-energy-credit","thread":"energy-based-credit","pillar":"sparse-long-horizon","primary_benchmark":"ALE/MontezumaRevenge-v5","status":"completed","best_return":145.0,"wallclock_s":5398,"verdict_curator":null,"hypothesis_path":"lab/runs/0001-energy-credit/hypothesis.md"}
 ```
 
-`verdict_curator` is `null` until the Curator processes the run.
+`verdict_curator` is `null` until the Curator processes the run, then it
+becomes one of `promising` / `dead-end` / `inconclusive`. When the Curator
+calls `update_ledger_verdict(run_id, verdict, notes=...)`, an optional
+`verdict_notes` string field is also written to the same ledger line —
+short prose explaining the verdict. Both fields are appended in place by
+the helper, which holds an exclusive flock on `lab/.ledger.lock` to keep
+the edit atomic against concurrent `append_to_ledger` calls.
 
 ## Validation
 
@@ -154,6 +175,9 @@ Runtime helpers in `src/rl_research/contract.py`:
 
 - `validate_result_json(path) -> None` — schema-checks and raises on any deviation.
 - `append_to_ledger(result_path) -> None` — atomically appends a ledger line.
+- `update_ledger_verdict(run_id, verdict, notes=None) -> bool` — atomic
+  in-place edit of one ledger line; the only safe way to set
+  `verdict_curator`. Raw file ops will race the Engineer.
 - `next_run_id(thread_slug) -> str` — allocates the next NNNN sequence number.
 
-The Operator MUST call `validate_result_json` before appending to the ledger.
+The Engineer MUST call `validate_result_json` before appending to the ledger.

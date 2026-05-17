@@ -1,6 +1,6 @@
 {
-  "ended_at": "2026-05-16T14:38:00.984081Z",
-  "git_sha": "afab849b920e7b75d48138df3d3040d12c65f395",
+  "ended_at": "2026-05-17T04:33:03.340087Z",
+  "git_sha": "935940d6817d20290d341b1b75855d4d2469efcb",
   "hparams": {
     "anneal_lr": true,
     "clip_coef": 0.2,
@@ -16,19 +16,19 @@
     "n_steps": 2048,
     "vf_coef": 0.5
   },
-  "started_at": "2026-05-16T14:35:29.936985Z",
+  "started_at": "2026-05-17T03:57:05.045480Z",
   "summary": {
-    "best_return": -144.64279547908487,
+    "best_return": -142.85197300180312,
     "domain": "continuous-mlp",
     "env_id": "Pendulum-v1",
-    "env_steps": 200704,
-    "final_param_checksum": "cdaaab02a087eb24",
-    "final_return": -155.54897449215136,
+    "env_steps": 1001472,
+    "final_param_checksum": "9639de0835ec6c13",
+    "final_return": -142.92706473925284,
     "initial_param_checksum": "f92f141f9ee4e093",
     "n_evals": 21,
     "params_changed": true,
     "seed": 0,
     "status": "completed",
-    "wallclock_s": 151.04708170900267
+    "wallclock_s": 2158.294648638
   }
 }

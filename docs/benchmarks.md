@@ -96,14 +96,15 @@ and as a sanity floor for primary benchmarks.
 
 | env_id                          | random episodic return (mean over 100 eps) |
 | ------------------------------- | ------------------------------------------ |
-| `CartPole-v1`                   | TBD                                        |
-| `Pendulum-v1`                   | TBD                                        |
-| `ALE/MontezumaRevenge-v5`       | TBD (typically 0)                          |
-| `humanoid.run` (dm_control)     | TBD                                        |
-| `minecart-v0` (per channel)     | TBD                                        |
+| `CartPole-v1`                   | 22.7                                       |
+| `Pendulum-v1`                   | -1199                                      |
+| `ALE/MontezumaRevenge-v5`       | 0.0                                        |
+| `humanoid.run` (dm_control)     | 0.87                                       |
+| `minecart-v0` (per channel)     | [0.36, 0.33, -10.58] (scalarized: -9.88)   |
 
-The random baselines are computed once on first lab boot (see `scripts/build_baselines.py`,
-TODO).
+The random baselines are computed by `scripts/build_baselines.py` and stored in
+`lab/baselines/random.json` (which carries the per-env std/min/max as well).
+Re-run that script if the suite changes.
 
 ## PPO baseline
 

@@ -24,8 +24,10 @@ elsewhere — read the docs themselves.
   every run directory must contain, schema for `result.json`).
 - **[docs/benchmarks.md](docs/benchmarks.md)** — three primary benchmarks and two
   sanity envs.
+- **[docs/sota.md](docs/sota.md)** — published SOTA references per benchmark
+  and the audit of our PPO yardstick.
 - **[docs/roles/](docs/roles/)** — per-role prompts (`researcher.md`,
-  `reviewer.md`, `operator.md`, `curator.md`).
+  `reviewer.md`, `engineer.md`, `curator.md`).
 
 ## Hard rules (summary — see charter for full list)
 
@@ -48,17 +50,22 @@ elsewhere — read the docs themselves.
 
 ```
 src/rl_research/
-  contract.py          # run artifact contract enforcement (next_run_id, write_result, validate_result_json)
+  contract.py          # run artifact contract (next_run_id, write_result, validate_result_json, append_to_ledger)
+  runtime.py           # parse_train_cli, seed_everything, WallclockBudget, RunningMeanStd, param_checksum, write_config_json
+  envs.py              # vector adapters (gym-classic / gym-atari / mo-minecart / dm-control), adapter_family, make_vec
+  evaluate.py          # algorithm-agnostic deterministic eval — takes a policy_fn callable, not a network
+  tb.py                # RunLogger + EvalCadence (contract scalar names + cadence)
+  checkpoints.py       # atomic save_checkpoint / load_latest with retention
   baselines/
-    ppo.py             # the single allowed RL algorithm (frozen yardstick)
-docs/                  # source-of-truth specs (charter, loop, contract, benchmarks, roles/)
+    ppo.py             # the single allowed RL algorithm (frozen yardstick); also the reference example of how the framework is wired
+docs/                  # source-of-truth specs (charter, loop, contract, benchmarks, sota, roles/)
 lab/                   # operational corpus (read+written by the loop)
   ledger.jsonl         # append-only one-line-per-run summary
   lessons.md           # Curator-distilled findings
   threads/             # per-direction thread state
   runs/<run_id>/       # per-run artifacts (hypothesis, train.py, result.json, tb/, ...)
   baselines/           # frozen baseline runs (random, PPO)
-  templates/           # template hypothesis.md and friends
+  templates/           # template hypothesis.md and train.py skeleton
   result.schema.json   # machine-readable schema for result.json
 tests/                 # pytest suite for src/rl_research primitives
 ```
@@ -77,7 +84,7 @@ tests/                 # pytest suite for src/rl_research primitives
 
 ## Working as a sub-agent
 
-If you have been spawned in a specific role (Researcher / Reviewer / Operator /
+If you have been spawned in a specific role (Researcher / Reviewer / Engineer /
 Curator), your role prompt at `docs/roles/<your-role>.md` is your operating
 instructions. It supersedes anything in this file *except* the hard rules in
 `docs/charter.md`, which are non-negotiable.

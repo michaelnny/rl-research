@@ -7,7 +7,7 @@ proceeds, the four roles involved, and the state machine that governs transition
 
 ```
 +------------+        +-----------+        +------------+        +----------+
-| Researcher |  --->  | Reviewer  |  --->  |  Operator  |  --->  | Curator  |
+| Researcher |  --->  | Reviewer  |  --->  |  Engineer  |  --->  | Curator  |
 +------------+        +-----------+        +------------+        +----------+
    per-iter            per-iter             per-iter             periodic
 ```
@@ -19,9 +19,10 @@ Claude Code agent.
 
 - **Reads:** `docs/charter.md`, `lab/lessons.md`, `lab/ledger.jsonl` (last 50 lines),
   `lab/threads/*.md`.
-- **Writes (Phase 1):** `lab/runs/<run_id>/hypothesis.md` following the template in
-  `docs/contract.md`. Then halts.
-- **Writes (Phase 2, only after Reviewer approval):** `lab/runs/<run_id>/train.py`.
+- **Writes:** `lab/runs/<run_id>/hypothesis.md` following the template in
+  `docs/contract.md`, plus `lab/runs/<run_id>/run_id.txt` (single line: the
+  run_id, so the orchestrator can recover it). Then halts.
+- **Does NOT write `train.py`** — that is the Engineer's job.
 - **Constraint:** prompt is broad. No numeric targets. Goal is *new families*, not
   improvements. See `docs/charter.md`.
 
@@ -33,14 +34,18 @@ Claude Code agent.
   justification.
 - **Cost:** ~30 seconds, text only.
 - **Gate:**
-  - `novel-direction` → Researcher proceeds to Phase 2.
+  - `novel-direction` → Engineer takes over.
   - `known-rebadge` → Researcher revises (max 2 cycles), then if still rebadge,
-    abandon iteration and start a new one in a different thread.
-  - `needs-sharpening` → Researcher revises (max 1 cycle).
+    iteration ends with `status="abandoned-rebadge"` and a minimal ledger entry.
+  - `needs-sharpening` → Researcher revises (max 1 cycle); if still
+    needs-sharpening, iteration ends with `status="abandoned-sharpening"`.
 
-### Operator
+### Engineer
 
-The Operator runs in two stages. Stage B runs only if Stage A passes.
+The Engineer is the heavy lifter. Two stages of execution, plus the
+implementation work that comes before them: writes `lab/runs/<run_id>/train.py`
+from the approved hypothesis, then runs Stage A → Stage B. Stage B runs only
+if Stage A passes.
 
 #### Stage A — sanity gate
 
@@ -97,24 +102,25 @@ The sanity gate is a **bug filter, not a performance filter**. Do not select for
 [start]
    |
    v
-proposed ----[Reviewer: needs-sharpening]----> revising ---+
-   |                                                       |
-   |---[Reviewer: novel-direction]----> approved           |
-   |                                       |               |
-   |---[Reviewer: known-rebadge × 3]-> abandoned (logged)  |
-   |                                                       |
-   +<------------------------------------------------------+
+proposed ----[Reviewer: needs-sharpening × 1]----> revising ---+
+   |                                                           |
+   |---[Reviewer: novel-direction]----> approved               |
+   |                                       |                   |
+   |---[Reviewer: known-rebadge × 2]-> abandoned-rebadge       |
+   |---[Reviewer: needs-sharpening × 1+]-> abandoned-sharpening|
+   |                                       |                   |
+   +<--------------------------------------|-------------------+
                                            |
                                            v
                                      code-ready
                                            |
-                                  [Operator: Stage A]
+                                  [Engineer: Stage A]
                                            |
                           +----------------+----------------+
                           |                                 |
                          pass                              fail (after retries)
                           |                                 |
-                  [Operator: Stage B]                  sanity-failed (terminal)
+                  [Engineer: Stage B]                  sanity-failed (terminal)
                           |
               +-----------+-----------+--------------+
               |           |           |              |
@@ -144,7 +150,7 @@ failures.**
 - A thread with 3 sequential sanity failures is a signal of *implementation
   hardness* of that family, not just bad luck — Curator must inspect before more
   proposals in the same thread.
-- The Operator must never silently retry Stage B. Stage B failures are evidence,
+- The Engineer must never silently retry Stage B. Stage B failures are evidence,
   not noise.
 
 ## Concurrency

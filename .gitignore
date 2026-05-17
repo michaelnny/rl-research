@@ -42,5 +42,21 @@ checkpoints/
 # Logs
 *.log
 
+# Loop artifacts (Curator can write HALT_REQUESTED.md to stop the wrapper)
+lab/HALT_REQUESTED.md
+lab/iterations.log
+lab/iterations.log.*
+lab/.run_id.in_progress
+lab/.backups/
+
+# Negations — `lab/runs/` is the committed research corpus. TB events,
+# fix-N.md, monitor.log, sanity logs, and per-run config.json/result.json
+# must all be tracked even though the global patterns above would ignore
+# them. We DO still want to ignore raw checkpoint .pt files (too large).
+!lab/runs/**/*.tfevents.*
+!lab/runs/**/monitor.log
+!lab/runs/**/stdout.log
+!lab/runs/**/stderr.log
+
 # Notebooks
 .ipynb_checkpoints/

@@ -1,20 +1,23 @@
 """Runtime helpers that enforce the run-artifact contract from `docs/contract.md`.
 
-The Operator MUST call these helpers; ad-hoc result.json writing is a contract
+The Engineer MUST call these helpers; ad-hoc result.json writing is a contract
 violation. The Researcher MAY use `next_run_id` when allocating a directory at
 iteration start.
 
 Public API:
-    next_run_id(thread_slug)     -> str
-    write_result(...)            -> Path           # builds + writes a result.json
-    validate_result_json(path)   -> None           # raises on any deviation
-    append_to_ledger(result_path) -> None          # atomic append to ledger.jsonl
+    next_run_id(thread_slug)        -> str
+    write_result(...)               -> Path        # builds + writes a result.json
+    validate_result_json(path)      -> None        # raises on any deviation
+    append_to_ledger(result_path)   -> None        # atomic append to ledger.jsonl
+    update_ledger_verdict(run_id, verdict, notes=None) -> bool
+                                                   # atomic in-place edit of one ledger line
 """
 
 from __future__ import annotations
 
 import fcntl
 import json
+import os
 import re
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,7 +27,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 LAB_DIR = REPO_ROOT / "lab"
 RUNS_DIR = LAB_DIR / "runs"
 LEDGER_PATH = LAB_DIR / "ledger.jsonl"
+LEDGER_LOCK_PATH = LAB_DIR / ".ledger.lock"
+NEXT_RUN_ID_LOCK = LAB_DIR / ".next_run_id.lock"
 SCHEMA_PATH = LAB_DIR / "result.schema.json"
+
+VALID_CURATOR_VERDICTS = {"promising", "dead-end", "inconclusive"}
 
 RUN_ID_PATTERN = re.compile(r"^([0-9]{4})-([a-z0-9-]+)$")
 THREAD_SLUG_PATTERN = re.compile(r"^[a-z0-9-]+$")
@@ -36,7 +43,11 @@ VALID_STATUSES = {
     "benchmark-failed",
     "killed-budget",
     "killed-error",
+    "killed-stalled",
+    "killed-diverged",
     "completed",
+    "abandoned-rebadge",
+    "abandoned-sharpening",
 }
 VALID_PILLARS = {"sparse-long-horizon", "long-horizon-dense", "multi-signal"}
 
@@ -48,23 +59,37 @@ class ContractViolation(Exception):
 def next_run_id(thread_slug: str) -> str:
     """Allocate the next NNNN-thread-slug under lab/runs/.
 
-    Scans existing run directories for the highest 4-digit prefix and increments.
-    Sequence is shared across all threads — `0007-foo` and `0008-bar` are
-    consecutive even if their threads differ.
+    Scans existing run directories for the highest 4-digit prefix and
+    increments. The scan + reservation is wrapped in a flock on
+    ``lab/.next_run_id.lock`` so two concurrent callers (e.g., manual override
+    racing the loop) cannot allocate the same id. Sequence is shared across
+    all threads — `0007-foo` and `0008-bar` are consecutive even if their
+    threads differ.
+
+    The lock is also held just long enough to ``mkdir`` the new run dir, so
+    even a caller that crashes before writing ``run_id.txt`` consumes the id.
     """
     if not THREAD_SLUG_PATTERN.fullmatch(thread_slug):
         raise ValueError(
             f"thread_slug must match {THREAD_SLUG_PATTERN.pattern!r}, got {thread_slug!r}"
         )
     RUNS_DIR.mkdir(parents=True, exist_ok=True)
-    highest = 0
-    for child in RUNS_DIR.iterdir():
-        if not child.is_dir():
-            continue
-        m = RUN_ID_PATTERN.fullmatch(child.name)
-        if m:
-            highest = max(highest, int(m.group(1)))
-    return f"{highest + 1:04d}-{thread_slug}"
+    NEXT_RUN_ID_LOCK.parent.mkdir(parents=True, exist_ok=True)
+    with NEXT_RUN_ID_LOCK.open("a") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            highest = 0
+            for child in RUNS_DIR.iterdir():
+                if not child.is_dir():
+                    continue
+                m = RUN_ID_PATTERN.fullmatch(child.name)
+                if m:
+                    highest = max(highest, int(m.group(1)))
+            run_id = f"{highest + 1:04d}-{thread_slug}"
+            (RUNS_DIR / run_id).mkdir(parents=True, exist_ok=False)
+            return run_id
+        finally:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
 def write_result(
@@ -226,7 +251,10 @@ def validate_result_json(path: Path | str) -> None:
 
 
 def append_to_ledger(result_path: Path | str) -> None:
-    """Append a one-line ledger entry derived from result.json. Atomic via flock."""
+    """Append a one-line ledger entry derived from result.json. Atomic via flock
+    on a sentinel file. The lock covers BOTH the read (which doesn't happen here
+    but does in update_ledger_verdict) and the write so concurrent appends and
+    in-place verdict edits cannot interleave."""
     result_path = Path(result_path)
     validate_result_json(result_path)
     with result_path.open() as f:
@@ -243,12 +271,74 @@ def append_to_ledger(result_path: Path | str) -> None:
         "hypothesis_path": f"lab/runs/{r['run_id']}/hypothesis.md",
     }
     LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with LEDGER_PATH.open("a") as f:
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+    LEDGER_LOCK_PATH.touch(exist_ok=True)
+    with LEDGER_LOCK_PATH.open("r") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         try:
-            f.write(json.dumps(line) + "\n")
+            with LEDGER_PATH.open("a") as f:
+                f.write(json.dumps(line) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
         finally:
-            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+
+
+def update_ledger_verdict(
+    run_id: str,
+    verdict_curator: str,
+    *,
+    notes: str | None = None,
+) -> bool:
+    """Atomically set ``verdict_curator`` on the ledger line matching ``run_id``.
+
+    Uses an exclusive flock on the same sentinel file as ``append_to_ledger`` so
+    a Curator update can never race a concurrent Engineer append. Read-modify-
+    write goes through a ``.tmp`` file + ``replace`` so a crash mid-write leaves
+    either the old or the new ledger on disk, never a half-written one.
+
+    Returns True if the line was found and updated, False otherwise. Raises
+    ``ContractViolation`` if ``verdict_curator`` is not in the allowed set.
+    """
+    if verdict_curator not in VALID_CURATOR_VERDICTS:
+        raise ContractViolation(
+            f"verdict_curator must be one of {VALID_CURATOR_VERDICTS}, got {verdict_curator!r}"
+        )
+    LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    LEDGER_LOCK_PATH.touch(exist_ok=True)
+    with LEDGER_LOCK_PATH.open("r") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            if not LEDGER_PATH.exists():
+                return False
+            updated = False
+            tmp = LEDGER_PATH.with_suffix(".jsonl.tmp")
+            with LEDGER_PATH.open() as src, tmp.open("w") as dst:
+                for raw in src:
+                    line = raw.rstrip("\n")
+                    if not line.strip():
+                        dst.write(raw)
+                        continue
+                    try:
+                        entry = json.loads(line)
+                    except json.JSONDecodeError:
+                        # Preserve malformed lines verbatim — preflight is
+                        # responsible for catching and surfacing them.
+                        dst.write(raw)
+                        continue
+                    if entry.get("run_id") == run_id:
+                        entry["verdict_curator"] = verdict_curator
+                        if notes is not None:
+                            entry["verdict_notes"] = notes
+                        dst.write(json.dumps(entry) + "\n")
+                        updated = True
+                    else:
+                        dst.write(raw if raw.endswith("\n") else raw + "\n")
+                dst.flush()
+                os.fsync(dst.fileno())
+            tmp.replace(LEDGER_PATH)
+            return updated
+        finally:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
 
 
 def _iso(dt: datetime) -> str:

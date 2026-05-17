@@ -1,6 +1,6 @@
 {
-  "ended_at": "2026-05-16T14:41:08.151778Z",
-  "git_sha": "afab849b920e7b75d48138df3d3040d12c65f395",
+  "ended_at": "2026-05-17T03:38:16.782221Z",
+  "git_sha": "935940d6817d20290d341b1b75855d4d2469efcb",
   "hparams": {
     "anneal_lr": true,
     "clip_coef": 0.2,
@@ -16,7 +16,7 @@
     "n_steps": 128,
     "vf_coef": 0.5
   },
-  "started_at": "2026-05-16T14:38:35.315813Z",
+  "started_at": "2026-05-17T03:37:28.255059Z",
   "summary": {
     "best_return": 500.0,
     "domain": "discrete-mlp",
@@ -29,6 +29,6 @@
     "params_changed": true,
     "seed": 0,
     "status": "completed",
-    "wallclock_s": 152.83596819000377
+    "wallclock_s": 48.5271842950001
   }
 }

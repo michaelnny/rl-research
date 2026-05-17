@@ -16,6 +16,7 @@ dependencies = [
     "mujoco==3.8.0",
     "dm-control==1.0.40",
     "ale-py==0.11.2",
+    "tbparse>=0.0.9",
 ]
 
 [dependency-groups]

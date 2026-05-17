@@ -12,13 +12,15 @@ Read in this order if you are new to the project:
    corpus comparable across runs.
 4. **[benchmarks.md](benchmarks.md)** — the three primary benchmarks (one per
    pillar) plus sanity envs.
+5. **[sota.md](sota.md)** — published SOTA references per benchmark and the
+   audit of our own PPO yardstick against canonical PPO numbers.
 
 Role prompts live under [roles/](roles/) and are loaded into the corresponding
 Claude Code agent at iteration start:
 
 - [roles/researcher.md](roles/researcher.md)
 - [roles/reviewer.md](roles/reviewer.md)
-- [roles/operator.md](roles/operator.md)
+- [roles/engineer.md](roles/engineer.md)
 - [roles/curator.md](roles/curator.md)
 
 Operational artifacts (the actual corpus the agents read and write) live under

@@ -1,0 +1,17 @@
+{
+  "cli_args": {
+    "env": "ALE/MontezumaRevenge-v5",
+    "logdir": "lab/baselines/ppo/MontezumaRevenge-v5/seed-0",
+    "max_wallclock_s": 50000,
+    "seed": 0,
+    "total_env_steps": 6250000
+  },
+  "git_sha": "935940d6817d20290d341b1b75855d4d2469efcb",
+  "platform": "Linux-6.14.0-34-generic-x86_64-with-glibc2.39",
+  "python_version": "3.12.7",
+  "started_at": "2026-05-17T03:57:06.410774Z",
+  "torch_cuda_available": true,
+  "torch_cuda_device": "NVIDIA GeForce RTX 3090 Ti",
+  "torch_version": "2.11.0+cu128",
+  "uv_lock_sha256": "c29c634178ce1f5bb042c50a91b726376200b6fdea5f329a861cc572cf822c99"
+}

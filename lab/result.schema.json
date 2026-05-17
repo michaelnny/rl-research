@@ -23,7 +23,7 @@
   "properties": {
     "run_id":            {"type": "string", "pattern": "^[0-9]{4}-[a-z0-9-]+$"},
     "stage":             {"enum": ["A-only", "A+B"]},
-    "status":            {"enum": ["sanity-failed", "benchmark-failed", "killed-budget", "killed-error", "completed"]},
+    "status":            {"enum": ["sanity-failed", "benchmark-failed", "killed-budget", "killed-error", "killed-stalled", "killed-diverged", "completed", "abandoned-rebadge", "abandoned-sharpening"]},
     "primary_benchmark": {"type": "string"},
     "pillar":            {"enum": ["sparse-long-horizon", "long-horizon-dense", "multi-signal"]},
     "thread":            {"type": "string", "pattern": "^[a-z0-9-]+$"},
