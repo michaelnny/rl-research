@@ -1,0 +1,42 @@
+{
+  "MiniGrid-DoorKey-8x8-v0": {
+    "random": 0.0274296875,
+    "strong": 0.048734375,
+    "per_baseline": {
+      "eps_greedy_q": 0.0,
+      "count_bonus": 0.048734375
+    }
+  },
+  "MiniGrid-KeyCorridorS3R3-v0": {
+    "random": 0.0,
+    "strong": 0.0,
+    "per_baseline": {
+      "eps_greedy_q": 0.0,
+      "count_bonus": 0.0
+    }
+  },
+  "deep-sea-treasure-concave-v0": {
+    "random": 646.0,
+    "strong": 10044.0,
+    "per_baseline": {
+      "eps_greedy_q": 10044.0,
+      "count_bonus": 99.0
+    }
+  },
+  "minecart-v0": {
+    "random": 198.9599999934435,
+    "strong": 199.2999999858439,
+    "per_baseline": {
+      "eps_greedy_q": 180.00000044703484,
+      "count_bonus": 199.2999999858439
+    }
+  },
+  "mo-reacher-v4": {
+    "random": 355635.40502063575,
+    "strong": 202474.00578714567,
+    "per_baseline": {
+      "eps_greedy_q": 202474.00578714567,
+      "count_bonus": 108377.75035872147
+    }
+  }
+}
