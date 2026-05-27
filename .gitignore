@@ -25,10 +25,12 @@ dist/
 # Claude Code per-machine settings (project-shared settings.json may be committed)
 .claude/settings.local.json
 
-# RL artifacts. `/runs/` is anchored to repo root: it ignores the top-level
-# scratch dir for ad-hoc TB logs but NOT `lab/runs/`, which is the committed
-# research corpus.
+# Per-sweep artifacts the agent writes (autoresearch-style: untracked)
 /runs/
+results.tsv
+run.log
+
+# Misc compute artifacts
 wandb/
 outputs/
 checkpoints/
@@ -41,22 +43,6 @@ checkpoints/
 
 # Logs
 *.log
-
-# Loop artifacts (Curator can write HALT_REQUESTED.md to stop the wrapper)
-lab/HALT_REQUESTED.md
-lab/iterations.log
-lab/iterations.log.*
-lab/.run_id.in_progress
-lab/.backups/
-
-# Negations — `lab/runs/` is the committed research corpus. TB events,
-# fix-N.md, monitor.log, sanity logs, and per-run config.json/result.json
-# must all be tracked even though the global patterns above would ignore
-# them. We DO still want to ignore raw checkpoint .pt files (too large).
-!lab/runs/**/*.tfevents.*
-!lab/runs/**/monitor.log
-!lab/runs/**/stdout.log
-!lab/runs/**/stderr.log
 
 # Notebooks
 .ipynb_checkpoints/

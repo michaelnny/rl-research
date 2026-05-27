@@ -1,32 +1,34 @@
 # rl-research
 
-Substrate for AI coding agents to autonomously discover new families of
-reinforcement-learning algorithms on classic (non-LLM) RL problems.
+Substrate for an autonomous AI coding agent to discover novel RL
+algorithms on **long-horizon sparse-reward** and **vector-reward**
+problems.
 
-> **Mission, in one line:** find a *third* family of RL algorithms — distinct
-> from value-based and policy-based — through autonomous research by coding
-> agents. The full charter lives at [docs/charter.md](docs/charter.md).
+> **Mission, in one line:** find a behavior-improvement primitive that
+> handles long-horizon sparse-reward and vector-reward problems natively,
+> replaces what value *does* (future compression, temporal composition,
+> local improvement), and is structurally distinct from every prior
+> failed attempt and every standard RL family. Full goal in
+> [program.md](program.md).
 
-This is a **research substrate**, not an algorithm library. The repo ships
-environments, evaluation primitives, and a frozen PPO yardstick. Algorithms are
-the *work product*, not a dependency. SB3 / CleanRL / Tianshou / RLlib /
-Acme / Coax / garage are forbidden.
+The repo intentionally ships only environments, the eval protocol, the
+panel runner, and an instruction sheet. **Algorithms are the work product,
+not a dependency.** SB3 / CleanRL / Tianshou / RLlib / Acme / Coax /
+garage are forbidden.
 
 ---
 
 ## Read first
 
-Three docs anchor everything else. Read them before changing anything substantive:
+Two files anchor everything:
 
-1. **[docs/charter.md](docs/charter.md)** — mission, hard rules, disqualifiers.
-2. **[docs/loop.md](docs/loop.md)** — the four roles and per-iteration state machine.
-3. **[docs/contract.md](docs/contract.md)** — the run artifact contract.
+1. **[program.md](program.md)** — the agent's instruction sheet. Goal,
+   setup, experiment loop, keep/discard rule.
+2. **[prior_attempts.md](prior_attempts.md)** — 11 prior failed directions
+   plus the disqualifier-family list. Read this between iterations to
+   avoid rebadges.
 
-Then [docs/benchmarks.md](docs/benchmarks.md), [docs/sota.md](docs/sota.md), and
-the per-role prompts in [docs/roles/](docs/roles/).
-
-For day-to-day operations of the autonomous loop, see
-**[docs/operations.md](docs/operations.md)**.
+[CLAUDE.md](CLAUDE.md) is the entry point for AI coding agents.
 
 ---
 
@@ -36,105 +38,110 @@ For day-to-day operations of the autonomous loop, see
 # Install (uv handles the venv + pinned deps)
 uv sync
 
-# Verify the install end-to-end (CUDA, gymnasium, dm_control, TB)
-make smoke
+# Smoke test the harness pipeline (random policy on one env)
+uv run pytest tests/test_harness.py -k smoke
 
-# Quality gate (ruff + tests)
-make check
+# Quality gate
+uv run ruff check && uv run ruff format && uv run pytest
 
-# Dashboard for the autonomous loop
-make status
+# Build the smoke-tier baseline scores (~5 min/baseline × 5 envs × 3 baselines = ~75 min;
+# pass --time-budget-s 60 for a quick pre-build)
+uv run python scripts/build_baselines.py
 ```
-
-Common targets (`make help` for the full list):
-
-| target           | what it does                                                       |
-| ---------------- | ------------------------------------------------------------------ |
-| `make smoke`     | verifies install: CUDA available, envs step, TB writes events     |
-| `make test`      | full pytest suite (CPU-only; the GPU runs are in baselines/)      |
-| `make check`     | the full quality gate: ruff check + format + pytest               |
-| `make status`    | one-screen ops dashboard (corpus, GPU, disk, log)                 |
-| `make preflight` | health check used between iterations of the autonomous loop      |
-| `make stats`     | refresh `lab/CORPUS_STATS.md` from the ledger                     |
-| `make loop`      | start the headless loop in a tmux session named `loop`            |
-| `make stop`      | request halt (writes `lab/HALT_REQUESTED.md`)                     |
 
 ---
 
-## Running the autonomous loop
+## Running the loop
 
-The loop is **four-role** (Researcher → Reviewer → Engineer → Curator) and
-runs headlessly via `claude -p '/iterate'` inside a tmux session.
+The agent reads [program.md](program.md), agrees on a run tag with the
+human, creates a branch `rl/<tag>`, and iterates.
+
+- **Smoke tier** (default, ~5 min/sweep): 5 envs in parallel. The agent
+  iterates against this constantly — ~100 sweeps fit in an 8-hour night.
+- **Hard tier** (`--hard`, ~2 h/sweep with Option-B grouped scheduling): 4
+  envs. Reserved for promoted candidates and periodic checkpoints.
 
 ```bash
-# Start
-make loop          # creates tmux session 'loop'
-tmux attach -t loop
+# One smoke sweep — typically ~5 min
+uv run run_panel.py > run.log 2>&1
+grep "^panel_tier\|^panel_n_beat\|^panel_wallclock_s" run.log
 
-# Monitor (read-only, safe to run while loop is active)
-make status
-tail -f lab/iterations.log
-
-# Stop (graceful — finishes current iteration, then exits)
-make stop
+# One hard sweep — typically ~2 h
+uv run run_panel.py --hard > run_hard.log 2>&1
 ```
 
-The loop is designed to run unattended for **weeks**. See
-[docs/operations.md](docs/operations.md) for: failure modes, recovery, log
-rotation cadence, backup strategy, and what to inspect when something goes
-wrong.
+The agent appends one row to `results.tsv` per sweep, then `git commit -am`
+or `git reset --hard HEAD~1` based on whether the smoke tuple
+`(n_beat_random, n_beat_strong)` advanced.
 
 ---
 
 ## Layout
 
 ```
-src/rl_research/        # the framework primitives
-  baselines/ppo.py      # the only allowed RL algo (frozen yardstick)
-  contract.py           # run-artifact contract + ledger writer
-  runtime.py            # CLI / seeding / wallclock / config.json / param checksum
-  envs.py               # vector adapters: gym-classic / atari / minecart / dm_control
-  evaluate.py           # algorithm-agnostic deterministic eval (takes a policy_fn)
-  tb.py                 # TB scalar names + eval cadence (matches the contract)
-  checkpoints.py        # atomic save/load with retention
-
-docs/                   # source-of-truth specs
-  charter.md            # mission + hard rules
-  loop.md               # state machine
-  contract.md           # what every run dir must contain
-  benchmarks.md         # 3 primary + 2 sanity envs
-  sota.md               # published SOTA references
-  operations.md         # day-to-day ops manual
-  roles/                # per-role prompts (also loaded into .claude/agents/)
-
-lab/                    # the operational corpus (read+written by the loop)
-  ledger.jsonl          # append-only one-line-per-run summary
-  lessons.md            # Curator-distilled findings
-  threads/              # per-direction thread state
-  runs/<run_id>/        # per-run artifacts (hypothesis, train.py, result.json, tb/, ...)
-  baselines/            # frozen baseline runs (random, PPO)
-  templates/            # template hypothesis.md + algorithm-agnostic train.py skeleton
-  CORPUS_STATS.md       # auto-generated corpus surface (refreshed each iteration)
-  result.schema.json    # machine-readable schema for result.json
-
-tests/                  # pytest suite for src/rl_research primitives
-scripts/                # ops scripts (loop.sh, preflight.sh, status.sh, ...)
-.claude/                # agent definitions and the /iterate slash command
+harness.py              # frozen — env factory, evaluate, panel, hypervolume, baseline loader
+train.py                # agent-editable — the RL algorithm lives here (default: random policy)
+run_panel.py            # frozen — runs train.py × each panel env, aggregates panel score
+program.md              # the agent's instruction sheet
+prior_attempts.md       # failed-direction post-mortems + disqualifier list
+panel.md                # rationale for each panel env vs failure modes
+worklogs/               # detailed reports from prior research sprints
+baselines/              # `random.py`, `eps_greedy_q.py`, `count_bonus.py`
+scripts/build_baselines.py
+tests/test_harness.py
+baselines.json          # frozen smoke-tier baselines (committed; built once)
+baselines_hard.json     # frozen hard-tier baselines (published_sota + our_baseline)
+results.tsv             # one row per sweep — gitignored
+runs/last/              # per-env stdout from the most recent sweep — gitignored
 ```
+
+---
+
+## Panel
+
+**Smoke tier** (5 envs, ~5 min/sweep parallel — what the agent iterates against):
+
+| Env | Type | Channels |
+| --- | --- | --- |
+| `MiniGrid-DoorKey-8x8-v0` | scalar | 1 |
+| `MiniGrid-KeyCorridorS3R3-v0` | scalar | 1 |
+| `deep-sea-treasure-concave-v0` | vector | 2 |
+| `minecart-v0` | vector | 3 |
+| `mo-reacher-v4` | vector | 4 |
+
+**Hard tier** (4 envs, ~2 h/sweep — Option-B grouped: Phase 1 Craftax solo,
+Phase 2 the rest in parallel — the bar a serious candidate must push):
+
+| Env | Type | Channels |
+| --- | --- | --- |
+| `Craftax-Symbolic-v1` | scalar | 1 |
+| `MiniHack-Quest-Hard-v0` | scalar | 1 |
+| `mo-halfcheetah-v4` | vector | 2 |
+| `Humanoid-v5` | scalar | 1 |
+
+Vector envs inject `info['vector']: np.ndarray` of shape `(k,)` on every
+`step()`. Consuming the scalar `reward` instead of `info['vector']` on a
+vector env is a scalarized-vector-reward rebadge — flagged as a disqualifier
+(see [prior_attempts.md](prior_attempts.md)).
+
+Score per env: scalar envs → mean episode return; vector envs → Pareto
+hypervolume vs a fixed reference point.
+
+Panel score: tuple `(n_beat_random, n_beat_strong)` over the active tier.
 
 ---
 
 ## Constraints baked into the substrate
 
 - **Default branch is `master`**, not `main`.
-- **Use `uv` for all package operations.** Never `pip`. Add deps with
-  `uv add <pkg>==<ver>`.
-- **Pin every dependency** to an exact version.
-- **Single-GPU assumption.** One RTX 3090 Ti, 24 GB.
-- **TensorBoard, not wandb.** Logs under `runs/` (gitignored, ad-hoc) and
-  `lab/runs/<run_id>/tb/` (committed corpus).
-- **2-hour wallclock cap per run** in early-phase exploration. Hard kill at
-  the OS level on overrun.
-- **Promotion is curatorial, never numerical.**
-
-The full set lives in [docs/charter.md](docs/charter.md).
+- **`uv` only** — never `pip`. Pin every dep.
+- **Single-GPU assumption.** One RTX 3090 Ti, 24 GB. JAX (Craftax) is forced
+  to CPU via `JAX_PLATFORMS=cpu` so it doesn't fight torch for VRAM.
+- **MiniHack is linux-only** — the wheel doesn't exist on PyPI for any
+  platform and the sdist build needs cmake. The pyproject pins it behind
+  `sys_platform == 'linux'`. macOS workstations skip MiniHack at install
+  time and rely on the linux box for hard sweeps.
+- **Per-env wallclock cap:** `harness.TIME_BUDGET_SMOKE = 300` (smoke);
+  `harness.TIME_BUDGET_HARD = 3600` (hard).
+- **Eval cap:** `N_EVAL_EPISODES = 20` deterministic episodes per env.
+- **No RL algorithm libraries.** Inventing, not assembling.

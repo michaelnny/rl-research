@@ -1,90 +1,97 @@
 # CLAUDE.md
 
-Guidance for coding agents working in this repository.
+Guidance for AI coding agents working in this repository.
 
-## Mission
+## What this repo is
 
-This repo is a **research substrate**: agents are expected to invent and evaluate
-new RL algorithms on classic (non-LLM) RL problems. The repo intentionally ships
-only environments and compute primitives. **Algorithms are the work product, not
-a dependency.**
+A minimal substrate for an autonomous AI agent to discover novel RL
+algorithms targeting **long-horizon sparse-reward** and **vector-reward**
+problems. Modeled on the autoresearch design philosophy: a frozen harness,
+one agent-editable file, one panel runner, and an instruction sheet — that
+is the entire surface.
 
-The full mission, hard rules, and disqualifiers live in
-**[docs/charter.md](docs/charter.md)**. Read it before doing anything substantive.
+The agent's job: edit `train.py` to invent an RL algorithm; run the panel;
+keep the commit if the panel score advanced; otherwise discard. Loop.
 
-## Source-of-truth docs
+## Source of truth
 
-These are the anti-divergence specs. Every role and every iteration of the loop
-reads them. Do NOT re-derive their content from this file or from prose
-elsewhere — read the docs themselves.
+- **[program.md](program.md)** — the agent's instruction sheet. Goal,
+  setup, contract, experiment loop, keep/discard rule, NEVER-STOP clause.
+  This is what the agent reads at the start of a session.
+- **[prior_attempts.md](prior_attempts.md)** — 11 prior failed directions,
+  cross-attempt failure modes, disqualifier-family list. The agent reads
+  this between iterations to avoid rebadges.
+- **[panel.md](panel.md)** — design rationale for the two-tier panel
+  (5 smoke + 4 hard). Each env is mapped to the specific failure mode it
+  detects and the prior attempts that died to it. Read once at session
+  start so you understand what each panel score is actually measuring.
 
-- **[docs/charter.md](docs/charter.md)** — mission, hard rules, disqualifiers.
-- **[docs/loop.md](docs/loop.md)** — the four roles and per-iteration state machine.
-- **[docs/contract.md](docs/contract.md)** — the run artifact contract (what
-  every run directory must contain, schema for `result.json`).
-- **[docs/benchmarks.md](docs/benchmarks.md)** — three primary benchmarks and two
-  sanity envs.
-- **[docs/sota.md](docs/sota.md)** — published SOTA references per benchmark
-  and the audit of our PPO yardstick.
-- **[docs/roles/](docs/roles/)** — per-role prompts (`researcher.md`,
-  `reviewer.md`, `engineer.md`, `curator.md`).
+Read these three files before doing anything substantive in this repo.
 
-## Hard rules (summary — see charter for full list)
+## Layout
+
+```
+harness.py              # frozen — env factory, evaluate, panel, hypervolume, baseline loader
+train.py                # agent-editable — the RL algorithm lives here
+run_panel.py            # frozen — runs train.py vs each panel env, aggregates panel score
+program.md              # the agent's instruction sheet
+prior_attempts.md       # failed-direction post-mortems + disqualifier list
+panel.md                # rationale for each panel env vs failure modes
+worklogs/               # detailed reports from prior research sprints
+baselines.json          # frozen smoke-tier baselines (built by scripts/build_baselines.py)
+baselines_hard.json     # frozen hard-tier baselines (published_sota + our_baseline)
+baselines/              # baseline `train()` implementations (random, eps_greedy_q, count_bonus)
+scripts/build_baselines.py
+tests/test_harness.py   # smoke test for the harness pipeline
+results.tsv             # one row per panel sweep — gitignored
+runs/last/              # per-env stdout from the most recent sweep — gitignored
+```
+
+## Hard rules
 
 - **No imported RL algorithm libraries.** SB3 / CleanRL / Tianshou / RLlib /
-  Acme / Coax / garage are forbidden. Single exception: the own-authored PPO
-  baseline at `src/rl_research/baselines/ppo.py`.
-- **Symbolic search.** Each iteration produces a self-contained `train.py`.
-- **2-hour wallclock cap** per run in early-phase exploration. Hard kill at
-  the OS level.
-- **Promotion is curatorial, never numerical.**
+  Acme / Coax / garage are forbidden. The agent invents the algorithm; it
+  does not assemble one.
 - **Pin every dependency** to an exact version.
 - **Use `uv` for all package operations.** Never invoke `pip` directly. Add
   deps with `uv add <pkg>==<ver>`.
-- **Single-GPU assumption.** One RTX 3090 Ti (24 GB).
-- **TensorBoard, not wandb.** Logs go under `runs/` (gitignored) and
-  `lab/runs/<run_id>/tb/` (committed).
+- **Single-GPU assumption.** One RTX 3090 Ti (24 GB). JAX (Craftax) is forced
+  to CPU via `JAX_PLATFORMS=cpu` to leave VRAM for torch.
+- **MiniHack is linux-only** — pyproject pins it behind
+  `sys_platform == 'linux'`. macOS dev environments skip it.
 - **Default branch is `master`**, not `main`.
-
-## Layout conventions
-
-```
-src/rl_research/
-  contract.py          # run artifact contract (next_run_id, write_result, validate_result_json, append_to_ledger)
-  runtime.py           # parse_train_cli, seed_everything, WallclockBudget, RunningMeanStd, param_checksum, write_config_json
-  envs.py              # vector adapters (gym-classic / gym-atari / mo-minecart / dm-control), adapter_family, make_vec
-  evaluate.py          # algorithm-agnostic deterministic eval — takes a policy_fn callable, not a network
-  tb.py                # RunLogger + EvalCadence (contract scalar names + cadence)
-  checkpoints.py       # atomic save_checkpoint / load_latest with retention
-  baselines/
-    ppo.py             # the single allowed RL algorithm (frozen yardstick); also the reference example of how the framework is wired
-docs/                  # source-of-truth specs (charter, loop, contract, benchmarks, sota, roles/)
-lab/                   # operational corpus (read+written by the loop)
-  ledger.jsonl         # append-only one-line-per-run summary
-  lessons.md           # Curator-distilled findings
-  threads/             # per-direction thread state
-  runs/<run_id>/       # per-run artifacts (hypothesis, train.py, result.json, tb/, ...)
-  baselines/           # frozen baseline runs (random, PPO)
-  templates/           # template hypothesis.md and train.py skeleton
-  result.schema.json   # machine-readable schema for result.json
-tests/                 # pytest suite for src/rl_research primitives
-```
-
-`runs/` (top-level, gitignored) is for ad-hoc TensorBoard logs only. The
-**research corpus** lives at `lab/runs/`.
+- **The agent does not modify** `harness.py`, `run_panel.py`,
+  `baselines.json`, or `baselines_hard.json`. Tampering invalidates the
+  panel score.
 
 ## Workflow
 
-- **Quality:** `uv run ruff check && uv run ruff format && uv run pytest`
-- **Smoke test stack:** `uv run python tests/smoke_test.py`
-- **Run an experiment** (manual): `uv run python lab/runs/<run_id>/train.py
-  --env <env> --seed <s> --total-env-steps <n> --max-wallclock-s <s> --logdir
-  lab/runs/<run_id>/tb/<seed>`
-- **Inspect telemetry:** `uv run tensorboard --logdir lab/runs/<run_id>/tb`
+```bash
+# Install
+uv sync
 
-## Working as a sub-agent
+# Smoke test the harness end-to-end (random policy on one env)
+uv run pytest tests/test_harness.py -k smoke
 
-If you have been spawned in a specific role (Researcher / Reviewer / Engineer /
-Curator), your role prompt at `docs/roles/<your-role>.md` is your operating
-instructions. It supersedes anything in this file *except* the hard rules in
-`docs/charter.md`, which are non-negotiable.
+# Quality gate
+uv run ruff check && uv run ruff format && uv run pytest
+
+# One smoke panel sweep (~5 min: 5 envs × 300s in parallel)
+uv run run_panel.py > run.log 2>&1
+grep "^panel_tier\|^panel_n_beat\|^panel_wallclock_s" run.log
+
+# One hard panel sweep (~2 h: Option-B grouped — Craftax solo, then 3 in parallel)
+uv run run_panel.py --hard > run_hard.log 2>&1
+
+# Quick sanity (one env: deep-sea-treasure-concave-v0, ~5 min)
+uv run run_panel.py --quick > run.log 2>&1
+```
+
+## Loop driver
+
+The experiment loop runs as plain text instructions in
+[program.md](program.md). The agent reads it at the start of a session,
+agrees on a run tag, creates a branch `rl/<tag>`, and starts iterating.
+There is no slash command, no orchestrator daemon, no per-role subagent.
+The NEVER-STOP clause in program.md is binding: once the experiment loop
+begins, the agent does not pause to ask whether to continue.

@@ -1,0 +1,55 @@
+{
+  "_schema": {
+    "description": "Hard-tier baselines, two columns per env. published_sota: literature reference number with citation. our_baseline.{random,strong}: what we measured running our own random + strong baselines under TIME_BUDGET_HARD = 3600 s on a single RTX 3090 Ti. The agent's hard-tier score is judged against our_baseline; the published_sota column is informational. Fill our_baseline by running scripts/build_baselines_hard.py (TODO).",
+    "panel_type": "hard",
+    "time_budget_s": 3600
+  },
+  "Craftax-Symbolic-v1": {
+    "published_sota": {
+      "value": "PPO+RND reaches ~12 of 22 achievements at 1B env steps; PPO ~9; the two tier-4 achievements (Collect-Diamond, Eat-Plant) remain unreached.",
+      "source": "Matthews et al. 2024, 'Craftax: A Lightning-Fast Benchmark for Open-Ended Reinforcement Learning', arxiv 2402.16801",
+      "metric": "achievement count out of 22"
+    },
+    "our_baseline": {
+      "random": 0.0,
+      "strong": 0.0,
+      "note": "TODO: run our random + strong baselines under TIME_BUDGET_HARD on the linux GPU host."
+    }
+  },
+  "MiniHack-Quest-Hard-v0": {
+    "published_sota": {
+      "value": "DRL-Agent (IMPALA+rewards) and Torchbeast/IMPALA reach <10% completion from scratch; the env is part of the published MiniHack 'Hard' suite that no from-scratch baseline solves at 100M steps.",
+      "source": "Samvelyan et al. 2021, 'MiniHack the Planet: A Sandbox for Open-Ended Reinforcement Learning Research', NeurIPS Datasets and Benchmarks; subsequent work (BALROG 2025) confirms <10%.",
+      "metric": "episodic completion rate"
+    },
+    "our_baseline": {
+      "random": 0.0,
+      "strong": 0.0,
+      "note": "Linux-only env; TODO on the linux GPU host."
+    }
+  },
+  "mo-halfcheetah-v4": {
+    "published_sota": {
+      "value": "PGMORL Pareto hypervolume ~5.4e6 vs reference (-100, -200) over 64 preference vectors; Envelope MORL ~5.0e6; scalarized PPO ~3.2e6.",
+      "source": "Xu et al. ICML 2020, 'Prediction-Guided Multi-Objective Reinforcement Learning for Continuous Robot Control'; Yang et al. NeurIPS 2019, 'A Generalized Algorithm for Multi-Objective RL and Policy Adaptation'.",
+      "metric": "Pareto hypervolume vs HV_REF = (-100, -200)"
+    },
+    "our_baseline": {
+      "random": 0.0,
+      "strong": 0.0,
+      "note": "TODO."
+    }
+  },
+  "Humanoid-v5": {
+    "published_sota": {
+      "value": "SAC ~5500 mean episode return after 3M env steps; TD3 ~5400; PPO ~3500 with careful tuning.",
+      "source": "Haarnoja et al. ICML 2018, 'Soft Actor-Critic'; Fujimoto et al. ICML 2018, 'Addressing Function Approximation Error in Actor-Critic Methods'.",
+      "metric": "mean episodic return"
+    },
+    "our_baseline": {
+      "random": 0.0,
+      "strong": 0.0,
+      "note": "Random policy ~120; TODO measure under TIME_BUDGET_HARD."
+    }
+  }
+}
