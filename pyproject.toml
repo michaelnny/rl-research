@@ -13,9 +13,13 @@ dependencies = [
     "mo-gymnasium==1.3.2",
     "mujoco==3.8.1",
     # Hard-tier envs.
-    # Craftax: pure-Python wheel, pulls JAX (forced to CPU in harness.py to
-    # avoid VRAM contention with torch).
+    # Craftax: pure-Python wheel, pulls JAX. We let JAX use the GPU
+    # (`XLA_PYTHON_CLIENT_PREALLOCATE=false` in harness.py keeps it from
+    # evicting torch); on Linux we add the CUDA12 plugin so jaxlib actually
+    # talks to the GPU.
     "craftax==1.5.0",
+    "jax-cuda12-plugin==0.10.0 ; sys_platform == 'linux'",
+    "jax-cuda12-pjrt==0.10.0 ; sys_platform == 'linux'",
     # MiniHack: linux-only — the wheel does not exist on PyPI for any platform
     # and the sdist build needs cmake. Build target (linux-x86_64) has cmake;
     # darwin lock skips it via the platform marker.

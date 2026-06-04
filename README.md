@@ -24,11 +24,15 @@ Two files anchor everything:
 
 1. **[program.md](program.md)** — the agent's instruction sheet. Goal,
    setup, experiment loop, keep/discard rule.
-2. **[prior_attempts.md](prior_attempts.md)** — 11 prior failed directions
+2. **[prior_attempts.md](prior_attempts.md)** — 14 prior failed directions
    plus the disqualifier-family list. Read this between iterations to
    avoid rebadges.
 
 [CLAUDE.md](CLAUDE.md) is the entry point for AI coding agents.
+
+The detailed research memory — one bounded file per attempt — lives
+under [`worklogs/`](worklogs/README.md). The agent appends there during
+the loop using [`worklogs/TEMPLATE.md`](worklogs/TEMPLATE.md).
 
 ---
 
@@ -48,6 +52,22 @@ uv run ruff check && uv run ruff format && uv run pytest
 # pass --time-budget-s 60 for a quick pre-build)
 uv run python scripts/build_baselines.py
 ```
+
+### Linux: system prerequisites
+
+The hard-tier env list pulls some sdist-only deps that build from source.
+Install the C/C++ build chain once before the first `uv sync`:
+
+```bash
+sudo apt install -y build-essential cmake ninja-build bison flex
+```
+
+`bison` and `flex` are required by `nle` (NetHack Learning Environment),
+the upstream of `minihack`. `cmake` and `ninja` drive its build.
+
+GPU side: the lockfile pins `torch==2.11.0+cu128` from the pytorch cu128
+index, which bundles its own CUDA runtime — no system-wide CUDA toolkit
+is needed for execution. A modern NVIDIA driver (570+) is required.
 
 ---
 
@@ -83,9 +103,12 @@ harness.py              # frozen — env factory, evaluate, panel, hypervolume, 
 train.py                # agent-editable — the RL algorithm lives here (default: random policy)
 run_panel.py            # frozen — runs train.py × each panel env, aggregates panel score
 program.md              # the agent's instruction sheet
-prior_attempts.md       # failed-direction post-mortems + disqualifier list
+prior_attempts.md       # one-paragraph index of failed directions + disqualifier list
 panel.md                # rationale for each panel env vs failure modes
-worklogs/               # detailed reports from prior research sprints
+worklogs/               # research memory — see worklogs/README.md
+  README.md             #   explains the template + index split
+  TEMPLATE.md           #   fixed per-attempt template
+  attempts/             #   database: one bounded file per attempt
 baselines/              # `random.py`, `eps_greedy_q.py`, `count_bonus.py`
 scripts/build_baselines.py
 tests/test_harness.py

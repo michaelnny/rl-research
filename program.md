@@ -16,6 +16,34 @@ Find a behavior-improvement primitive that:
    local improvement — without being a rebadge of any disqualified family
    (see `prior_attempts.md`).
 
+### Why this goal — the value-as-surrogate framing
+
+Classical RL learns an **evaluative surrogate** (`Q`, `V`, advantage,
+return) and then derives behavior from it (`π(s) = argmax_a Q(s,a)`; or
+the policy gets nudged by an advantage estimate). This was a brilliant
+idea for finite MDPs: it converts policy search over an exponential set
+into dynamic programming over a scalar function. Value gives three
+miracles — *future compression*, *temporal recursion*, *policy
+extraction*.
+
+But the deployed object is the **policy**, not the value function.
+Modern long-horizon sparse-reward, vector-reward, combinatorial-action,
+and agentic settings expose three failure modes of scalar value:
+the target is too hard to learn (`Q ≈ 0` everywhere until rare success);
+the compression is too brutal ("opens door but loses key" and "keeps
+key but delays progress" have similar scalar value but very different
+behavioral structure); and greedy extraction `argmax_a Q(s,a)` is
+awkward when `a` is "generate a paragraph" or "call a tool."
+
+So the search target is a primitive that **replaces value's role**, not
+its name. Useful framings: structured future-consequence objects (#11
+TOP), policy-edit-as-primary objects (#12 PEO — collapsed), behavior
+flow (#14 — collapsed). What unifies them is the question *"what
+future-consequence object, used as evidence, supports local policy
+improvement without scalarizing to expected return?"* — not the question
+*"how do we avoid the words Q and V?"*. **Avoiding value vocabulary is
+not a research direction.**
+
 The metric is the **panel score**: a tuple `(n_beat_random, n_beat_strong)`
 over the smoke tier (5 fixed envs: 2 sparse-long-horizon gridworlds + 3
 native vector-reward envs). Higher is better in either component. A second

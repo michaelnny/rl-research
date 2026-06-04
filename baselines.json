@@ -1,10 +1,10 @@
 {
   "MiniGrid-DoorKey-8x8-v0": {
     "random": 0.0274296875,
-    "strong": 0.048734375,
+    "strong": 0.0,
     "per_baseline": {
       "eps_greedy_q": 0.0,
-      "count_bonus": 0.048734375
+      "count_bonus": 0.0
     }
   },
   "MiniGrid-KeyCorridorS3R3-v0": {
@@ -25,18 +25,18 @@
   },
   "minecart-v0": {
     "random": 198.9599999934435,
-    "strong": 199.2999999858439,
+    "strong": 180.00000044703484,
     "per_baseline": {
       "eps_greedy_q": 180.00000044703484,
-      "count_bonus": 199.2999999858439
+      "count_bonus": 180.00000044703484
     }
   },
   "mo-reacher-v4": {
     "random": 355635.40502063575,
-    "strong": 202474.00578714567,
+    "strong": 198671.56023835155,
     "per_baseline": {
-      "eps_greedy_q": 202474.00578714567,
-      "count_bonus": 108377.75035872147
+      "eps_greedy_q": 198671.56023835155,
+      "count_bonus": 90665.23928359267
     }
   }
 }

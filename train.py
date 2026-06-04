@@ -39,6 +39,27 @@ import numpy as np
 import harness
 
 
+def _enable_gpu_perf() -> None:
+    """Enable Ampere TF32 + cuDNN autotuner if a GPU is present.
+
+    No-op when torch isn't available or no CUDA device is visible — the
+    default random-policy baseline doesn't need torch and shouldn't
+    require importing it on machines without a GPU.
+    """
+    try:
+        import torch
+    except ImportError:
+        return
+    if not torch.cuda.is_available():
+        return
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
+    torch.backends.cudnn.benchmark = True
+
+
+_enable_gpu_perf()
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument(

@@ -1,20 +1,22 @@
 # prior_attempts.md
 
-Eleven directions have been tried and failed across two prior research sprints.
-This list is a **hint**, not a gate. Read it before proposing a new direction
-so you don't re-derive a known dead end. If your candidate is structurally
-identical to one of these, it will not produce a new result.
+Fourteen directions have been tried and failed across three prior research
+sprints. This list is a **hint**, not a gate. Read it before proposing a new
+direction so you don't re-derive a known dead end. If your candidate is
+structurally identical to one of these, it will not produce a new result.
 
 Each entry: name, one-line mechanism, one-line reason it failed. These
 summaries are intended to be self-sufficient — you should not need to open
 the worklogs to act on them.
 
-The verbatim sprint reports live under `worklogs/` for the rare case where
-you need the full derivation, the math, or the discarded sub-attempts:
-`worklogs/research_attempts_20260524.md` covers entries 1–4 below;
-`worklogs/research_attemps_20260526.md` covers entries 5–11 plus the
-process post-mortem reflected in **Cross-attempt failure modes** later in
-this file.
+Each entry below has its full record at `worklogs/attempts/NN-<slug>.md`
+(template: `worklogs/TEMPLATE.md`). Open the per-attempt file when you
+need the math, the prototype detail, or the cross-attempt comparison.
+
+Alive-but-not-yet-tested directions live under `worklogs/candidates/` and
+do not appear in this list — they are not failed attempts. A candidate
+graduates into `attempts/` (and gets an entry here) when a `train.py`
+commit runs it against the panel.
 
 ## Sprint 1 (2026-05-24)
 
@@ -76,6 +78,31 @@ this file.
     to GVFs / successor features / multi-objective RL / reward machines under
     inspection. Not promoted; structural distinction not yet established.
 
+## Sprint 3 (offline exploration, 2026-05-29)
+
+These three came from an offline exploration batch — derivation only, no
+substrate `train.py` commits. Logged here to keep the negative space
+canonical.
+
+12. **Policy-Edit Optimization (PEO)** — make the policy primary by estimating
+    the response of the outcome law to each policy edit; apply edits whose
+    response points into a desirable vector cone.
+    *Failed:* matched by a scalar edit-ES on the same hand-designed semantic
+    edit basis. The basis was the algorithm; the optimizer was an ES rebadge.
+
+13. **ETB / HPC** — Event-Time Behavioral Basis (first-action on shortest
+    suffix to event `g` from context `c`) plus Hindsight Policy Compression
+    (MDL-compress event-reaching suffixes into a conditional program).
+    *Failed:* ETB is goal-conditioned hindsight + event-options; HPC is
+    GCSL-like supervised hindsight imitation. Useful as components, not as a
+    family.
+
+14. **Primal Behavior Flow Pivot** — pivot the central object from value to
+    occupancy flow `μ_π(s,a)` and recover the policy by normalization.
+    *Failed:* mathematically clean but does not expose any new side-information
+    advantage for sparse long-horizon discovery. Collapses to occupancy-measure
+    LPs / max-ent RL / GAIL / GFlowNets / mirror-descent PI under inspection.
+
 ## Cross-attempt failure modes
 
 Patterns that appeared more than once. If your candidate exhibits any of them,
@@ -99,6 +126,12 @@ expect the same outcome:
   needs replacing, not its name.
 - **Hand-engineered event lenses are side information.** Counts against the
   side-information channel declaration; not free.
+- **Abstract mathematical pivot without an exposed side-information
+  advantage is a notational shift, not a new family.** A pivot from one
+  central object (value, flow, distribution, etc.) to another must say
+  *what new side information* the new center makes usable, and *how* that
+  side information drives the discovery of new informative trajectories
+  before reward correlation exists. (#14 Primal Behavior Flow.)
 
 ## Disqualifier families (the negative space)
 
@@ -150,5 +183,5 @@ A candidate is interesting only when **all** hold:
 4. The candidate beats `panel_n_beat_strong` on ≥ 2 of the 6 panel envs,
    with at least one win on a vector env.
 5. The candidate's structural distinction from the named nearest item in this
-   list (1–11 above, or one of the disqualifier families) is articulated in
+   list (1–14 above, or one of the disqualifier families) is articulated in
    2–3 sentences in the commit message.

@@ -44,10 +44,14 @@ from pathlib import Path
 
 import numpy as np
 
-# Keep JAX off the GPU so it doesn't fight torch for VRAM. Craftax pulls JAX
-# in transitively; on the linux GPU host JAX defaults to GPU and steals
-# memory before torch can preallocate.
-os.environ.setdefault("JAX_PLATFORMS", "cpu")
+# Let JAX run on the GPU alongside torch. By default JAX greedy-preallocates
+# ~75% of VRAM on import, which evicts torch. Switching to on-demand
+# allocation (`platform`) and disabling preallocation makes the two coexist:
+# torch keeps its caching allocator, JAX grows as needed. Craftax-Symbolic
+# (the only JAX consumer in this repo) runs solo in hard-tier Phase 1, so
+# it gets the full GPU when it actually needs it.
+os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
+os.environ.setdefault("XLA_PYTHON_CLIENT_ALLOCATOR", "platform")
 
 # ---------------------------------------------------------------------------
 # Panel: smoke tier (~30 min parallel) + hard tier (separate sweep).
@@ -354,6 +358,14 @@ def evaluate(
 
     Eval seeding is offset from `seed` to keep it disjoint from training
     seeds: env reset seed = seed + 5000 + episode_index.
+
+    Episodes run sequentially: many baselines' `policy_fn` carries mutable
+    state (a shared numpy RNG for the random baseline; a torch module's
+    forward path with thread-unsafe buffers; etc.), so cross-episode
+    parallelism would race on it and produce non-reproducible scores.
+    Cross-env parallelism (in `run_panel.py` and `scripts/build_baselines.py`)
+    runs each call to `evaluate` in its own subprocess, which is where the
+    real wallclock saving comes from.
     """
     env = make_env(env_id, seed=seed + 10_000)
     is_vector = PANEL_TYPE[env_id] == "vector"

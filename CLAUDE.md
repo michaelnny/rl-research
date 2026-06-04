@@ -18,7 +18,7 @@ keep the commit if the panel score advanced; otherwise discard. Loop.
 - **[program.md](program.md)** — the agent's instruction sheet. Goal,
   setup, contract, experiment loop, keep/discard rule, NEVER-STOP clause.
   This is what the agent reads at the start of a session.
-- **[prior_attempts.md](prior_attempts.md)** — 11 prior failed directions,
+- **[prior_attempts.md](prior_attempts.md)** — 14 prior failed directions,
   cross-attempt failure modes, disqualifier-family list. The agent reads
   this between iterations to avoid rebadges.
 - **[panel.md](panel.md)** — design rationale for the two-tier panel
@@ -35,9 +35,12 @@ harness.py              # frozen — env factory, evaluate, panel, hypervolume, 
 train.py                # agent-editable — the RL algorithm lives here
 run_panel.py            # frozen — runs train.py vs each panel env, aggregates panel score
 program.md              # the agent's instruction sheet
-prior_attempts.md       # failed-direction post-mortems + disqualifier list
+prior_attempts.md       # one-paragraph index of failed directions + disqualifier list
 panel.md                # rationale for each panel env vs failure modes
-worklogs/               # detailed reports from prior research sprints
+worklogs/               # research memory — see worklogs/README.md
+  README.md             # explains the template + index split
+  TEMPLATE.md           # fixed per-attempt template (frontmatter + sections)
+  attempts/             # database: one bounded file per attempt (NN-<slug>.md)
 baselines.json          # frozen smoke-tier baselines (built by scripts/build_baselines.py)
 baselines_hard.json     # frozen hard-tier baselines (published_sota + our_baseline)
 baselines/              # baseline `train()` implementations (random, eps_greedy_q, count_bonus)
