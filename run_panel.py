@@ -17,7 +17,9 @@ import harness
 ROOT = Path(__file__).parent.resolve()
 RUN_DIR = ROOT / "runs" / "last"
 FINAL_RE = re.compile(r"^final_score:\s*([-+]?\d+\.?\d*(?:[eE][-+]?\d+)?)\s*$", re.MULTILINE)
-TIMEOUT_GRACE_S = 15
+BEAT_EPS = 1e-6
+DEFAULT_EVAL_GRACE_S = 30
+CRAFTAX_EVAL_GRACE_S = 180
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,6 +44,10 @@ def select_envs(args: argparse.Namespace) -> list[str]:
     return list(envs)
 
 
+def eval_grace_s(env_id: str) -> int:
+    return CRAFTAX_EVAL_GRACE_S if env_id == "Craftax-Symbolic-v1" else DEFAULT_EVAL_GRACE_S
+
+
 def run_one(env_id: str, seed: int, budget: int) -> float:
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     log_path = RUN_DIR / f"{env_id}.log"
@@ -62,11 +68,11 @@ def run_one(env_id: str, seed: int, budget: int) -> float:
                 cwd=ROOT,
                 stdout=f,
                 stderr=subprocess.STDOUT,
-                timeout=budget + TIMEOUT_GRACE_S,
+                timeout=budget + eval_grace_s(env_id),
                 check=False,
             )
         except subprocess.TimeoutExpired:
-            f.write(f"\n[run_panel] timeout after {budget + TIMEOUT_GRACE_S}s\n")
+            f.write(f"\n[run_panel] timeout after {budget + eval_grace_s(env_id)}s\n")
     match = FINAL_RE.findall(log_path.read_text())
     return float(match[-1]) if match else float("nan")
 
@@ -102,8 +108,8 @@ def main() -> None:
         score = scores[env]
         random_b = baselines[env]["random"]
         strong_b = baselines[env]["strong"]
-        br = int(not math.isnan(score) and score > random_b)
-        bs = int(not math.isnan(score) and score > strong_b)
+        br = int(not math.isnan(score) and score > random_b + BEAT_EPS)
+        bs = int(not math.isnan(score) and score > strong_b + BEAT_EPS)
         beat_random += br
         beat_strong += bs
         score_s = "nan" if math.isnan(score) else f"{score:.6f}"

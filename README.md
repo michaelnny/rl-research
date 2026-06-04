@@ -3,7 +3,7 @@
 Lean substrate for fast RL algorithm probes on two axes:
 
 - long-horizon sparse reward: `MiniGrid-DoorKey-8x8-v0`, `MiniGrid-KeyCorridorS3R3-v0`
-- native vector reward: `deep-sea-treasure-concave-v0`, `minecart-v0`
+- native vector reward: `deep-sea-treasure-concave-v0`, `resource-gathering-v0`, `Craftax-Symbolic-v1`
 
 Historical research memory is preserved in `prior_attempts.md` and
 `worklogs/attempts/`. Those files are archive/reference material, not the hot
@@ -47,8 +47,9 @@ worklogs/attempts/          archived detailed attempt records; do not delete
 | --- | --- |
 | `quick` | DST-concave |
 | `sparse` | DoorKey, KeyCorridor |
-| `vector` | DST-concave, Minecart |
-| `all` | all four active envs |
+| `vector` | DST-concave, Resource-Gathering |
+| `craft` | Craftax-Symbolic |
+| `all` | all five active envs |
 
 Keep/kill rule: a candidate must improve its claimed axis and explain why the
 lift is not a known disqualifier from `prior_attempts.md`. Do not promote from a

@@ -28,6 +28,7 @@ def random_policy(env):
 def test_stage_shape():
     assert harness.STAGES["sparse"] == harness.SPARSE_ENVS
     assert harness.STAGES["vector"] == harness.VECTOR_ENVS
+    assert harness.STAGES["core"] == harness.CORE_ENVS
     assert harness.STAGES["all"] == harness.ENVS
     assert set(harness.ENV_TYPE) == set(harness.ENVS)
     assert harness.PANEL == harness.ENVS
@@ -76,8 +77,12 @@ def test_hypervolume_3d_smoke():
 
 def test_load_baselines_monotone(tmp_path, monkeypatch):
     path = tmp_path / "baselines.json"
-    path.write_text('{"minecart-v0": {"random": 2, "strong": 1}}')
+    path.write_text('{"resource-gathering-v0": {"random": 2, "strong_local": 1}}')
     monkeypatch.setattr(harness, "BASELINES_PATH", path)
     loaded = harness.load_baselines()
     assert set(loaded) == set(harness.ENVS)
-    assert loaded["minecart-v0"] == {"random": 2.0, "strong": 2.0}
+    assert loaded["resource-gathering-v0"] == {"random": 2.0, "strong": 2.0}
+
+
+def test_craftax_score_normalization_constant():
+    assert harness.CRAFTAX_MAX_RETURN == 226.0
