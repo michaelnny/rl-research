@@ -1,68 +1,28 @@
 [project]
 name = "rl-research"
-version = "0.2.0"
-description = "Substrate for an autonomous AI agent to discover novel RL algorithms on long-horizon sparse-reward and vector-reward problems."
+version = "0.3.0"
+description = "Lean harness for fast RL research probes."
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    # Compute substrate
-    "torch==2.11.0",
     "numpy==2.4.4",
-    # Smoke-tier env stack: classic-control + the panel.
-    "gymnasium[classic-control,mujoco]==1.3.0",
+    "gymnasium[classic-control]==1.3.0",
     "minigrid==2.3.1",
     "mo-gymnasium==1.3.2",
-    "mujoco==3.8.1",
-    # Hard-tier envs.
-    # Craftax: pure-Python wheel, pulls JAX. We let JAX use the GPU
-    # (`XLA_PYTHON_CLIENT_PREALLOCATE=false` in harness.py keeps it from
-    # evicting torch); on Linux we add the CUDA12 plugin so jaxlib actually
-    # talks to the GPU.
-    "craftax==1.5.0",
-    "jax-cuda12-plugin==0.10.0 ; sys_platform == 'linux'",
-    "jax-cuda12-pjrt==0.10.0 ; sys_platform == 'linux'",
-    # MiniHack: linux-only — the wheel does not exist on PyPI for any platform
-    # and the sdist build needs cmake. Build target (linux-x86_64) has cmake;
-    # darwin lock skips it via the platform marker.
-    "minihack==1.0.2 ; sys_platform == 'linux'",
 ]
 
 [dependency-groups]
 dev = [
     "ruff==0.15.12",
     "pytest==9.0.3",
-    "pre-commit==4.6.0",
 ]
-
-[tool.uv.sources]
-# Pin torch to the cu128 wheel on Linux (the GPU host) and fall back to the
-# default PyPI wheel on macOS so the substrate is still installable for
-# editing / lint / non-GPU smoke tests.
-torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
-
-[[tool.uv.index]]
-name = "pytorch-cu128"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings
-    "F",   # pyflakes
-    "I",   # isort
-    "B",   # flake8-bugbear
-    "UP",  # pyupgrade
-    "SIM", # simplify
-    "NPY", # numpy
-    "RUF", # ruff-specific
-]
-ignore = [
-    "E501",  # line too long (handled by formatter)
-]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "NPY", "RUF"]
+ignore = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -71,3 +31,9 @@ indent-style = "space"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -q"
+filterwarnings = [
+    "ignore:pkg_resources is deprecated.*:UserWarning",
+    "ignore:.*Overriding environment.*:UserWarning",
+    "ignore:.*Box .*precision lowered.*:UserWarning",
+    "ignore:.*reward returned by `step\\(\\)`.*:UserWarning",
+]
