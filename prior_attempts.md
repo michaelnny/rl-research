@@ -131,6 +131,9 @@ canonical.
 20. **LRA — Loop-Return Aversion** — per-(obs-hash, action) empirical mean of within-episode closed-loop vector cumulant deltas `Δc = c_{t'} − c_t`; suppress action logit iff loop-signature mean is Pareto-dominated by the zero vector (all channels ≤ 0, at least one < 0).
     *Failed:* on both vector panel envs (DST and RG) the universal step-penalty channel is strictly negative on every step, so every intra-trajectory loop accumulates a negative entry in that channel and every looping action is unconditionally suppressed — the operator reduces to count-based exploration suppression, a named disqualifier. On DoorKey the partial-observable state changes on most steps (carrying the key changes obs), so hash collisions are rare and the operator almost never fires. Scored 0.0 / 0.121 vs random 0.137 / 1.331. Hypothesis's own falsifier confirmed: the family is dead when every vector env requires excluding the step-penalty channel from the dominance test.
 
+21. **TPP — Terminal-Postfix Pairing** — for trajectory pairs whose terminal observation-hashes match, walk both backward in lockstep to find the postfix-divergence anchor; accumulate a Pareto-vote count W[s,a] and nudge policy logits toward the Pareto-non-dominated action at each anchor.
+    *Failed:* same bootstrap wall as CEC (#18) and the FED family — the primitive is silent until terminal-observation-hash collisions accumulate, which does not happen within 120 s on long-horizon sparse envs; W stayed effectively empty, operator never fired. Scored 0.0 / 0.011 vs random 194.0 / 1.331. Extends the FED/CEC ruling to the "terminal-observation-matched pair + backward lockstep walk" sub-family; any hash-collision-gated pair primitive fails without a paired exploration primitive providing coverage.
+
 ## Cross-attempt failure modes
 
 Patterns that appeared more than once. If your candidate exhibits any of them,
