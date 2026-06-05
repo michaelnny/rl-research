@@ -119,6 +119,9 @@ canonical.
 16. **PICAV — Path-Integrated Channel-Asymmetry Voting** — per-(obs-hash, action) empirical mean of signed antisymmetric pair-contribution vectors `δ_{jk,t} = v_t[j]·Δn_t[k] − v_t[k]·Δn_t[j]`; nudge policy logits toward upper-orthant Pareto-frontier actions within each bucket.
     *Failed:* claimed to bypass FED's bootstrap wall because pair-contributions are nonzero on every step — but on Deep Sea Treasure the treasure channel fires only at the terminal step, making all pair entries zero throughout the episode (same bootstrap collapse as FED). Scored 0.0 / 0.011 vs random 1.331 on both vector envs. Rules out the "signed cross-channel temporal-ordering moment" family whenever any vector channel is terminal-only.
 
+17. **CHX — Cumulant-Hull Extremality** — per-step L2 distance-to-convex-hull of within-trajectory cumulant trace in `R^k`; weight log-prob update by centered hull-contribution `(h_t − 1/T)` — no critic, no cross-trajectory comparison, no scalarization.
+    *Failed:* when any vector channel is terminal-only (as in Deep Sea Treasure and Resource Gathering), the cumulant trace is effectively k_eff=1 (a near-line in the step-penalty direction with the reward dimension firing only at termination); the hull's extremes reduce to episode start/end, collapsing CHX to a return-to-go rebadge. Scored 99.0 / 0.011 vs random 194.0 / 1.331 on both vector envs (below random). Extends PICAV's ruling: any within-trajectory signal-geometry primitive collapses on the substrate's terminal-only vector channels.
+
 ## Cross-attempt failure modes
 
 Patterns that appeared more than once. If your candidate exhibits any of them,
