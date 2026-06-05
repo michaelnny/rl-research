@@ -53,9 +53,21 @@ In this exact order. Any failure → log reason and exit cleanly.
    "disk cap exceeded" and exit.
 4. **Substrate dirty.**
    `git status --porcelain harness.py run_panel.py baselines.json
-    train.py prior_attempts.md worklogs/TEMPLATE.md`
+    train.py worklogs/TEMPLATE.md`
    — if non-empty, write a `HALT_REQUESTED.md` with the diff and exit.
    The substrate must be clean before any iteration runs.
+
+   **Substrate vs corpus.** The check intentionally lists ONLY
+   sealed-immutable files (`harness.py`, `run_panel.py`,
+   `baselines.json`, `worklogs/TEMPLATE.md`) plus `train.py` for
+   contamination detection. `prior_attempts.md`, `worklogs/attempts/*`,
+   `worklogs/candidates/*`, `worklogs/runs/*`, and
+   `worklogs/ledger.jsonl` are **corpus files owned by the Curator
+   subagent** — every `failed-structural` verdict legitimately appends
+   to `prior_attempts.md`, so they MUST NOT block the next iteration.
+   Step 6 (auto-commit) is what keeps the working tree clean across
+   iterations; this pre-flight check is the integrity guard, not a
+   cleanliness guard.
 
    **`train.py` is in this list specifically to detect contamination
    from a crashed prior iteration.** If a previous Engineer crashed
@@ -197,6 +209,37 @@ proceed to the next iteration with a missing ledger entry — the
 post-iteration step reads the ledger and would silently miscount
 errors.
 
+### Step 6 — auto-commit the iteration
+
+Once Curator verification has passed, snapshot the iteration's corpus
+updates so the working tree stays clean across the next pre-flight and
+so unattended runs leave a per-iteration audit trail in `git log`.
+
+```bash
+git add worklogs/ prior_attempts.md
+# Empty diff is fine (e.g. abandoned-rebadge runs touch only the ledger
+# inside worklogs/, which is captured by the path above; if for some
+# reason there is nothing to commit, skip silently).
+if ! git diff --cached --quiet; then
+  git commit -m "iter <run_id>: <verdict>" -m "status: <status>  beat_strong: <N>" \
+    || { echo "auto-commit failed for <run_id>" \
+         > worklogs/HALT_REQUESTED.md; exit 0; }
+fi
+```
+
+Use **targeted paths** (`worklogs/ prior_attempts.md`), not `git add
+-A` — unrelated user-staged edits in the working tree must not be
+swept into iteration commits. If `git commit` itself fails (e.g. a
+pre-commit hook rejects the change, repo is in a detached weird state,
+identity not configured), that is a real systemic signal: write
+`HALT_REQUESTED.md` and exit rather than silently leaving uncommitted
+state to confuse the next pre-flight.
+
+This step is intentionally *after* Curator verification: a Curator
+that crashed mid-corpus-update should NOT be auto-committed; the user
+needs to see that diff. Verification passing is the precondition for
+commit.
+
 ## Post-iteration update
 
 1. `iters_done += 1`.
@@ -235,12 +278,24 @@ mid-run. The user can:
 
 ## Forbidden actions
 
-- Editing `harness.py`, `run_panel.py`, `baselines.json`,
-  `prior_attempts.md`, `worklogs/TEMPLATE.md`, `worklogs/attempts/*`.
+These bind the orchestrator (this `/research` loop), not the subagents.
+The Curator subagent's required corpus updates (appending to
+`prior_attempts.md`, writing `worklogs/attempts/<NN>-<slug>.md`,
+parking in `worklogs/candidates/`, appending to
+`worklogs/ledger.jsonl`) are explicitly part of its role and are NOT
+forbidden — they're what Step 5 commissions and Step 6 commits.
+
+- The orchestrator itself never edits `harness.py`, `run_panel.py`,
+  `baselines.json`, `prior_attempts.md`, `worklogs/TEMPLATE.md`,
+  `worklogs/attempts/*`, or any subagent's run directory contents.
+  The Curator owns the corpus files; the Engineer owns its run
+  directory; the orchestrator only orchestrates.
 - Skipping pre-flight checks "just to fit one more iteration in."
 - Modifying `worklogs/HALT_REQUESTED.md` to suppress a halt — if a halt
   fired, the loop must exit. The user removes the file when they want
   to resume.
+- Auto-committing with `git add -A` (use targeted paths in Step 6 so
+  unrelated working-tree edits aren't swept into iteration commits).
 - Asking the user anything between iterations. The whole point of
   `/research` is unattended operation. If you find yourself wanting
   to ask the user a question, instead write
