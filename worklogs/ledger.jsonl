@@ -14,3 +14,4 @@
 {"run_id":"20260606-07-auto","ts":"2026-06-06T21:00:00Z","verdict":"failed-structural","stage":"vector","beat_strong":0,"beat_random":0,"status":"completed","commit":"b5933419d4e1d1d049432854d621cc0a541be05f"}
 {"run_id":"20260606-08-auto","ts":"2026-06-06T22:00:00Z","verdict":"failed-structural","stage":"vector","beat_strong":0,"beat_random":0,"status":"completed","commit":"6d63fc18c5efff7e4995604078eb25326728ff6a"}
 {"run_id":"20260606-09-auto","ts":"2026-06-06T23:00:00Z","verdict":"alive-promising","stage":"vector","beat_strong":1,"beat_random":1,"status":"completed","commit":"807bbb28deb1d18c6248623a5a733867411698bd"}
+{"run_id":"20260606-10-auto","ts":"2026-06-06T23:59:00Z","verdict":"failed-structural","stage":"core","beat_strong":0,"beat_random":0,"status":"completed","commit":"87567995096d38cce2d6eb898faea556ddaf8ecd"}
