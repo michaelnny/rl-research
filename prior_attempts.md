@@ -128,6 +128,9 @@ canonical.
 19. **CWTP — Confluence-Witness Trajectory Pairs** — sign-vote tensor over per-channel segment-cumulant differences between trajectory pairs that diverged at a state and reconverged at a later shared observation-hash; logit nudge by Pareto-non-dominance count of normalized sign-vote rows, no scalar collapse.
     *Failed:* same bootstrap wall as FED/CEC, compounded: requires both cross-trajectory observation-hash collisions at non-terminal states AND non-trivial per-step vector signal in the bracketed segment; neither condition is reliably met on sparse long-horizon envs with terminal-only reward channels. Scored 0.0 / 0.011 vs random 194.0 / 1.331 on both vector envs. Extends the sprint-4 ruling to cover the "pairwise trajectory comparison indexed by intermediate shared state" sub-family.
 
+20. **LRA — Loop-Return Aversion** — per-(obs-hash, action) empirical mean of within-episode closed-loop vector cumulant deltas `Δc = c_{t'} − c_t`; suppress action logit iff loop-signature mean is Pareto-dominated by the zero vector (all channels ≤ 0, at least one < 0).
+    *Failed:* on both vector panel envs (DST and RG) the universal step-penalty channel is strictly negative on every step, so every intra-trajectory loop accumulates a negative entry in that channel and every looping action is unconditionally suppressed — the operator reduces to count-based exploration suppression, a named disqualifier. On DoorKey the partial-observable state changes on most steps (carrying the key changes obs), so hash collisions are rare and the operator almost never fires. Scored 0.0 / 0.121 vs random 0.137 / 1.331. Hypothesis's own falsifier confirmed: the family is dead when every vector env requires excluding the step-penalty channel from the dominance test.
+
 ## Cross-attempt failure modes
 
 Patterns that appeared more than once. If your candidate exhibits any of them,
