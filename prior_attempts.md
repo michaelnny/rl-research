@@ -125,6 +125,9 @@ canonical.
 18. **CEC — Continuation-Endpoint Concordance** — per-(state-hash, action) multiset of vector cumulants indexed by *exit-observation-hash bucket* (the terminal observation of the episode); logit update driven by signed Pareto-dominance count across buckets where action a's bucket-conditional mean cumulant dominates action a'.
     *Failed:* same bootstrap wall as FED (#15) despite switching from mid-trajectory obs-hash to terminal exit-hash bucketing. The concordance signal never fired within the 120 s budget because the seeding phase could not accumulate ≥ 2 samples per (state, action, exit-hash) bucket — the hypothesis's own stated falsifier. Scored 0.0 / 0.011 vs random 194.0 / 1.331 on both vector envs. Extends the FED family ruling to cover exit-hash variants: the entire "empirical Pareto-front / cumulant-multiset indexed by any observation hash" family fails without an explicit exploration primitive providing sufficient coverage before concordance comparisons are made.
 
+19. **CWTP — Confluence-Witness Trajectory Pairs** — sign-vote tensor over per-channel segment-cumulant differences between trajectory pairs that diverged at a state and reconverged at a later shared observation-hash; logit nudge by Pareto-non-dominance count of normalized sign-vote rows, no scalar collapse.
+    *Failed:* same bootstrap wall as FED/CEC, compounded: requires both cross-trajectory observation-hash collisions at non-terminal states AND non-trivial per-step vector signal in the bracketed segment; neither condition is reliably met on sparse long-horizon envs with terminal-only reward channels. Scored 0.0 / 0.011 vs random 194.0 / 1.331 on both vector envs. Extends the sprint-4 ruling to cover the "pairwise trajectory comparison indexed by intermediate shared state" sub-family.
+
 ## Cross-attempt failure modes
 
 Patterns that appeared more than once. If your candidate exhibits any of them,

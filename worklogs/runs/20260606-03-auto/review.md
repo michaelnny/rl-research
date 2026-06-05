@@ -1,0 +1,16 @@
+---
+verdict: novel-direction
+reviewer_run: 20260606-03-auto
+---
+
+## Reasoning
+
+CWTP's central primitive — the sign-vote tensor `V[s_div, a, a', m]` accumulated from pairwise confluence-witness events (trajectory pairs that diverged at `s_div` with distinct actions and reconverged at a later shared observation-hash) — is structurally distinct from every disqualifier family and every prior attempt. It is not a value backup, not a scalar-weighted log-prob update, not bucket-conditional Pareto fronts (FED/CEC), not terminal-cumulant comparison from first-divergence (DPC), and not aggregated multigraph edge dominance over endpoint-pair buckets (RSD). The key structural innovation over the FED/CEC/PICAV/CHX family (which all collapsed on the bootstrap wall) is that CWTP's signal is extracted from *pairwise trajectory comparisons that bracket only the segment between latest-divergence and reconvergence*, so the downstream of the confluence cancels by construction and per-step vector channels (step penalty, resource counts, energy) produce non-zero `Δv` even in the pre-reward phase of exploration. The hypothesis explains this explicitly and names an honest falsifier (confluence pair rate below 1/thousand-steps means the operator is silent and the candidate is dead).
+
+All required-candidate-shape slots are substantively filled: the experience object is specified (completed trajectories with per-step observation-hash, action, and `info["vector"]`); the improvement operator is fully written out (logit nudge by Pareto-non-dominance count of normalized sign-vote rows, no scalar collapse); the monotonic improvement claim is precise (convergence to the sign of the conditional per-channel advantage under deterministic transitions and state-injective hashing); predicted failure modes are concrete (stochastic transitions, near-injective observation-hashes, policy collapse before confluences form, terminal-only vector channels); and the side-information channels are declared (transition geometry, vector diagnostics). The structural distinction from the three nearest prior candidates (CEC #18, RSD, DPC) is articulated with specific mathematical differences rather than vocabulary avoidance.
+
+## Risks the Engineer should be aware of
+
+- The `O(B^2 · H)` per-update cost (buffer-size squared times average confluences per pair) can spike unexpectedly if observation-hashes are compact enough to produce many collisions — the Engineer should cap `B` aggressively and verify actual update latency before assuming the 120 s budget is sufficient.
+- On the substrate's sparse envs (DoorKey, KeyCorridor), observation-hashes may be injective enough that confluence pairs are genuinely rare during the seeding phase; the stated falsifier (< 1 confluence per 1000 buffer-steps) should be monitored and logged explicitly so the Curator can distinguish "operator fired but didn't help" from "operator never fired."
+- The hypothesis acknowledges that terminal-only vector channels (no per-step signal) collapse the operator to silence — this is the same failure mode that killed FED/PICAV/CHX. The substrate's Deep Sea Treasure does have a per-step penalty channel, but the degree of per-step signal should be verified against the actual `info["vector"]` schema before the full panel run.
