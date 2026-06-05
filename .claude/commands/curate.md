@@ -1,7 +1,6 @@
 ---
 description: Standalone Curator pass — synthesize any uncurated runs (e.g. after an interrupted iteration).
 allowed-tools: Agent, Read, Bash
-model: sonnet
 ---
 
 Find every `worklogs/runs/<run_id>/` that has a `result.json` but no

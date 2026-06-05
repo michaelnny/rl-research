@@ -2,7 +2,6 @@
 description: Autonomous research loop. Repeatedly runs Researcher → Reviewer → Engineer → Curator iterations until a halt condition trips. Designed for unattended weeks-long runs with NO user prompts between iterations.
 argument-hint: "[--max-iters N] [--max-hours H]"
 allowed-tools: Agent, Read, Write, Edit, Bash
-model: sonnet
 ---
 
 You are running the autonomous research loop of the rl-research project.
