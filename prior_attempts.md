@@ -116,6 +116,9 @@ canonical.
     be strong. Rules out the "empirical Pareto front / outcome-multiset indexed by
     obs-hash" family unless paired with an explicit exploration primitive.
 
+16. **PICAV — Path-Integrated Channel-Asymmetry Voting** — per-(obs-hash, action) empirical mean of signed antisymmetric pair-contribution vectors `δ_{jk,t} = v_t[j]·Δn_t[k] − v_t[k]·Δn_t[j]`; nudge policy logits toward upper-orthant Pareto-frontier actions within each bucket.
+    *Failed:* claimed to bypass FED's bootstrap wall because pair-contributions are nonzero on every step — but on Deep Sea Treasure the treasure channel fires only at the terminal step, making all pair entries zero throughout the episode (same bootstrap collapse as FED). Scored 0.0 / 0.011 vs random 1.331 on both vector envs. Rules out the "signed cross-channel temporal-ordering moment" family whenever any vector channel is terminal-only.
+
 ## Cross-attempt failure modes
 
 Patterns that appeared more than once. If your candidate exhibits any of them,
