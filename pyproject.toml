@@ -29,6 +29,7 @@ explicit = true
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["worklogs"]
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "B", "UP", "SIM", "NPY", "RUF"]

@@ -8,9 +8,11 @@ You are running the autonomous research loop of the rl-research project.
 Your job is to keep firing iterations until a halt condition trips, with
 NO human in the loop between iterations.
 
-Each iteration: Researcher (Phase 1) → Reviewer → branch on verdict →
-Researcher (Phase 2) → Engineer → Curator. All handoffs are file-based;
-all subagents live under `.claude/agents/`.
+Each iteration: Researcher (idea, text only) → Reviewer (cheap structural
+gate) → branch on verdict → Engineer (authors `train.py`, runs the panel)
+→ Curator (synthesizes the result). The Researcher never writes or reads
+code; the Engineer is the entire implementation surface. All handoffs are
+file-based; all subagents live under `.claude/agents/`.
 
 ## Arguments
 
@@ -80,19 +82,20 @@ uv run python scripts/next_run_id.py auto
 Capture the printed `run_id` (format `<YYYYMMDD>-<NN>-<slug>`). Then
 `mkdir -p worklogs/runs/<run_id>`.
 
-### Step 1 — Researcher Phase 1
+### Step 1 — Researcher
 
 Spawn the `researcher` subagent (`subagent_type: researcher`) with this
 exact prompt:
 
-> Phase 1 only. Run ID is `<run_id>`. Read `prior_attempts.md` first,
-> then propose a candidate by writing
-> `worklogs/runs/<run_id>/hypothesis.md`. Halt after writing the file —
-> do not write `train.py` yet.
+> Run ID is `<run_id>`. Read `prior_attempts.md` and
+> `worklogs/candidates/*.md`, then propose a candidate by writing
+> `worklogs/runs/<run_id>/hypothesis.md`. Halt after writing the file.
+> You do not write or read any code; the Engineer authors `train.py`
+> after the Reviewer approves.
 
 After the subagent returns, verify `worklogs/runs/<run_id>/hypothesis.md`
 exists. If not, write a stub `result.json` with
-`status: killed-error, error: "researcher phase 1 produced no hypothesis"`
+`status: killed-error, error: "researcher produced no hypothesis"`
 and skip to Step 5 (Curator).
 
 ### Step 2 — Reviewer
@@ -111,8 +114,9 @@ After return, parse the `verdict:` line out of `review.md`'s frontmatter.
 - **`novel-direction`** → continue to Step 4.
 
 - **`needs-sharpening`** → respawn `researcher` ONCE with prompt:
-  > Phase 1 revision. Reviewer wrote `worklogs/runs/<run_id>/review.md`.
-  > Address the missing slots and rewrite hypothesis.md.
+  > Revise the hypothesis. Reviewer wrote `worklogs/runs/<run_id>/review.md`.
+  > Address the missing slots and rewrite hypothesis.md. You still do not
+  > write or read any code.
 
   Then respawn `reviewer` for a re-review. If the new verdict is still
   not `novel-direction`, write a stub `result.json` with
@@ -135,30 +139,30 @@ After return, parse the `verdict:` line out of `review.md`'s frontmatter.
   ```
   Then skip to Step 5.
 
-### Step 4 — Researcher Phase 2 + Engineer
+### Step 4 — Engineer authors and runs
 
-Researcher Phase 2 — spawn `researcher` with this exact prompt:
+Spawn `engineer` with this exact prompt:
 
-> Phase 2. Run ID is `<run_id>`. Reviewer approved with verdict
-> `novel-direction`. Read `worklogs/runs/<run_id>/hypothesis.md` and
-> `worklogs/runs/<run_id>/review.md`, then write
-> `worklogs/runs/<run_id>/train.py` matching the substrate contract.
+> Run ID is `<run_id>`. Reviewer approved with verdict `novel-direction`.
+> Read `worklogs/runs/<run_id>/hypothesis.md` and
+> `worklogs/runs/<run_id>/review.md`, then author
+> `worklogs/runs/<run_id>/train.py` matching the substrate contract,
+> realizing the hypothesis faithfully (not a different algorithm you
+> think will perform better). Pick the panel stage from the hypothesis's
+> primary axis. Run the panel, write
+> `worklogs/runs/<run_id>/result.json`, and ensure the repo-root
+> `train.py` is restored from `train.py.bak` before you exit.
 
-Verify `worklogs/runs/<run_id>/train.py` exists. If not, write a stub
-`result.json` with `status: killed-error, error: "researcher phase 2
-produced no train.py"` and skip to Step 5.
-
-Engineer — spawn `engineer` with this exact prompt:
-
-> Run `worklogs/runs/<run_id>/train.py` through the panel. Pick the stage
-> from the hypothesis primary axis. Write
-> `worklogs/runs/<run_id>/result.json` and ensure the repo-root `train.py`
-> is restored from `train.py.bak` before you exit.
-
-After return, verify `worklogs/runs/<run_id>/result.json` exists AND
-that the repo-root `train.py` is unchanged
-(`git diff --quiet train.py`). If `train.py` is dirty, restore it via
-`git checkout -- train.py` and note the slip in your post-iteration log.
+After return, verify both `worklogs/runs/<run_id>/train.py` and
+`worklogs/runs/<run_id>/result.json` exist AND that the repo-root
+`train.py` is unchanged (`git diff --quiet train.py`). If `train.py` is
+dirty, restore it via `git checkout -- train.py` and note the slip in
+your post-iteration log. If `worklogs/runs/<run_id>/train.py` does not
+exist (Engineer crashed before authoring), the Engineer should have
+written `result.json` with `status: killed-error`; if even `result.json`
+is missing, write a stub with
+`status: killed-error, error: "engineer produced neither train.py nor
+result.json"` and continue to Step 5.
 
 ### Step 5 — Curator
 
