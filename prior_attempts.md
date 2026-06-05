@@ -134,6 +134,9 @@ canonical.
 21. **TPP — Terminal-Postfix Pairing** — for trajectory pairs whose terminal observation-hashes match, walk both backward in lockstep to find the postfix-divergence anchor; accumulate a Pareto-vote count W[s,a] and nudge policy logits toward the Pareto-non-dominated action at each anchor.
     *Failed:* same bootstrap wall as CEC (#18) and the FED family — the primitive is silent until terminal-observation-hash collisions accumulate, which does not happen within 120 s on long-horizon sparse envs; W stayed effectively empty, operator never fired. Scored 0.0 / 0.011 vs random 194.0 / 1.331. Extends the FED/CEC ruling to the "terminal-observation-matched pair + backward lockstep walk" sub-family; any hash-collision-gated pair primitive fails without a paired exploration primitive providing coverage.
 
+22. **CRP — Channel Rank-Position Concordance** — per-(state-cluster, action, channel) running mean of within-trajectory rank-percentile of channel firing magnitude, restricted to firing steps; Pareto logit nudge toward actions whose trend-corrected rank vector R̃[s,a,:] is non-dominated across channels.
+    *Failed:* when a vector channel fires only at the terminal step (as in Deep Sea Treasure and Resource Gathering), within-trajectory rank-percentile is constant 1.0 for every trajectory, making R cells degenerate — the claimed magnitude-invariant rank statistic carries zero discriminating information. The hypothesis's own falsifier (a) was confirmed. Scored 0.0 / 0.011 vs random 194.0 / 1.331. Extends the CHX/PICAV/LRA ruling to rank-based within-trajectory signal-geometry primitives: temporal rank position is no more informative than magnitude when a channel fires only once per episode.
+
 ## Cross-attempt failure modes
 
 Patterns that appeared more than once. If your candidate exhibits any of them,
