@@ -1,0 +1,15 @@
+{
+  "run_id": "20260606-06-auto",
+  "stage": "vector",
+  "envs": ["deep-sea-treasure-concave-v0", "resource-gathering-v0"],
+  "scores": {
+    "deep-sea-treasure-concave-v0": 1419.0,
+    "resource-gathering-v0": 0.011
+  },
+  "beat_random": 1,
+  "beat_strong": 1,
+  "wallclock_s": 117.4,
+  "n_retries": 0,
+  "status": "completed",
+  "commit": "21c1b96a87385e94db4e724a45d9eca47edb227a"
+}
