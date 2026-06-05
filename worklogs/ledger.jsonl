@@ -1,1 +1,3 @@
 {"run_id":"20260605-02-auto","ts":"2026-06-05T00:00:00Z","verdict":"alive-weak","stage":"core","beat_strong":0,"beat_random":0,"status":"completed","commit":"46b61d5229ed53149740da51cea61e048d8256db"}
+{"run_id":"20260605-03-auto","ts":"2026-06-05T14:32:39Z","verdict":"alive-weak","stage":"core","beat_strong":0,"beat_random":0,"status":"completed","commit":"1fd43f1efd68e6807ff0a083f57c40d6146071b8"}
+{"run_id":"20260605-04-auto","ts":"2026-06-05T15:00:00Z","verdict":"failed-structural","stage":"core","beat_strong":0,"beat_random":0,"status":"completed","commit":"1fd43f1efd68e6807ff0a083f57c40d6146071b8"}

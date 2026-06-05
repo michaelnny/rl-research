@@ -103,6 +103,19 @@ canonical.
     advantage for sparse long-horizon discovery. Collapses to occupancy-measure
     LPs / max-ent RL / GAIL / GFlowNets / mirror-descent PI under inspection.
 
+## Sprint 4 (2026-06-05)
+
+15. **FED — Frontier-Expanding Dispersion** — per-action empirical Pareto-front over
+    vector-outcome signatures indexed by observation-hash bucket; accept action logit
+    nudge iff the action's conditional outcome multiset extends the bucket's attainment
+    set in the partial-order sense without contracting it.
+    *Failed:* same bootstrap wall as SIT: observation-hash buckets never accumulate
+    sufficient sample mass under uniform exploration on long-horizon sparse envs, so
+    the Pareto-front extension indicator never fires; scored 0.0 on all envs including
+    the vector envs (Deep Sea Treasure, Resource Gathering) where it was predicted to
+    be strong. Rules out the "empirical Pareto front / outcome-multiset indexed by
+    obs-hash" family unless paired with an explicit exploration primitive.
+
 ## Cross-attempt failure modes
 
 Patterns that appeared more than once. If your candidate exhibits any of them,
