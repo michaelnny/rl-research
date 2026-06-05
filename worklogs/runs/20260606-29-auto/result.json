@@ -1,0 +1,22 @@
+{
+  "run_id": "20260606-29-auto",
+  "stage": "core",
+  "envs": [
+    "MiniGrid-DoorKey-8x8-v0",
+    "MiniGrid-KeyCorridorS3R3-v0",
+    "deep-sea-treasure-concave-v0",
+    "resource-gathering-v0"
+  ],
+  "scores": {
+    "MiniGrid-DoorKey-8x8-v0": 0.0,
+    "MiniGrid-KeyCorridorS3R3-v0": 0.0,
+    "deep-sea-treasure-concave-v0": 99.0,
+    "resource-gathering-v0": 0.011
+  },
+  "beat_random": 0,
+  "beat_strong": 0,
+  "wallclock_s": 113.8,
+  "n_retries": 0,
+  "status": "completed",
+  "commit": "b963ec6c3e93728e86eb579c73f64bf12dd5aa49"
+}

@@ -33,3 +33,4 @@
 {"run_id":"20260606-26-auto","ts":"2026-06-05T21:49:46Z","verdict":"failed-structural","stage":"vector","beat_strong":0,"beat_random":0,"status":"completed","commit":"818e993eb9a5aab8c8f5f7278ae1508ff092fdcc"}
 {"run_id":"20260606-27-auto","ts":"2026-06-06T23:59:59Z","verdict":"failed-structural","stage":"core","beat_strong":0,"beat_random":0,"status":"completed","commit":"8b8408ecbad260410cb5b4152dc57c0af1106dbd"}
 {"run_id":"20260606-28-auto","ts":"2026-06-06T10:00:00Z","verdict":"failed-structural","stage":"vector","beat_strong":0,"beat_random":0,"status":"completed","commit":"cb806fd815d815cb93acd38d4f60f3f9550a2438"}
+{"run_id":"20260606-29-auto","ts":"2026-06-06T12:00:00Z","verdict":"failed-structural","stage":"core","beat_strong":0,"beat_random":0,"status":"completed","commit":"b963ec6c3e93728e86eb579c73f64bf12dd5aa49"}
