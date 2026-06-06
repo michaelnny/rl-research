@@ -1,0 +1,3 @@
+# 20260606-36-auto — empty-handed
+
+reason: Sketched four candidate principles (Wasserstein-W1 trust region, primal-dual occupancy-measure mirror descent, operator-splitting on the Bellman optimality equation, path-space free-energy control). Each either reduced to an existing exemplar (mirror-descent policy gradient, SAC's soft Bellman, KL-regularized REPS/MPO) or to a recently published method (DualDICE/AlgaeDICE for occupancy duality, Wasserstein PPO, Munchausen/CVI for proximal Bellman). None delivered a fixed-point structure, geometry, or duality that is genuinely off the exemplar list, so the four-slot contract — in particular slot 4, a theorem that says something not already on the list — could not be filled honestly.
