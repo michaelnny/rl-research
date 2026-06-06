@@ -1,0 +1,3 @@
+# 20260606-44-auto — empty-handed
+
+reason: scanned candidate principles outside the exemplars list (occupancy-measure LP duality / DICE, Wasserstein trust region, CFR-on-MDP, GFlowNet flow-matching, Tsallis-entropy regularization, convex-MDP / Hazan state-distribution objective, Bayes-adaptive information-state Bellman); each clean derivation either reduces to an existing exemplar (entropy-regularized fixed point, Bregman trust region) or to a published method that the Reviewer would flag as a rebadge, and the residual sketches I could form had no checkable theorem statement at the proposal stage. No four-slot kernel of comparable quality to Q-learning / PPO / AlphaZero this turn.
