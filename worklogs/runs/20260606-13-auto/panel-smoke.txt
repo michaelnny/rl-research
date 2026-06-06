@@ -1,0 +1,9 @@
+[run] stage=sparse envs=MiniGrid-DoorKey-8x8-v0,MiniGrid-KeyCorridorS3R3-v0 budget=30s workers=2 train_path=/home/michael/projects/rl-research/worklogs/runs/20260606-13-auto/train.py
+[env] MiniGrid-DoorKey-8x8-v0              score=    0.000000 random=0.137148 strong=0.137148 margin_random=   -0.137148 margin_strong=   -0.137148 beat_random=0 beat_strong=0
+[env] MiniGrid-KeyCorridorS3R3-v0          score=    0.000000 random=0.000000 strong=0.000000 margin_random=    0.000000 margin_strong=    0.000000 beat_random=0 beat_strong=0
+---
+stage:           sparse
+n_envs:          2
+n_beat_random:   0
+n_beat_strong:   0
+wallclock_s:     29.4

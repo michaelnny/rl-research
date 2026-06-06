@@ -1,0 +1,19 @@
+{
+  "run_id": "20260606-13-auto",
+  "algorithm_name": "LYRA (Lyapunov Reward Asymmetry)",
+  "principle": "The optimal policy maximizes the top Lyapunov-exponent gap of the reward-tilted policy-cocycle, with policy improvement implemented as gradient ascent on the gap estimated online via QR factorization.",
+  "primitive_name": "Policy-indexed Oseledec leading-pair frame",
+  "primitive_type": "Policy x rollout -> Stiefel manifold St(2, R^d) of orthonormal 2-frames carrying the leading two Lyapunov directions of the cocycle M_t = exp(beta * r_t) * gamma * P^pi",
+  "update_family": "direct_policy_update",
+  "memory": "none",
+  "feedback_signal": "scalar reward r(s,a) used as multiplicative tilt exp(beta * r) on the policy-induced operator cocycle",
+  "uses_reward": true,
+  "uses_vector_reward": false,
+  "claimed_stage": "sparse",
+  "nearest_disqualifier": "published_method",
+  "novelty_boundary": "Closest published methods: (a) risk-sensitive RL via Perron eigenvalue (Howard-Matheson 1972) optimizes the top Lyapunov exponent lambda_1 alone; LYRA optimizes the gap Delta = lambda_1 - lambda_2, which is not a risk functional. (b) Lyapunov-exponent edge-of-stability training (Cohen et al. 2021) tracks the parameter-update Jacobian cocycle, not the state-space reward-tilted cocycle. (c) Spectral RL / proto-value functions (Mahadevan-Maggioni 2007) decomposes the symmetrized graph Laplacian; LYRA uses the non-symmetric reward-tilted operator. (d) Streaming PCA (Oja 1982) tracks a single Rayleigh-quotient leading eigenvector; LYRA uses QR-based 2-frame tracking on a non-symmetric cocycle and optimizes the gap. The structural difference is uniform: gap maximization is neither return, risk, nor mixing-rate optimization.",
+  "empirical_claim": "On the sparse stage (MiniGrid DoorKey + KeyCorridor), LYRA's gap-ascent should produce a policy whose mean episodic return improves with the empirical Lyapunov gap Delta_t increasing monotonically over training; success signal is beat_strong=1 on at least one sparse env within the time budget.",
+  "falsifier": "If the empirical Lyapunov gap Delta_t fails to increase during training (Delta_T <= Delta_0 consistently), or if Delta_t increases but episodic return stays at baseline, the gap-maximization principle is falsified on this substrate. Equivalent failure: the random-frame ablation matches LYRA's curve.",
+  "ablation_plan": "Replace the online QR-tracked Oseledec 2-frame Q with a fixed random orthonormal 2-frame resampled at training start and never updated. The score-function gradient computation proceeds identically using this random frame in place of (u_1, u_2). Implementable as train_ablate.py by removing the qr() step and freezing Q at its random initialization. If the random-frame ablation matches LYRA, the Lyapunov primitive is decorative and the algorithm collapses to a random-projection variance-reduction trick.",
+  "proof_debt": "Conjecture (LYRA improvement): along the LYRA flow d-pi/dt = grad-pi Delta(pi, beta), the risk-sensitive return J_beta(pi) = (1/beta) log E_pi[exp(beta * return)] is non-decreasing, and lim_{beta -> inf} argmax_pi Delta(pi, beta) = pi_*. Proof strategy: Furstenberg-Kifer 1983 differentiability of Lyapunov exponents under stationary cocycle perturbations + Kato perturbation theory for spectral-gap derivative + Donsker-Varadhan variational principle linking lambda_1 to risk-sensitive return + a novel lemma (open) connecting grad Delta to a positive multiple of the score-function risk-sensitive policy gradient on the support of the leading Oseledec direction."
+}
