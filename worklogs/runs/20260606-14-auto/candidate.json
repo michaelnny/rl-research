@@ -1,0 +1,19 @@
+{
+  "run_id": "20260606-14-auto",
+  "algorithm_name": "NORMAL (Normal-cone Active-set policy iteration via aLternating projection)",
+  "principle": "The optimal policy at each state is characterized as the unique fixed point of a two-cone Dykstra alternating projection between the advantage-consistency cone and the active-set normal-cone of the simplex, with the per-state active-set indicator (not the advantage magnitudes) as the load-bearing primitive.",
+  "primitive_name": "per-state active-set indicator",
+  "primitive_type": "S -> 2^A (each state mapped to a subset of actions)",
+  "update_family": "state_action_operator",
+  "memory": "table",
+  "feedback_signal": "scalar reward and the relative ordering of advantage estimates across actions at each state",
+  "uses_reward": true,
+  "uses_vector_reward": false,
+  "claimed_stage": "quick",
+  "nearest_disqualifier": "q_learning",
+  "novelty_boundary": "Q-learning updates Q-magnitudes via Bellman contraction and acts epsilon-greedy on Q; NORMAL updates an advantage cone via Dykstra alternating projection between two convex cones (C1 = max_a A(s,.) >= 0; C2 = advantage consistency), uses a uniform-on-argmax policy with no epsilon-greedy schedule, and the load-bearing primitive is the discrete active-set indicator chi(s), not the real-valued Q. The C1 state-wise additive shift step is not present in Bellman backup and is the structural novelty: it ensures every state has an active action by lifting the per-state max to non-negativity, which couples the projections in the Dykstra sense.",
+  "empirical_claim": "On the quick stage (CartPole), NORMAL learns to mean episodic return >= 50 within the 120s claim budget, with lower early-training variance than a Q-learning ablation, because the active-set primitive provides automatic exploration via uniform-on-argmax sampling and the C1 shift prevents pathological all-actions-look-bad collapse.",
+  "falsifier": "If NORMAL fails to reach mean episodic return 50 on CartPole within 120s budget, OR if the ablation that replaces uniform-on-argmax with hard greedy plus epsilon-greedy and removes the C1 shift matches NORMAL's learning curve on CartPole, the active-set + C1 projection primitive is decorative and the probe is killed.",
+  "ablation_plan": "train_ablate.py replaces (i) the uniform-on-argmax sampling with deterministic argmax + epsilon-greedy at epsilon=0.1 with standard decay, and (ii) removes the C1 state-wise additive shift (no clipping of max_a A(s,.) to be non-negative). This collapses the algorithm to bare advantage-baselined Q-learning. A second ablation replaces the deterministic C1 shift with a random N(0,1) state-wise shift to test whether the projection structure matters or only magnitude disruption.",
+  "proof_debt": "Theorem (open): the sample-based alternating-projection update converges to A* (the advantage of the optimal policy) under Robbins-Monro step sizes; the deterministic batch case follows from Boyle-Dykstra 1986 alternating-projection convergence on two closed convex cones (C1 a halfspace per state, C2 the advantage-consistency cone); the stochastic version requires extending Boyle-Dykstra to Markov-chain sampling. Sub-theorem: the consistency cone C2 is closed convex (non-trivial because of the max operator, requires showing the union over active-set choices is convex on the optimal-policy stratum). Improvement-rate theorem: Dykstra linear-convergence O(1/T) versus Q-learning gamma^T contraction, with crossover determined by the policy-chain spectral gap."
+}

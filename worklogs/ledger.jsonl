@@ -74,3 +74,4 @@
 {"run_id":"20260606-11-auto","ts":"2026-06-06T23:59:59Z","verdict":"empty-hand","stage":null,"beat_strong":0,"beat_random":0,"status":"no-engineer","commit":"a7b4a23"}
 {"run_id":"20260606-12-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"empty-hand","stage":null,"beat_strong":0,"beat_random":0,"status":"no-proposal","commit":"024b93d4805587f26e6edeb27cdac83d52d6f236"}
 {"run_id":"20260606-13-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"null-result","stage":"sparse","beat_strong":0,"beat_random":0,"status":"completed","commit":"680ebc86cd5f5e620c2989cf1cb490ab6a32e980"}
+{"run_id":"20260606-14-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"reviewer-rejected","stage":null,"beat_strong":0,"beat_random":0,"status":"reviewer-rejected","commit":"050c910d4175ff9b9b0bcd08563e9801586a83bc"}
