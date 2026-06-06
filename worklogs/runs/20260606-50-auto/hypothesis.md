@@ -1,3 +1,0 @@
-# 20260606-50-auto — empty-handed
-
-reason: Surveyed candidate principles outside the exemplars list (LP-duality / DICE-style occupancy, Wasserstein trust regions, regret-matching policy iteration, path-integral / KL-control, control-as-inference, Tsallis-entropy soft RL, operator-splitting Bellman solvers, replicator dynamics on the simplex). Each one either reduces under variable renaming to a published method (DualDICE, NeuRD, soft-Q, REPS, Tsallis-AC, PCL) or reduces to an exemplar (mirror descent, soft actor-critic). No clean derivation from a non-exemplar, non-published principle to a single primitive with a checkable theorem was reached this turn.

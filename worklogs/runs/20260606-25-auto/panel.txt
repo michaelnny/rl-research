@@ -1,9 +1,0 @@
-[run] stage=vector envs=deep-sea-treasure-concave-v0,resource-gathering-v0 budget=120s workers=2
-[env] deep-sea-treasure-concave-v0         score=   99.000000 random=194.000000 strong=285.000000 margin_random=  -95.000000 margin_strong= -186.000000 beat_random=0 beat_strong=0
-[env] resource-gathering-v0                score=    0.011000 random=1.331000 strong=1.331000 margin_random=   -1.320000 margin_strong=   -1.320000 beat_random=0 beat_strong=0
----
-stage:           vector
-n_envs:          2
-n_beat_random:   0
-n_beat_strong:   0
-wallclock_s:     117.4

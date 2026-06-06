@@ -1,3 +1,0 @@
-# 20260606-54-auto — empty-handed
-
-reason: Surveyed candidate principles from machinery I have not seen on the exemplar list — occupancy-measure LP duality (reduces to REPS / mirror descent), Wasserstein gradient flows over policies (Wasserstein-NPG, known), Frank-Wolfe on the occupancy polytope (reduces to conservative policy iteration, Kakade–Langford 2002), Tsallis-entropy FTRL (Lee 2018), CFR transplanted to single-agent MDPs (collapses to per-state EXP3 = mirror descent). Each derivation either renames a method already on the list or relies on a step ("alternating-projection convergence on the regularized MDP dual") whose theorem I cannot state without hand-waving. No four-slot contract was reachable this turn.

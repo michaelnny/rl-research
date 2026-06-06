@@ -1,3 +1,0 @@
-# 20260606-37-auto — empty-handed
-
-reason: Surveyed principle-level moves outside the exemplars (LP-dual occupancy measures, primal-dual saddle on Bellman residuals, Wasserstein gradient flow on policy distributions, entropic risk-sensitive control, regret-matching lifted to single-agent MDPs). Each either reduces to an existing exemplar's principle (mirror descent on the policy/occupancy simplex), is a known published framework under another name (DICE/REPS for occupancy LP, SVGD-PG for Wasserstein flow, Borkar risk-sensitive RL), or sits inside a disqualifier (GAN-Bellman is critic-supplying-actor). No clean derivation produced a primitive that is neither already an exemplar nor in dead families A–G. Default verdict: no proposal.

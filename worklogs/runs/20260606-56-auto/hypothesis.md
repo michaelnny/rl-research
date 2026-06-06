@@ -1,3 +1,0 @@
-# 20260606-56-auto — empty-handed
-
-reason: Considered three machinery directions — Wasserstein/optimal-transport trust regions, primal-dual saddle-point on the Bellman LP, and Legendre-Fenchel convex-conjugate value duality — but each derivation either reduces to a known method (entropy-regularized RL/SAC for the conjugate route; DualDICE/GenDICE for the primal-dual route; existing Wasserstein-policy-gradient work for the OT route) or requires a heuristic insertion to do anything beyond it, and I could not construct a one-sentence principle whose derivation produces an update rule of comparable cleanness to the exemplars without that insertion. No four-slot fill of comparable quality is available this turn.

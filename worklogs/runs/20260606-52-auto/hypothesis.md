@@ -1,3 +1,0 @@
-# 20260606-52-auto — empty-handed
-
-reason: explored several principles (Wasserstein trust region, occupancy-measure LP saddle-point, single-player CFR, exponential-utility risk-sensitive Bellman, Bellman residual as adversarial discriminator, distillation against alternative improvement operators); each either reduced under variable renaming to mirror descent with a swapped Bregman, the Manne/de-Ghellinck dual LP, distributional RL, or AlphaZero-style distillation with a renamed operator — i.e. exemplars-list rebadges, not new principles. No derivation produced a primitive and theorem of comparable kernel quality to Q-learning / PPO / AlphaZero / SAC, so no candidate is proposed this turn.

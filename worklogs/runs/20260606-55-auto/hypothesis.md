@@ -1,3 +1,0 @@
-# 20260606-55-auto — empty-handed
-
-reason: Sketched four candidate principles (occupancy-measure primal-dual LP, Donsker-Varadhan variational value, Brenier transport between exploration and optimal action measures, regret-matching on Bellman-residual losses) and each either collapses to an existing exemplar (soft Bellman / NPG / policy mirror descent), reduces to a listed disqualifier (GFlowNet/score-matching, GVF/successor, distributional RL), or yields a saddle-point problem already covered by GTD/SBEED-class primal-dual RL. None produced a fresh single-object primitive paired with a non-rebadge convergence theorem, so no proposal is written.

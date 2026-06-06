@@ -1,3 +1,0 @@
-# 20260606-39-auto — empty-handed
-
-reason: Worked through several candidate principles (occupancy-measure mirror descent, Bellman saddle-point/LP duality, Blackwell approachability on per-action regret, Wasserstein trust regions, operator-splitting on the Bellman optimality map, Donsker-Varadhan dual of KL on policy logits). Every derivation that closed cleanly landed on an existing exemplar (mirror-descent NPG, CFR/regret-matching, soft Q/SAC) or a published method (REPS, Dual-DICE/ALGAE, CPO, distributional/Wasserstein-RL, MuZero). Could not assemble a four-slot proposal whose principle is not already on the exemplars list and whose derivation does not collapse to a renamed published method. Empty-hand is the calibrated outcome.
