@@ -1,0 +1,3 @@
+# 20260606-45-auto — empty-handed
+
+reason: Considered Wasserstein/JKO trust regions (reduces to a different metric on the same PPO/TRPO principle), Schrödinger-bridge / Doob-h-transform reward conditioning (coincides with MaxEnt SAC when reward is the terminal log-density), primal-dual mirror descent on the occupancy LP (covered by Neu et al. / Mei et al. policy mirror descent), Blackwell approachability as multi-objective RL (collapses to known vector-loss regret machinery), and active-inference free-energy minimization (no clean theorem linking it to standard RL guarantees). Each candidate either rebadged an exemplar or had no theorem slot I could write honestly; none cleared the four-slot contract above the bar.
