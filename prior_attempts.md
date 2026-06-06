@@ -133,6 +133,16 @@ have a theorem, cannot be implemented faithfully because the
 sprint-4 entries that filed extra components under "side
 information."
 
+## Family I — Per-channel parameter-space gradient aggregation (IMTL-G / equal-projection)
+
+**Shape.** Decompose the policy-gradient update into K per-channel score-function gradients `g^c = sum_t G^c_t grad_theta log pi(a_t|s_t)`, normalize each to unit length `u_c = g^c / ||g^c||`, and aggregate via a closed-form combination of the unit vectors (angular bisector, spherical mean, equal-projection direction, or any direction satisfying `d . u_1 = d . u_2 = ... = d . u_K`). Claim: the resulting direction is rescaling-invariant under componentwise positive reward scaling `r^c <- alpha_c r^c`.
+
+**Why it dies.** The equal-projection direction for K=2 is `proportional to (u_1 + u_2)`, and for general K it is solved by the IMTL-G closed form (Liu et al., ICLR 2021). Any proposal whose load-bearing novelty is this rescaling-invariance / equal-projection property is a rebadge of IMTL-G applied to RL per-channel score-function gradients. The substrate application (vector-reward MDPs via `info["vector"]`) does not constitute a new mechanism; the gradient aggregator is gradient-source-agnostic. Even strong empirical signal on this shape would only show "IMTL-G's direction works on this RL substrate," not a new family.
+
+**Verdict.** Dead as a novelty claim. The Researcher may use IMTL-G's aggregator as a **component** of a genuinely novel mechanism, but it cannot be the explanation for why the method works.
+
+**Attempts in this family:** 41 CHANBI (rebadge, no panel run). Adjacent: 20260606-22-auto PARGRAD (per-step Pareto-rank weights, null-result; different slot but same region of gradient aggregation space).
+
 ## Family H — Algebraic-topology / cochain-complex value iteration
 
 **Shape.** Frame the Bellman operator on the cochain complex of the policy graph `G_π = (S, E_π, w)`, augmenting the value function V (a 0-cochain) with higher cochains (e.g., a 1-cochain ψ representing cycle potentials) and using sheaf-Hodge or cellular-homology operators to couple ψ into V, claiming that exploiting `H_k(G_π)` (the k-th homology group of the policy graph) accelerates value iteration.
@@ -248,3 +258,4 @@ the time budget, the discriminating observables are unreachable.
 | 38 | CSA | A | `worklogs/attempts/38-csa-channel-spectral-action-influence.md` |
 | 39 | BLIC | A, D | `worklogs/attempts/39-blic-block-lookback-imminence-concordance.md` |
 | 40 | CBI (negative closure) | H | `worklogs/attempts/40-cbi-negative-closure.md` |
+| 41 | CHANBI | I | `worklogs/attempts/41-chanbi-imtl-g-rebadge.md` |
