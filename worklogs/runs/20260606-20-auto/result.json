@@ -1,0 +1,36 @@
+{
+  "ablation_beat_random": 0,
+  "ablation_beat_strong": 0,
+  "ablation_delta": {
+    "MiniGrid-DoorKey-8x8-v0": 0.0,
+    "MiniGrid-KeyCorridorS3R3-v0": 0.0
+  },
+  "ablation_scores": {
+    "MiniGrid-DoorKey-8x8-v0": 0.0,
+    "MiniGrid-KeyCorridorS3R3-v0": 0.0
+  },
+  "beat_random": 0,
+  "beat_strong": 0,
+  "commit": "638275df441edd2d075f1c97130da6de8cba3f5a",
+  "confirmation": [],
+  "envs": [
+    "MiniGrid-DoorKey-8x8-v0",
+    "MiniGrid-KeyCorridorS3R3-v0"
+  ],
+  "ladder": {
+    "ablation": "completed",
+    "claim": "completed",
+    "confirmation": "skipped",
+    "smoke": "completed"
+  },
+  "mode": "probe-v1",
+  "n_retries": 0,
+  "run_id": "20260606-20-auto",
+  "scores": {
+    "MiniGrid-DoorKey-8x8-v0": 0.0,
+    "MiniGrid-KeyCorridorS3R3-v0": 0.0
+  },
+  "stage": "sparse",
+  "status": "completed",
+  "wallclock_s": 268.7147716239997
+}

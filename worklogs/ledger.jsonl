@@ -80,3 +80,4 @@
 {"run_id":"20260606-17-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"ablation-failure","stage":"quick","beat_strong":0,"beat_random":0,"status":"completed","commit":"2d315032813ea52ff4685f75acc9b3bb920eb1ee"}
 {"run_id":"20260606-18-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"ablation-failure","stage":"vector","beat_strong":0,"beat_random":0,"status":"completed","commit":"81b5b06ecf7145297a9606388e42676d62a9efea"}
 {"run_id":"20260606-19-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"empty-hand","stage":null,"beat_strong":0,"beat_random":0,"status":"no-proposal","commit":"2d5c3492f27e4b1d21458bcbb1a85b11d3b2dfaa"}
+{"run_id":"20260606-20-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"null-result","stage":"sparse","beat_strong":0,"beat_random":0,"status":"completed","commit":"638275df441edd2d075f1c97130da6de8cba3f5a"}

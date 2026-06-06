@@ -171,30 +171,36 @@ Existing methods may appear as **components** (a torch network, an
 optimizer, a replay buffer, a sequence model). They cannot be the
 *explanation* for why the method works.
 
-## Substrate budget constraint — vector-stage floor clamping
+## Substrate budget constraint — floor clamping at vector and sparse stages
 
-**Pattern.** Across runs 15–18 (and earlier in runs 13–17 cited in
-those hypotheses), every score-function / policy-gradient probe at the
+**Pattern.** Across runs 15–18, every score-function / policy-gradient probe at the
 vector stage (DST-concave + RG, 120s budget) lands at DST=99.0,
 RG=0.011 for **both candidate and ablation**. `ablation_delta` is 0.0
-on every env. The ablation comparison is vacuous because neither arm
-departs the random floor within budget.
+on every env. Run 20260606-20-auto (GRADCOMP) confirmed the identical
+pattern at the **sparse stage**: both candidate and ablation scored 0.0 / 0.0
+on MiniGrid-DoorKey-8x8-v0 and MiniGrid-KeyCorridorS3R3-v0 in 120s.
+The ablation comparison is vacuous because neither arm departs the zero
+floor within budget.
 
-**Why this happens.** DST-concave and RG under the vector-stage 120s
-budget provide too little compute for a policy-gradient method to find
-even one non-nearest-treasure trajectory. The mechanism under test (e.g.
-Pareto-frontier KDE, coverage growth, etc.) cannot fire until the policy
-first discovers a non-trivial trajectory. At 120s, that discovery rarely
-happens. The result is that candidate and ablation are both stuck at the
-initial random-walk floor, and any mechanism difference is invisible.
+**Why this happens.** DST-concave and RG (vector) and DoorKey-8x8 /
+KeyCorridorS3R3 (sparse) under the 120s budget provide too little
+compute for a policy-gradient method to find even one rewarding
+trajectory. The mechanism under test cannot fire until the policy first
+discovers a non-trivial / non-zero-return trajectory. At 120s, that
+discovery rarely happens. The result is that candidate and ablation are
+both stuck at the initial random-walk floor, and any mechanism
+difference is invisible.
 
-**Constraint for the Researcher.** Do not claim a vector-stage win for a
-mechanism whose novelty fires only *after* the policy departs the random
-floor, unless a simpler warm-start (quick or sparse stage first) confirms
-that some learning occurs within budget. If the quick/sparse stage shows
-nonzero lift, the vector stage can be trusted. If quick/sparse also
-yields floor scores, the mechanism is not learning on this substrate at
-all and a different probe direction is needed.
+**Constraint for the Researcher.** Do not claim a vector-stage or
+sparse-stage win for a mechanism whose novelty fires only *after* the
+policy departs the random floor (i.e., only after first reward is seen),
+unless a quick-stage run first confirms that some learning occurs within
+budget. If the quick stage shows nonzero lift, the sparse/vector stages
+can be trusted. If quick also yields floor scores, the mechanism is not
+learning on this substrate at all and a different probe direction is
+needed. This applies equally to cold-start / floor-mechanism probes that
+require surviving the pre-reward phase: if the pre-reward phase exceeds
+the time budget, the discriminating observables are unreachable.
 
 ---
 
