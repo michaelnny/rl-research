@@ -5,9 +5,11 @@ Lean substrate for fast RL algorithm probes on two axes:
 - long-horizon sparse reward: `MiniGrid-DoorKey-8x8-v0`, `MiniGrid-KeyCorridorS3R3-v0`
 - native vector reward: `deep-sea-treasure-concave-v0`, `resource-gathering-v0`, `Craftax-Symbolic-v1`
 
-Historical research memory is preserved in `prior_attempts.md` and
-`worklogs/attempts/`. Those files are archive/reference material, not the hot
-path.
+The quality bar for proposed algorithms lives in `worklogs/exemplars.md`
+(Q-learning, PPO, AlphaZero, mirror descent, SAC, MCTS, GAE — calibration,
+not a menu). The negative space lives in `prior_attempts.md` as
+family-level dead-mechanism descriptions, with sealed per-attempt detail
+preserved in `worklogs/attempts/`.
 
 ## Hot Path
 
@@ -37,8 +39,10 @@ train.py                    agent-editable algorithm entry point
 run_panel.py                parallel stage runner
 scripts/build_baselines.py  random-floor baseline builder
 baselines.json              compact baseline scores for the four active envs
-prior_attempts.md           compact historical negative-space index
-worklogs/attempts/          archived detailed attempt records; do not delete
+worklogs/exemplars.md       quality bar (calibration set, not menu)
+prior_attempts.md           dead-mechanism families (negative space)
+worklogs/attempts/          sealed per-attempt detail; do not delete
+worklogs/_archive/          archived prior-loop artifacts (candidates/)
 ```
 
 ## Stages

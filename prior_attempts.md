@@ -1,272 +1,208 @@
-# prior_attempts.md
+# prior_attempts.md — dead mechanism families
 
-Fourteen directions have been tried and failed across three prior research
-sprints. This list is a **hint**, not a gate. Read it before proposing a new
-direction so you don't re-derive a known dead end. If your candidate is
-structurally identical to one of these, it will not produce a new result.
+This file records the *shape* of mechanisms that have already been ruled
+out, not the individual attempts that ruled them out. The 39 individual
+attempts are sealed in `worklogs/attempts/01–39-*.md` and indexed at the
+bottom of this file. The Researcher reads this to know what shapes are
+dead at the level of mechanism, not to study individual attempts for
+inspiration on near-variations.
 
-Each entry: name, one-line mechanism, one-line reason it failed. These
-summaries are intended to be self-sufficient — you should not need to open
-the worklogs to act on them.
+**The dominant lesson from 39 attempts: variation within these families
+does not help.** Switching the index axis (state hash → cluster → exit
+hash → policy regime), changing the statistic (mean → variance → JSD →
+TV → Lévy area → spectral), changing the aggregation (Pareto → Kemeny →
+sup-norm → strict-superset) — all stayed inside the same dead families.
+A proposal whose central idea is "switch one knob inside one of these
+families" is a known failure, not a new direction.
 
-Each entry below has its full record at `worklogs/attempts/NN-<slug>.md`
-(template: `worklogs/TEMPLATE.md`). Open the per-attempt file when you
-need the math, the prototype detail, or the cross-attempt comparison.
+---
 
-Alive-but-not-yet-tested directions live under `worklogs/candidates/` and
-do not appear in this list — they are not failed attempts. A candidate
-graduates into `attempts/` (and gets an entry here) when a `train.py`
-commit runs it against the panel.
+## Family A — Bucketed-tensor + partial-order vote
 
-## Sprint 1 (2026-05-24)
+**Shape.** Maintain a tensor `T[bucket, action, channel]` indexed by
+some bucketing of observations, accumulate a per-channel statistic
+into it, and select actions by a partial-order vote (Pareto-non-
+dominance, strict-superset, Kemeny consensus, sup-norm) over the
+channel dimension. Optionally apply the result as a logit nudge.
 
-1. **FROST** — vector repair certificate over structured per-channel feedback;
-   solve a constrained projection of behavior toward feasible region.
-   *Failed:* not reward-native; needs dense per-channel diagnostics + local
-   counterfactual influence; collapses on terminal-only reward.
+**Why it dies.** The bucket space is starved on the substrate. Either
+buckets never collide enough to fill the tensor (FED, CEC, TPP, TRAC,
+CSD, ARP), or the channel dimension collapses because terminal-only
+reward channels contribute zero to all entries during the bootstrap
+window (PICAV, CHX, CRP, TCP, ATP, PRAR, PCR, ACFC, ACCD, BLIC), or
+the partial-order saturates as channel count grows (ACS).
 
-2. **BRIC** — bracketed reward-intervention control: swap segment of anchor
-   trajectory with donor segment; keep if terminal reward improved.
-   *Failed:* requires many counterfactual env rollouts per accepted bracket;
-   depends on knowing the right edit grammar in advance.
+**Verdict.** This whole family is dead on this substrate. The fix is
+not "a better bucketing axis" or "a better channel statistic" or "a
+better partial order." Those have all been tried. A new candidate
+that fits this shape will fail in the same way.
 
-3. **KERNEL-RL / RSK** — passively mine compact behavior atoms whose presence
-   statistically separates reward-bearing from non-reward-bearing experience.
-   *Failed:* DeepSea-style: when reward correlations don't exist until a deep
-   path is intentionally traversed, there is nothing to mine. Pure association.
+**Attempts in this family:** 15 FED, 16 PICAV, 17 CHX, 18 CEC, 19
+CWTP, 20 LRA, 21 TPP, 22 CRP, 23 TCP, 24 PCR, 25 ACS, 26 TRAC, 28 ARP,
+29 PFA, 30 CPR, 31 ATP, 32 CSD, 33 ACFC, 34 ACCD, 36 PRAR, 37 HRC, 39
+BLIC.
 
-4. **CARL / Frontier-Graph** — controllability-first: learn reproducibly
-   reachable cells, expand frontier, attach reward events post-hoc.
-   *Failed:* structurally indistinguishable from Go-Explore + count-based
-   exploration unless a genuinely new abstraction-learning principle is added.
+## Family B — Pairwise trajectory comparison
 
-## Sprint 2 (2026-05-26)
+**Shape.** Maintain pairs of trajectories from a replay buffer, find
+something matched between them (shared start, shared end, shared
+intermediate hash, shared cluster), compare the diverging segments
+along some dimension (sign, rank, channel difference), and use the
+comparison to drive policy updates.
 
-5. **BCE-v0** — branch-certificate editing: local successor support + vector
-   outcome cones; expand around current trajectory.
-   *Failed:* discovery mechanism collapsed to novelty/count exploration on
-   ablation.
+**Why it dies.** Either the matching condition is too rare (RSD's
+shared start+end, CWTP's confluence, TPP's terminal-hash collisions),
+or the divergence statistic collapses to scalar step-penalty when one
+side terminates early.
 
-6. **T-CTBP** — transported causal/event-transform boundary projection: stack
-   of event transforms + separators + cones + transported logit head.
-   *Failed:* mechanism stack with > 3 named components; not a primitive. No
-   single composition law; the math was ugly.
+**Attempts in this family:** SIT, RSD (sprint-3 derivation),
+19 CWTP, 21 TPP, 22 KTAC, 31 KSV (alive-weak — kernel-weighted
+relaxation, but still in family).
 
-7. **OPP / Order Projection** — learn partial order over decisions from passive
-   data, KL-project policy onto it.
-   *Failed:* passive action order is not causal prerequisite structure.
-   DoorKey requires "key before door"; passive correlation does not give that.
+## Family C — Within-trajectory signal geometry
 
-8. **EOP/COP on MiniGrid** — symbolic clause orders over observed event-effects.
-   *Failed:* manufactured thousands of plausible-looking certificates;
-   none of them were the right ones for DoorKey. Volume ≠ understanding.
+**Shape.** Compute a within-episode geometric statistic of the
+observation/cumulant trace (convex hull, Lévy area, rank position,
+spectral coefficient, signature) per (state, action) and use it to
+drive logit updates.
 
-9. **Causal Dominance Certificates** — compare local interventions instead of
-   passive trajectory correlations.
-   *Failed conceptually:* more principled than OPP but still inelegant; not a
-   clean primitive; not carried to implementation.
+**Why it dies.** When any vector channel is terminal-only, the
+geometric statistic collapses to a near-line in the always-firing
+direction; the geometric "structure" reduces to "shorter is better,"
+which is shortest-path-to-terminal, which actively harms long-horizon
+problems where the long path is the rewarding one.
 
-10. **Value-function-first reset** — not an algorithm; the conceptual turning
-    point that surfaced *why* the prior nine all failed: they avoided value
-    *terminology* without replacing what value *does* (compress future, compose
-    temporally, support local improvement).
+**Attempts in this family:** 17 CHX (hull), 22 CRP (rank), 23 TCP
+(precedence DAG), 25 ACS (spectrum), 35 PHI (Lévy area), 36 PRAR
+(antisymmetric residual).
 
-11. **TOP — Temporal Outcome Profiles** — replace scalar value with first-hit
-    event/outcome profiles as the local future-compression object.
-    *Alive but weak:* solves DoorKey-5x5 (eval success 0.98 but worse than Q);
-    DoorKey-6x6 needed more episodes; KeyCorridor unstable across seeds. Close
-    to GVFs / successor features / multi-objective RL / reward machines under
-    inspection. Not promoted; structural distinction not yet established.
+## Family D — Reward-independent primitive + reward-gated operator
 
-## Sprint 3 (offline exploration, 2026-05-29)
+**Shape.** Compute a primitive that fires from step 1 without needing
+reward (cosine alignment, action-frequency concordance, persistence
+horizon, imminence shift). Then gate its application on a terminal
+or rewarded outcome.
 
-These three came from an offline exploration batch — derivation only, no
-substrate `train.py` commits. Logged here to keep the negative space
-canonical.
+**Why it dies.** The gate inherits the bootstrap wall. The primitive
+is reward-free in form but reward-dependent in effect, because the
+gate is silent until the first rewarded trajectory.
 
-12. **Policy-Edit Optimization (PEO)** — make the policy primary by estimating
-    the response of the outcome law to each policy edit; apply edits whose
-    response points into a desirable vector cone.
-    *Failed:* matched by a scalar edit-ES on the same hand-designed semantic
-    edit basis. The basis was the algorithm; the optimizer was an ES rebadge.
+**Attempts in this family:** 24 PCR, 27 PCGA, 31 ATP, 34 ACCD, 35
+PHI, 39 BLIC.
 
-13. **ETB / HPC** — Event-Time Behavioral Basis (first-action on shortest
-    suffix to event `g` from context `c`) plus Hindsight Policy Compression
-    (MDL-compress event-reaching suffixes into a conditional program).
-    *Failed:* ETB is goal-conditioned hindsight + event-options; HPC is
-    GCSL-like supervised hindsight imitation. Useful as components, not as a
-    family.
+## Family E — Avoid value vocabulary, keep value structure
 
-14. **Primal Behavior Flow Pivot** — pivot the central object from value to
-    occupancy flow `μ_π(s,a)` and recover the policy by normalization.
-    *Failed:* mathematically clean but does not expose any new side-information
-    advantage for sparse long-horizon discovery. Collapses to occupancy-measure
-    LPs / max-ent RL / GAIL / GFlowNets / mirror-descent PI under inspection.
+**Shape.** Replace the words Q / V / advantage / return-to-go with
+something else, but the central learned object still does
+future-compression of return into a scalar (or vector with a fixed
+weight collapse).
 
-## Sprint 4 (2026-06-05)
+**Why it dies.** "Avoid value vocabulary" is not a research direction.
+The mission is to replace what value *does* (future compression,
+temporal composition, local improvement), not its name.
 
-15. **FED — Frontier-Expanding Dispersion** — per-action empirical Pareto-front over
-    vector-outcome signatures indexed by observation-hash bucket; accept action logit
-    nudge iff the action's conditional outcome multiset extends the bucket's attainment
-    set in the partial-order sense without contracting it.
-    *Failed:* same bootstrap wall as SIT: observation-hash buckets never accumulate
-    sufficient sample mass under uniform exploration on long-horizon sparse envs, so
-    the Pareto-front extension indicator never fires; scored 0.0 on all envs including
-    the vector envs (Deep Sea Treasure, Resource Gathering) where it was predicted to
-    be strong. Rules out the "empirical Pareto front / outcome-multiset indexed by
-    obs-hash" family unless paired with an explicit exploration primitive.
+**Attempts in this family:** 1 FROST, 11 TOP, 14 Primal Behavior Flow,
+many sprint-4 entries on inspection.
 
-16. **PICAV — Path-Integrated Channel-Asymmetry Voting** — per-(obs-hash, action) empirical mean of signed antisymmetric pair-contribution vectors `δ_{jk,t} = v_t[j]·Δn_t[k] − v_t[k]·Δn_t[j]`; nudge policy logits toward upper-orthant Pareto-frontier actions within each bucket.
-    *Failed:* claimed to bypass FED's bootstrap wall because pair-contributions are nonzero on every step — but on Deep Sea Treasure the treasure channel fires only at the terminal step, making all pair entries zero throughout the episode (same bootstrap collapse as FED). Scored 0.0 / 0.011 vs random 1.331 on both vector envs. Rules out the "signed cross-channel temporal-ordering moment" family whenever any vector channel is terminal-only.
+## Family F — Hand-engineered structural priors
 
-17. **CHX — Cumulant-Hull Extremality** — per-step L2 distance-to-convex-hull of within-trajectory cumulant trace in `R^k`; weight log-prob update by centered hull-contribution `(h_t − 1/T)` — no critic, no cross-trajectory comparison, no scalarization.
-    *Failed:* when any vector channel is terminal-only (as in Deep Sea Treasure and Resource Gathering), the cumulant trace is effectively k_eff=1 (a near-line in the step-penalty direction with the reward dimension firing only at termination); the hull's extremes reduce to episode start/end, collapsing CHX to a return-to-go rebadge. Scored 99.0 / 0.011 vs random 194.0 / 1.331 on both vector envs (below random). Extends PICAV's ruling: any within-trajectory signal-geometry primitive collapses on the substrate's terminal-only vector channels.
+**Shape.** Hand-design a vocabulary (event types, edit grammar,
+clause symbols, segment boundaries) that lets a passive correlation
+miner produce reasonable-looking certificates.
 
-18. **CEC — Continuation-Endpoint Concordance** — per-(state-hash, action) multiset of vector cumulants indexed by *exit-observation-hash bucket* (the terminal observation of the episode); logit update driven by signed Pareto-dominance count across buckets where action a's bucket-conditional mean cumulant dominates action a'.
-    *Failed:* same bootstrap wall as FED (#15) despite switching from mid-trajectory obs-hash to terminal exit-hash bucketing. The concordance signal never fired within the 120 s budget because the seeding phase could not accumulate ≥ 2 samples per (state, action, exit-hash) bucket — the hypothesis's own stated falsifier. Scored 0.0 / 0.011 vs random 194.0 / 1.331 on both vector envs. Extends the FED family ruling to cover exit-hash variants: the entire "empirical Pareto-front / cumulant-multiset indexed by any observation hash" family fails without an explicit exploration primitive providing sufficient coverage before concordance comparisons are made.
+**Why it dies.** The hand-engineering is the algorithm. The
+optimizer over the hand-engineered basis is generic. The basis
+encodes a person's belief about what structure exists, which is not
+a research contribution and does not transfer.
 
-19. **CWTP — Confluence-Witness Trajectory Pairs** — sign-vote tensor over per-channel segment-cumulant differences between trajectory pairs that diverged at a state and reconverged at a later shared observation-hash; logit nudge by Pareto-non-dominance count of normalized sign-vote rows, no scalar collapse.
-    *Failed:* same bootstrap wall as FED/CEC, compounded: requires both cross-trajectory observation-hash collisions at non-terminal states AND non-trivial per-step vector signal in the bracketed segment; neither condition is reliably met on sparse long-horizon envs with terminal-only reward channels. Scored 0.0 / 0.011 vs random 194.0 / 1.331 on both vector envs. Extends the sprint-4 ruling to cover the "pairwise trajectory comparison indexed by intermediate shared state" sub-family.
+**Attempts in this family:** 1 FROST, 7 OPP, 8 EOP/COP, 12 PEO.
 
-20. **LRA — Loop-Return Aversion** — per-(obs-hash, action) empirical mean of within-episode closed-loop vector cumulant deltas `Δc = c_{t'} − c_t`; suppress action logit iff loop-signature mean is Pareto-dominated by the zero vector (all channels ≤ 0, at least one < 0).
-    *Failed:* on both vector panel envs (DST and RG) the universal step-penalty channel is strictly negative on every step, so every intra-trajectory loop accumulates a negative entry in that channel and every looping action is unconditionally suppressed — the operator reduces to count-based exploration suppression, a named disqualifier. On DoorKey the partial-observable state changes on most steps (carrying the key changes obs), so hash collisions are rare and the operator almost never fires. Scored 0.0 / 0.121 vs random 0.137 / 1.331. Hypothesis's own falsifier confirmed: the family is dead when every vector env requires excluding the step-penalty channel from the dominance test.
+## Family G — Mechanism stack
 
-21. **TPP — Terminal-Postfix Pairing** — for trajectory pairs whose terminal observation-hashes match, walk both backward in lockstep to find the postfix-divergence anchor; accumulate a Pareto-vote count W[s,a] and nudge policy logits toward the Pareto-non-dominated action at each anchor.
-    *Failed:* same bootstrap wall as CEC (#18) and the FED family — the primitive is silent until terminal-observation-hash collisions accumulate, which does not happen within 120 s on long-horizon sparse envs; W stayed effectively empty, operator never fired. Scored 0.0 / 0.011 vs random 194.0 / 1.331. Extends the FED/CEC ruling to the "terminal-observation-matched pair + backward lockstep walk" sub-family; any hash-collision-gated pair primitive fails without a paired exploration primitive providing coverage.
+**Shape.** Three or more named components stitched together. No
+single composition law. The hypothesis fills the "core primitive"
+slot with whichever component the author finds most distinctive that
+day, but the mechanism's behavior is determined by the joint
+operation of all three.
 
-22. **CRP — Channel Rank-Position Concordance** — per-(state-cluster, action, channel) running mean of within-trajectory rank-percentile of channel firing magnitude, restricted to firing steps; Pareto logit nudge toward actions whose trend-corrected rank vector R̃[s,a,:] is non-dominated across channels.
-    *Failed:* when a vector channel fires only at the terminal step (as in Deep Sea Treasure and Resource Gathering), within-trajectory rank-percentile is constant 1.0 for every trajectory, making R cells degenerate — the claimed magnitude-invariant rank statistic carries zero discriminating information. The hypothesis's own falsifier (a) was confirmed. Scored 0.0 / 0.011 vs random 194.0 / 1.331. Extends the CHX/PICAV/LRA ruling to rank-based within-trajectory signal-geometry primitives: temporal rank position is no more informative than magnitude when a channel fires only once per episode.
+**Why it dies.** Not an algorithm. Cannot have a derivation, cannot
+have a theorem, cannot be implemented faithfully because the
+"primitive" is fictional.
 
-23. **TCP — Temporal Channel Precedence** — cross-trajectory cross-channel lag-asymmetry tensor `Λ[j,k] = E[sign(t_first(j) − t_first(k))]` builds a precedence DAG P; at each decision step the residual channel set R (channels not yet fired whose DAG predecessors have fired) restricts a Pareto-vote logit nudge over per-(cluster,action) empirical firing means.
-    *Failed:* on Deep Sea Treasure the terminal-only treasure channel forces a trivially asymmetric DAG edge (step-penalty always precedes treasure), collapsing R to the singleton {step-penalty} at every non-terminal step; Pareto comparison over a single channel reduces to scalar maximization of that channel, which is the scalarized-vector-reward disqualifier. Scored 99.0 / 0.121 vs random 194.0 / 1.331 (below random on both). Extends the ruling to DAG/temporal-ordering primitives: any precedence-gating primitive that produces a singleton residual channel set on terminal-only-reward substrates collapses to scalar channel optimization.
+**Attempts in this family:** 6 T-CTBP (canonical example), various
+sprint-4 entries that filed extra components under "side
+information."
 
-24. **PCR — Policy Commitment Recovery** — per-(context-cluster, action) commitment-recovery vector `R[c,a] ∈ R^L` measuring expected step-lag until the snapshot policy's modal action is re-confirmed at L alignment thresholds; improvement operator is a Pareto-meet of recovery-non-dominance and terminal-outcome-non-dominance, with terminal vector outcome used only as a binary sign gate.
-    *Failed:* despite the reward-independent primitive (R fires on every step from action-logit self-comparisons), the improvement operator requires a terminal-outcome sign gate that is universally silent before any rewarded trajectory is collected — same bootstrap wall as FED/CEC/TPP. Scored 0.0 / 0.011 vs random 0.137 / 1.331 on sparse envs, 99.0 vs random 194.0 on DST. Extends the bootstrap-wall ruling: a reward-independent primitive paired with a terminal-outcome-gated operator inherits the full FED-family collapse; the gate must be eliminated or replaced with a direction signal that fires before reward appears.
+---
 
-25. **ACS — Action-Conditional Suffix-Spectrum** — per-(state-cluster, action, channel, frequency-band) empirical spectral-variance tensor `S[s,a,m,f]` measuring within-band firing-indicator variance at F log-spaced temporal scales; Pareto-non-dominance logit nudge over the flattened (k·F)-dimensional spectral matrix per action.
-    *Failed:* expanding FFTV's k-dimensional Pareto comparison to k·F dimensions (k=2 channels × F=4 bands = 8 dims) caused Pareto-front saturation — virtually all actions become non-dominated in 8-dimensional coordinate-wise partial order, rendering the logit nudge symmetric (random). FFTV scored 1382 on DST; ACS scored 0.0 vs random 194.0 on the same env — a complete collapse, not degradation. Rules out multi-band spectrum extensions of FFTV unless a front-compression mechanism (lexicographic ordering by frequency tier, strict-margin dominance, or band aggregation before the Pareto test) prevents dimension-induced saturation.
+## Disqualifier families (the standard negative space)
 
-26. **TRAC — Transition-Refractive Action Channels** — per-(state-cluster, action, channel) JSD between two empirical successor-cluster histograms partitioned by whether channel `m` fired in a post-action window; Pareto-non-dominance logit nudge over the k-dimensional JSD row, no scalar collapse.
-    *Failed:* same bootstrap wall as FED/CEC/TPP/PCR — despite the step-penalty channel seeding H_fire from early trajectories, the (cluster, action) cell-collision bottleneck still applies: repeated revisitation of the same cluster-action pair doesn't happen reliably under uniform exploration on long-horizon sparse envs within 120 s. JSD primitive stayed silent on DoorKey-8x8/KeyCorridor (0.0), below random on DST (98.0 vs 194.0) and RG (0.011 vs 1.331). Extends the FED-family ruling to cluster-indexed conditional-distribution primitives: the bottleneck is state-cluster revisitation frequency, not channel-firing frequency.
+Independently of the specific dead families above, the central
+improvement operator must not reduce under variable renaming to:
 
-27. **PCGA — Per-Channel Gradient Alignment** — per-(state, action, channel) cosine similarity in parameter space between the policy's log-prob gradient `∇_θ log π(a|s)` and an auxiliary cumulant-prediction head's gradient `∇_θ ĉ_m(s)`; Pareto-dominance logit nudge over the `|A|×k` alignment matrix, no scalar collapse and no use of the head's output magnitude.
-    *Failed:* the shared trunk between policy head and auxiliary head causes both gradient vectors to be dominated by the same trunk-parameter activations, making A[s,a,m] nearly action-invariant — the Pareto vote sees near-uniform rows and produces near-symmetric nudges equivalent to random perturbation. Scored 99.0 / 0.011 vs random 194.0 / 1.331 on both vector envs (below random). Rules out parameter-space gradient alignment via shared-trunk architecture; future variants must operate on action-specific parameter subsets or zero out shared trunk components before computing cosines.
-
-28. **ARP — Action-Reachable Pattern Lattice** — per-(state-cluster, action) empirical set `S(s,a) ⊆ {0,1}^k` of distinct binary channel-firing patterns observed in completed suffixes; improvement operator is strict-superset existence on the lattice `({0,1}^k, ≤)` — logit nudge `α(n_a^{dom} − n_a^{sub})` where `n_a^{dom}` counts actions whose entire support is subsumed by some element of `S(s,a)`.
-    *Failed:* same bootstrap wall as FED/CEC/TPP/PCR/TRAC. The strict-superset operator requires at least one rewarded trajectory to populate `S` cells with a rich pattern; before that all cells hold only the step-penalty singleton and the operator is universally silent. Scored 99.0 / 0.011 vs random 194.0 / 1.331 (below random on both vector envs). Extends the bootstrap-wall ruling to "empirical set of binary suffix patterns": the bootstrap wall is a property of when the first rewarding suffix appears, not of whether downstream channel information is stored as magnitude vectors, Pareto fronts, or binary-pattern sets.
-
-29. **PFA — Per-Channel Phase-Flow Asymmetry** — per-(cluster, action, channel) running-mean signed 2-D phase-area `Ā[c,a,m] = E[p_m(o_t)·q_m(o_{t+1}) − p_m(o_{t+1})·q_m(o_t)]` where `p_m, q_m` are learned short- and long-horizon firing-probability heads per channel; Pareto-non-dominance logit nudge over the k-vector of signed areas per action.
-    *Failed:* the rotational primitive (signed cross-product of two imminence vectors) is near-zero on all substrate channels: always-firing channels (step-penalty) produce `p_m ≈ q_m ≈ 1` so the area `≈ 1·1 − 1·1 = 0`; terminal-only channels produce `p_m, q_m ≈ 0` throughout the episode so the area is also ≈ 0. The signed-area primitive requires non-trivial divergence between short- and long-horizon probabilities, which does not occur on channels that are either always-on or terminal-only. Scored 0.0 / 0.011 vs random 194.0 / 1.331 — identical to the FED/CRP bootstrap-wall family. Extends the CRP (#22) ruling to two-horizon probability heads: any primitive depending on short-vs-long-horizon divergence is structurally silent on the current substrate.
-
-30. **CPR — Channel-Posterior Chebyshev Reweight** — k-tuple of per-channel replay-reweighted empirical action posteriors `π̂_m(a|o)`; improvement operator minimizes `sup_m KL(π̂_m || π_θ)` (Chebyshev center projection) via per-step argmax over channels, with no fixed scalar channel weight.
-    *Failed:* on terminal-only-reward envs (DST, RG), the reward channel posterior is degenerate (no mass) throughout the bootstrap window; `sup_m KL` reduces to the single non-degenerate step-penalty channel, collapsing the Chebyshev operator to single-channel weighted cloning — the hypothesis's own stated falsifier confirmed. Scored 99.0 / 0.011 vs random 194.0 / 1.331 (below random on both vector envs). Extends the bootstrap-wall ruling to the "per-channel posterior + sup-norm aggregation" family: the aggregation level does not rescue posterior degeneration; all k channel posteriors must be simultaneously non-degenerate for the Chebyshev center to differ from scalar behavior.
-
-31. **ATP — Action-Tangent Persistence** — learned forward model with per-channel firing-probability heads; action-conditional k-vector of persistence horizons `h*[o,a,m]` (first predicted step at which channel m crosses a self-tuned 75th-percentile threshold); Pareto-non-dominance logit nudge over the integer horizon vectors, no scalar collapse, no critic, no Bellman.
-    *Failed:* the universal step-penalty channel (fires every step) dominates the Pareto vote: `h*[o,a,step-penalty]` encodes time-to-termination, making "shorter persistence horizon" equivalent to "reach any terminal state fastest." On DST the operator actively chose nearby low-value treasure over far high-value treasure, scoring 99.0 vs random 194.0 — below-random harm. Reward channels (treasure/gold/gem) remained at h* = H_max for all actions throughout the bootstrap window, contributing nothing. Extends CHX/CRP ruling to forward-model-predicted horizons: any "faster channel onset dominates" primitive reduces to shortest-path-to-terminal planning on envs with a universal step-penalty channel.
-
-32. **CSD — Channel-Conditional Successor Disagreement** — per-(cluster, action, channel) total-variation distance between two empirical next-cluster distributions partitioned by whether channel m fired in a K-step post-action window; Pareto-non-dominance logit nudge over the k-dimensional TV row, no scalar collapse.
-    *Failed:* same (cluster, action) cell-revisitation bottleneck as TRAC (#26) — reducing the per-cell sample-size requirement (Laplace-smoothed TV instead of plug-in JSD, K-step window instead of immediate post-action window) does not increase revisitation frequency under uniform exploration on long-horizon sparse envs. The primitive stayed silent on DoorKey-8x8/KeyCorridor/DST (0.0) and below random on RG (0.011 vs 1.331). Confirms that the binding constraint for cluster-indexed conditional-distribution primitives is revisitation frequency, not sample-size per visited cell.
-
-33. **ACFC — Action-Frequency / Channel-Frequency Concordance** — cross-episode sign-concordance matrix `C[a,m]` formed by averaging `sign(Δfreq_a)·sign(Δcount_m)` over trajectory pairs in a rolling buffer; Pareto-non-dominance logit bias over C rows, no state hash, no clustering, no critic.
-    *Failed:* before any rewarded trajectory is collected, goal/treasure/gem channels contribute zero firing counts to every episode, so C[a,m] contains only step-penalty signal; the Pareto-non-dominance operator over a rank-1 concordance matrix reduces to scalar step-penalty minimization (fastest-termination preference) — same bootstrap-wall collapse as FED/PCR. Scored 0.0/0.0/99.0/0.011 vs random 0.137/0.0/194.0/1.331 on DoorKey/KeyCorridor/DST/RG (below or at random everywhere). Extends the bootstrap-wall ruling to whole-episode frequency-histogram concordance primitives: eliminating the state-hash index does not cure the pre-reward bootstrap collapse when terminal-only reward channels dominate the vector structure.
-
-34. **ACCD — Action-Conditional Channel Dissociation** — per-(observation, action, channel) signed marginal-probability shift `S_m = ψ_a(o_t)[m] − ψ_full(o_t)[m]` between two offline-supervised classifiers; Pareto-non-dominance logit nudge over the k-dim shift row, no scalar collapse, no critic, no Bellman.
-    *Failed:* on DST and RG the step-penalty channel saturates (P_a ≈ P_full ≈ 1 → S ≈ 0) and the reward/treasure channels are terminal-only (P ≈ 0 before first reward → S ≈ 0); k_eff = 0 throughout the bootstrap window, operator reduces to pure base-policy exploration. Scored 0.0 / 0.001 vs random 194.0 / 1.331 on both vector envs. Extends the FED-family bootstrap-wall ruling to offline-classifier probability-shift primitives: even a probabilistic, sign-preserving primitive is rendered silent when all vector channels are either always-saturated or terminal-only — the structural failure is substrate-side-information starvation, not gradient collapse or observation-hash collision.
-
-36. **PRAR — Policy-Regime Antisymmetric Residual** — per-(policy-regime, action, channel) antisymmetric position-weighted within-episode firing residual `F[r,a,m]`, indexed by policy-distribution-shape regime (entropy/top-prob/top-2-gap bins); Pareto-non-dominance logit nudge over F[r,a,:] at each decision step.
-    *Failed:* on DST and RG the step-penalty channel's constant within-episode firing cancels (v_t − μ_E = 0), reducing k_eff to 1 (terminal-only reward channel); with a single surviving channel the Pareto vote degenerates to scalar comparison on F[r,a,terminal], and exploration frequency bias toward nearby low-value treasure (high N[r,a]) drives the operator to prefer fast-but-low-value termination over slow-but-high-value termination — same failure mechanism as ATP (#31). Scored 189/0.011 vs random 194/1.331 (below random on both vector envs). Extends the CHX/CRP/ATP family ruling to antisymmetric-position-weighted residual primitives: any k_eff=1 collapse on terminal-only-reward substrates reduces to scalar frequency-biased channel comparison regardless of indexing axis.
-
-35. **PHI — Path-Homology Invariants** — per-(state-cluster, action) k-vector of channel-projected expected Lévy-area increments `g[s,a,m] = P_m(E[Δa(t)|s,a])` where `Δa_{ij}(t) = (1/2)(e_i(o_t)e_j(o_{t+1}) − e_j(o_t)e_i(o_{t+1}))` is the antisymmetric one-step area in observation-embedding space, and `P_m` is a linear regressor fit against terminal cumulant channel m; Pareto-non-dominance logit nudge over the k-vector.
-    *Failed:* the Lévy-area geometric primitive fires from step 1 (genuinely reward-independent), but the channel-projection layer (k linear regressors fit against terminal cumulants) re-introduces the bootstrap wall: on DST/RG the terminal-only reward channel yields near-zero R² for the reward regressor, so only the step-penalty regressor is non-degenerate, reducing the operator to scalar step-penalty minimization (below-random harm, 99/0.011 vs random 194/1.331). On DoorKey/KeyCorridor (0.0) no rewarded trajectories arrive, so all regressors produce noise. Extends the PCR (#24) ruling: a reward-independent primitive coupled to a reward-gated learned projection layer inherits the full FED-family bootstrap collapse — the independence property must extend through the entire pipeline, not just the geometric feature stage.
-
-37. **HRC — Horizon-Recursive Concordance** — per-(state-cluster, action) paired statistic `(K[s,a,:] ∈ [0,1]^L, P[s,a,:] ∈ [-1,1]^k)` of snapshot-policy argmax self-concordance fractions at L exponentially-spaced horizons and sign-conditional channel propensities with variance gate; improvement operator is `α · Δ_K · max(Δ_P, 1)` (product-with-floor composition over two Pareto-non-dominance margins).
-    *Failed:* the product-with-floor composition does not rescue the K-primitive from the cluster-revisitation bottleneck (same as TRAC #26, CSD #32): the (cluster, action) cells for K stay sparse under uniform exploration on long-horizon sparse envs within 120 s. The floor-1 fallback for the channel side degrades to zero logit nudge (additive no-op), not an alternative signal. On DST scored 99.0 vs random 194.0 (below-random harm, same ATP/PRAR failure — operator encoding shortest-path-to-any-terminal when concordance cells are sparse). Scored 0.0/0.0/99.0/0.011 vs random 0.137/0.0/194.0/1.331 across all four envs. Extends the TRAC/CSD cluster-revisitation ruling to multi-scale snapshot-concordance primitives; any product-of-Pareto-margins composition inherits its most-sparse component's bottleneck.
-
-38. **CSA — Channel-Spectral Action-Influence** — per-channel Fiedler vector of a channel-reweighted observation-transition Laplacian over an online-grown observation-hash bucket graph; per-(action, channel) Fiedler-ascent `Phi[a,m]` as the primitive; Pareto-non-dominance logit nudge over the k-vector `Phi[a,:]` as the improvement operator.
-    *Failed:* the online observation-hash graph is too sparse on long-horizon sparse envs within 120 s (hash-collision starvation — failure mode (b) from the hypothesis's own falsifier), and the terminal-only reward channels (DST, RG) yield near-degenerate channel-reweighted Laplacians with eigenvalue gap < 1e-6 (failure mode (a)). Scored 0.0/0.0/0.0/0.011 vs random 0.137/0.0/194.0/1.331 — beat_random=0 on all envs. Extends the FED/CEC/TRAC/CSD ruling to graph-spectral primitives: the Laplacian eigenvector wrapper does not escape the hash-bucket revisitation bottleneck; any "build an online channel-weighted adjacency graph from hash-bucketed transitions and extract spectral structure" family fails without an explicit exploration primitive densifying the graph before eigendecomposition, AND requires non-terminal reward channels providing meaningful edge weights throughout the episode.
-
-39. **BLIC — Block-Lookback Imminence Concordance** — per-(cluster, action, channel) running empirical mean of imminence-shift δ_m = q_m(o_{t+1}) − q_m(o_t) accumulated offline on replay transitions; Pareto-non-dominance count over the k-vector IC[s,a,:] as the improvement operator; no decision-time forward model.
-    *Failed:* the step-penalty channel dominates the Pareto vote because terminal-only reward channels (DST treasure, RG reward) yield δ_m ≈ 0 throughout the bootstrap window; the k-vector IC[s,a,:] reduces to effective rank-1 (step-penalty only), and single-channel Pareto comparison degenerates to scalar step-penalty minimization — the same ATP/PRAR/TCP failure mechanism. Scored 0.0/0.011 vs random 194.0/1.331 on both vector envs. Extends the ATP/PRAR ruling to offline cluster-conditioned imminence-shift primitives: eliminating the decision-time forward model (CID's binding failure) does not escape the step-penalty scalar collapse when the substrate has terminal-only reward channels.
-
-## Cross-attempt failure modes
-
-Patterns that appeared more than once. If your candidate exhibits any of them,
-expect the same outcome:
-
-- **The primitive needs reward correlation to bootstrap, but reward
-  correlation does not exist on long-horizon sparse tasks until a deep
-  unrewarded path is traversed.** Pure association mining (KERNEL, OPP, EOP)
-  has nothing to operate on.
-- **The mechanism is a stack of named components, not a primitive.** T-CTBP is
-  the canonical example: more than 3 components and no single composition law
-  stitching them together.
-- **Passing DeepSea/Chain/Tree is not strong evidence.** Monotone-progress
-  benchmarks are passed by count-bonus, novelty, RND, progress heuristics, and
-  crude profile dominance. Do not promote on those alone.
-- **Custom-built toy benchmarks are insufficient.** All four sprint-1
-  candidates "succeeded" on a benchmark designed around the method; all
-  failed on standard tasks (DoorKey, KeyCorridor).
-- **"Avoid value vocabulary" is not a research direction.** Value's *role*
-  (future compression, temporal composition, local improvement) is what
-  needs replacing, not its name.
-- **Hand-engineered event lenses are side information.** Counts against the
-  side-information channel declaration; not free.
-- **Abstract mathematical pivot without an exposed side-information
-  advantage is a notational shift, not a new family.** A pivot from one
-  central object (value, flow, distribution, etc.) to another must say
-  *what new side information* the new center makes usable, and *how* that
-  side information drives the discovery of new informative trajectories
-  before reward correlation exists. (#14 Primal Behavior Flow.)
-
-## Disqualifier families (the negative space)
-
-If your candidate's central improvement operator reduces to any of these under
-variable renaming, it is a rebadge — not a new family — even if it beats panel
-baselines:
-
-- Bellman backup of any flavor (Q-learning, DQN, Rainbow, SAC, TD3).
-- TD-error minimization as the primary update.
-- Q / V / advantage / return-to-go as the central learned object.
-- Scalar-weighted log-prob update (PPO, TRPO, GRPO, REINFORCE, A2C, IMPALA).
-- Actor-critic — any variant where a critic supplies the actor's weight.
-- Reward-model optimization (RLHF, DPO, preference optimization).
-- Scalarized vector-reward maximization — collapsing `r ∈ ℝᵏ` to `wᵀr` and
-  optimizing as if scalar. (The vector envs in our panel are designed to
-  detect this directly.)
+- Bellman backup (Q-learning, DQN, SAC, TD3).
+- Scalar-weighted log-prob update (PPO, REINFORCE, GRPO, A2C).
+- Actor-critic — a critic supplying the actor's weight.
+- Reward-model optimization (RLHF, DPO).
+- Scalarized vector reward `wᵀr` for any fixed or learned `w`.
 - CEM / ES / CMA-ES elite refitting.
 - Top-k trajectory cloning.
-- Go-Explore with renamed cells.
-- Count-based exploration with renamed counts.
-- RND / curiosity with renamed novelty.
+- Go-Explore / count-based / RND with renamed counts or novelty.
 - Options / hierarchical RL with renamed skills.
 - Model-based planning with renamed states.
-- Verifier-guided search (best-of-N, MCTS, ReAct, reflection) with renamed
-  verifier.
+- Verifier-guided search (best-of-N, MCTS, ReAct) with renamed verifier.
 - GVFs / successor features with renamed cumulants.
 - Distributional RL with renamed return distribution.
 - Hindsight Experience Replay with renamed virtual goals.
-- Decision Transformer / Trajectory Transformer with renamed conditioning.
+- Decision Transformer with renamed conditioning.
 - Reward machines with renamed automaton states.
 
-Existing methods may appear as **components** (a torch network, an Adam
+Existing methods may appear as **components** (a torch network, an
 optimizer, a replay buffer, a sequence model). They cannot be the
 *explanation* for why the method works.
 
-## What "good evidence" looks like
+---
 
-A candidate is interesting only when **all** hold:
+## Appendix — attempt-to-family map
 
-1. Mechanism is one primitive + one improvement operator. Not three.
-2. There is a one-paragraph monotonic improvement claim — what does the
-   operator improve, under what condition.
-3. Side-information channel is named explicitly, from the list:
-   {transition geometry, event traces, object state, reachability/reset
-   structure, demonstrations, pretrained priors, language/task description,
-   verifier feedback, learned dynamics, vector diagnostics, environment
-   instrumentation}. "None — pure terminal black-box" is rejected as
-   information-theoretically impossible at long horizon.
-4. The candidate beats `panel_n_beat_strong` on ≥ 2 of the 6 panel envs,
-   with at least one win on a vector env.
-5. The candidate's structural distinction from the named nearest item in this
-   list (1–14 above, or one of the disqualifier families) is articulated in
-   2–3 sentences in the commit message.
+| Attempt | Name | Family | Sealed record |
+| --- | --- | --- | --- |
+| 1 | FROST | E, F | `worklogs/attempts/01-frost-vector-repair-certificate.md` |
+| 2 | BRIC | (counterfactual cost) | `worklogs/attempts/02-bric-bracketed-reward-intervention.md` |
+| 3 | KERNEL | (passive correlation) | `worklogs/attempts/03-kernel-rl-rsk.md` |
+| 4 | CARL | (Go-Explore rebadge) | `worklogs/attempts/04-carl-frontier-graph.md` |
+| 5 | BCE-v0 | (count rebadge on ablation) | `worklogs/attempts/05-bce-v0.md` |
+| 6 | T-CTBP | G | `worklogs/attempts/06-t-ctbp.md` |
+| 7 | OPP | F | `worklogs/attempts/07-opp-order-projection.md` |
+| 8 | EOP/COP | F | `worklogs/attempts/08-eop-cop-minigrid.md` |
+| 9 | Causal Dominance | (no clean primitive) | `worklogs/attempts/09-causal-dominance-certificates.md` |
+| 10 | Value-first reset | (conceptual) | `worklogs/attempts/10-value-function-first-reset.md` |
+| 11 | TOP | E | `worklogs/attempts/11-top-temporal-outcome-profiles.md` |
+| 12 | PEO | F | `worklogs/attempts/12-peo-policy-edit-optimization.md` |
+| 13 | ETB/HPC | (GCSL/options rebadge) | `worklogs/attempts/13-etb-hpc.md` |
+| 14 | Primal Flow | E | `worklogs/attempts/14-primal-behavior-flow.md` |
+| 15 | FED | A | `worklogs/attempts/15-fed-frontier-expanding-dispersion.md` |
+| 16 | PICAV | A | `worklogs/attempts/16-picav-path-integrated-channel-asymmetry-voting.md` |
+| 17 | CHX | A, C | `worklogs/attempts/17-chx-cumulant-hull-extremality.md` |
+| 18 | CEC | A | `worklogs/attempts/18-cec-continuation-endpoint-concordance.md` |
+| 19 | CWTP | A, B | `worklogs/attempts/19-cwtp-confluence-witness-trajectory-pairs.md` |
+| 20 | LRA | A | `worklogs/attempts/20-lra-loop-return-aversion.md` |
+| 21 | TPP | A, B | `worklogs/attempts/21-tpp-terminal-postfix-pairing.md` |
+| 22 | CRP | A, C | `worklogs/attempts/22-crp-channel-rank-position-concordance.md` |
+| 23 | TCP | A, C | `worklogs/attempts/23-tcp-temporal-channel-precedence.md` |
+| 24 | PCR | A, D | `worklogs/attempts/24-pcr-policy-commitment-recovery.md` |
+| 25 | ACS | A, C | `worklogs/attempts/25-acs-action-conditional-suffix-spectrum.md` |
+| 26 | TRAC | A | `worklogs/attempts/26-trac-transition-refractive-action-channels.md` |
+| 27 | PCGA | A, D | `worklogs/attempts/27-pcga-per-channel-gradient-alignment.md` |
+| 28 | ARP | A | `worklogs/attempts/28-arp-action-reachable-pattern-lattice.md` |
+| 29 | PFA | A | `worklogs/attempts/29-pfa-per-channel-phase-flow-asymmetry.md` |
+| 30 | CPR | A | `worklogs/attempts/30-cpr-channel-posterior-chebyshev-reweight.md` |
+| 31 | ATP | A, C, D | `worklogs/attempts/31-atp-action-tangent-persistence.md` |
+| 32 | CSD | A | `worklogs/attempts/32-csd-channel-conditional-successor-disagreement.md` |
+| 33 | ACFC | A | `worklogs/attempts/33-acfc-action-frequency-channel-frequency-concordance.md` |
+| 34 | ACCD | A, D | `worklogs/attempts/34-accd-action-conditional-channel-dissociation.md` |
+| 35 | PHI | C, D | `worklogs/attempts/35-phi-path-homology-invariants.md` |
+| 36 | PRAR | A, C | `worklogs/attempts/36-prar-policy-regime-antisymmetric-residual.md` |
+| 37 | HRC | A | `worklogs/attempts/37-hrc-horizon-recursive-concordance.md` |
+| 38 | CSA | A | `worklogs/attempts/38-csa-channel-spectral-action-influence.md` |
+| 39 | BLIC | A, D | `worklogs/attempts/39-blic-block-lookback-imminence-concordance.md` |

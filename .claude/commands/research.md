@@ -1,18 +1,20 @@
 ---
-description: Autonomous research loop. Repeatedly runs Researcher → Reviewer → Engineer → Curator iterations until a halt condition trips. Designed for unattended weeks-long runs with NO user prompts between iterations.
+description: Autonomous research loop. Researcher → Reviewer → (Engineer →) Curator. Designed for unattended weeks-long runs. Empty-handed Researcher turns and Reviewer rejections are normal; the loop only halts on proven candidates, the disk cap, the consecutive-error circuit breaker, or an explicit halt request.
 argument-hint: "[--max-iters N] [--max-hours H]"
 allowed-tools: Agent, Read, Write, Edit, Bash
 ---
 
 You are running the autonomous research loop of the rl-research project.
-Your job is to keep firing iterations until a halt condition trips, with
-NO human in the loop between iterations.
+Each iteration: Researcher (proposes math or returns empty-hand) →
+Reviewer (adversarial referee, default reject) → branch on verdict →
+Engineer (only if Reviewer passed) → Curator (synthesizes the result).
 
-Each iteration: Researcher (idea, text only) → Reviewer (cheap structural
-gate) → branch on verdict → Engineer (authors `train.py`, runs the panel)
-→ Curator (synthesizes the result). The Researcher never writes or reads
-code; the Engineer is the entire implementation surface. All handoffs are
-file-based; all subagents live under `.claude/agents/`.
+**Empty-handed Researcher turns and Reviewer rejections are the
+expected dominant outcome.** The loop is calibrated for a low-frequency
+search of high-quality candidates, not a high-throughput search of
+heuristics. A healthy week of unattended operation might produce 100+
+empty-hand notes, ~10 reviewer-rejected proposals, ~1 reviewer-passed
+proposal, and ideally one promotion that halts for user review.
 
 ## Arguments
 
@@ -29,27 +31,28 @@ file-based halt conditions below.
 
 `consecutive_errors` is **derived from `worklogs/ledger.jsonl` at each
 pre-flight** — NOT held in your own context. Read the trailing N lines
-of the ledger; count how many of the trailing entries have
-`status` in {`killed-error`, `forbidden-import`} BEFORE a non-error
-entry breaks the streak. This survives Claude context compaction and
-session restarts; the in-context counter would not.
+of the ledger; count how many of the trailing entries have `status` in
+{`killed-error`, `forbidden-import`} BEFORE a non-error entry breaks
+the streak. This survives Claude context compaction and session
+restarts.
 
 `iters_done` and `started_at` are tracked in your context for the
 optional `--max-iters` and `--max-hours` guards. They reset when the
 session restarts — that is acceptable, because those guards are
-user-supplied conveniences, not safety mechanisms. The actual safety
-mechanism (`consecutive_errors`) is durable.
+user-supplied conveniences, not safety mechanisms.
 
 ## Pre-flight (before EACH iteration)
 
 In this exact order. Any failure → log reason and exit cleanly.
 
-1. **Halt-requested file.** If `worklogs/HALT_REQUESTED.md` exists, read
-   it, print its contents, exit.
+1. **Halt-requested file.** If `worklogs/HALT_REQUESTED.md` exists,
+   read it, print its contents, exit. The Curator writes this file on
+   `proven-on-substrate` to halt the loop for user review; do not
+   suppress it.
 2. **Max iters / hours.** If `iters_done >= max_iters` (when set), exit.
    If wallclock since `started_at` >= `max_hours` (when set), exit.
-3. **Disk cap.** `du -s worklogs/runs 2>/dev/null | awk '{print $1}'` —
-   if > 5_000_000 (KB, ~5 GB), write a `HALT_REQUESTED.md` saying
+3. **Disk cap.** `du -s worklogs/runs 2>/dev/null | awk '{print $1}'`
+   — if > 5_000_000 (KB, ~5 GB), write a `HALT_REQUESTED.md` saying
    "disk cap exceeded" and exit.
 4. **Substrate dirty.**
    `git status --porcelain harness.py run_panel.py baselines.json
@@ -57,31 +60,21 @@ In this exact order. Any failure → log reason and exit cleanly.
    — if non-empty, write a `HALT_REQUESTED.md` with the diff and exit.
    The substrate must be clean before any iteration runs.
 
-   **Substrate vs corpus.** The check intentionally lists ONLY
-   sealed-immutable files (`harness.py`, `run_panel.py`,
-   `baselines.json`, `worklogs/TEMPLATE.md`) plus `train.py` for
-   contamination detection. `prior_attempts.md`, `worklogs/attempts/*`,
-   `worklogs/candidates/*`, `worklogs/runs/*`, and
-   `worklogs/ledger.jsonl` are **corpus files owned by the Curator
-   subagent** — every `failed-structural` verdict legitimately appends
-   to `prior_attempts.md`, so they MUST NOT block the next iteration.
-   Step 6 (auto-commit) is what keeps the working tree clean across
-   iterations; this pre-flight check is the integrity guard, not a
-   cleanliness guard.
+   The check intentionally lists ONLY sealed-immutable files plus
+   `train.py` for contamination detection. `prior_attempts.md`,
+   `worklogs/attempts/*`, `worklogs/runs/*`, `worklogs/promotions/*`,
+   `worklogs/exemplars.md`, and `worklogs/ledger.jsonl` are corpus
+   files owned by the Curator subagent and may be modified between
+   iterations — they MUST NOT block the next iteration. Step 6
+   (auto-commit) keeps the working tree clean across iterations.
 
-   **`train.py` is in this list specifically to detect contamination
-   from a crashed prior iteration.** If a previous Engineer crashed
-   between substituting the candidate and restoring the substrate,
-   `train.py` at the repo root contains the candidate, not the
-   substrate floor. Halting here prevents the next Engineer's `cp
-   train.py train.py.bak` from baking that contamination in
-   permanently.
 5. **Consecutive errors.** Derive `consecutive_errors` from
-   `worklogs/ledger.jsonl` (read trailing lines, count consecutive
-   error statuses). If `consecutive_errors >= 3`, write a
+   `worklogs/ledger.jsonl` (trailing lines, count consecutive error
+   statuses). If `consecutive_errors >= 3`, write a
    `HALT_REQUESTED.md` saying "three consecutive errored iterations —
    likely systemic regression, see worklogs/runs/*/result.json" and
-   exit. (Systemic-regression circuit breaker.)
+   exit. Empty-hand and reviewer-rejected verdicts do **not** count
+   as errors for this circuit breaker.
 
 ## One iteration — the state machine
 
@@ -91,50 +84,78 @@ In this exact order. Any failure → log reason and exit cleanly.
 uv run python scripts/next_run_id.py auto
 ```
 
-Capture the printed `run_id` (format `<YYYYMMDD>-<NN>-<slug>`). Then
-`mkdir -p worklogs/runs/<run_id>`.
+Capture the printed `run_id`. Then `mkdir -p worklogs/runs/<run_id>`.
 
 ### Step 1 — Researcher
 
-Spawn the `researcher` subagent (`subagent_type: researcher`) with this
-exact prompt:
+Spawn the `researcher` subagent with this exact prompt:
 
-> Run ID is `<run_id>`. Read `prior_attempts.md` and
-> `worklogs/candidates/*.md`, then propose a candidate by writing
-> `worklogs/runs/<run_id>/hypothesis.md`. Halt after writing the file.
-> You do not write or read any code; the Engineer authors `train.py`
-> after the Reviewer approves.
+> Run ID is `<run_id>`. Read `worklogs/exemplars.md` and
+> `prior_attempts.md`. Either propose a candidate that meets the
+> four-slot contract (principle, derivation, primitive, theorem) by
+> writing `worklogs/runs/<run_id>/hypothesis.md`, or write the
+> empty-hand note if nothing reaches the bar. Halt after writing the
+> file. You do not write or read any code.
 
-After the subagent returns, verify `worklogs/runs/<run_id>/hypothesis.md`
-exists. If not, write a stub `result.json` with
-`status: killed-error, error: "researcher produced no hypothesis"`
-and skip to Step 5 (Curator).
+After the subagent returns, verify
+`worklogs/runs/<run_id>/hypothesis.md` exists. If not, write a stub
+`result.json` with `status: killed-error,
+error: "researcher produced no hypothesis"` and skip to Step 5
+(Curator).
+
+Then read the hypothesis file's first line to detect the empty-hand
+note (header of the form `# <run_id> — empty-handed`). If empty-hand:
+write a stub `result.json`:
+
+```json
+{
+  "run_id": "<run_id>",
+  "stage": null,
+  "envs": [],
+  "scores": {},
+  "beat_random": 0,
+  "beat_strong": 0,
+  "wallclock_s": 0.0,
+  "n_retries": 0,
+  "status": "no-proposal",
+  "commit": "<git rev-parse HEAD>"
+}
+```
+
+Skip to Step 5 (Curator) — do not spawn the Reviewer or Engineer.
 
 ### Step 2 — Reviewer
 
 Spawn the `reviewer` subagent with this exact prompt:
 
-> Review `worklogs/runs/<run_id>/hypothesis.md`. Write
+> Review `worklogs/runs/<run_id>/hypothesis.md`. Check the math step
+> by step. Search for the principle and update rule to confirm the
+> proposal is not a renamed published method. Write
 > `worklogs/runs/<run_id>/review.md` with frontmatter
-> `verdict: novel-direction | known-rebadge | needs-sharpening` and 1–2
-> paragraphs of reasoning.
+> `verdict: pass | revise | reject` and reasoning.
 
-After return, parse the `verdict:` line out of `review.md`'s frontmatter.
+After return, parse the `verdict:` line out of `review.md`'s
+frontmatter.
 
 ### Step 3 — Branch on verdict
 
-- **`novel-direction`** → continue to Step 4.
+- **`pass`** → continue to Step 4.
 
-- **`needs-sharpening`** → respawn `researcher` ONCE with prompt:
-  > Revise the hypothesis. Reviewer wrote `worklogs/runs/<run_id>/review.md`.
-  > Address the missing slots and rewrite hypothesis.md. You still do not
-  > write or read any code.
+- **`revise`** → respawn `researcher` ONCE with prompt:
 
-  Then respawn `reviewer` for a re-review. If the new verdict is still
-  not `novel-direction`, write a stub `result.json` with
-  `status: abandoned-sharpening` and skip to Step 5.
+  > Revise the hypothesis. Reviewer wrote
+  > `worklogs/runs/<run_id>/review.md`. Address the specific fixes
+  > listed in the Decision section and rewrite hypothesis.md. Do not
+  > propose a different algorithm; only fix the issues the Reviewer
+  > named. If the fixes would require abandoning the principle,
+  > replace the file with the empty-hand note instead.
 
-- **`known-rebadge`** → write a stub `result.json`:
+  Then respawn `reviewer` for a re-review. Whatever the second
+  Reviewer's verdict is, accept it: `pass` → Step 4, anything else →
+  write a stub `result.json` with `status: abandoned-revise` and skip
+  to Step 5.
+
+- **`reject`** → write a stub `result.json`:
   ```json
   {
     "run_id": "<run_id>",
@@ -145,45 +166,46 @@ After return, parse the `verdict:` line out of `review.md`'s frontmatter.
     "beat_strong": 0,
     "wallclock_s": 0.0,
     "n_retries": 0,
-    "status": "abandoned-rebadge",
+    "status": "reviewer-rejected",
     "commit": "<git rev-parse HEAD>"
   }
   ```
   Then skip to Step 5.
 
-### Step 4 — Engineer authors and runs
+### Step 4 — Engineer
 
 Spawn `engineer` with this exact prompt:
 
-> Run ID is `<run_id>`. Reviewer approved with verdict `novel-direction`.
-> Read `worklogs/runs/<run_id>/hypothesis.md` and
+> Run ID is `<run_id>`. Reviewer passed the proposal. Read
+> `worklogs/runs/<run_id>/hypothesis.md` and
 > `worklogs/runs/<run_id>/review.md`, then author
-> `worklogs/runs/<run_id>/train.py` matching the substrate contract,
-> realizing the hypothesis faithfully (not a different algorithm you
-> think will perform better). Pick the panel stage from the hypothesis's
-> primary axis. Run the panel, write
-> `worklogs/runs/<run_id>/result.json`, and ensure the repo-root
-> `train.py` is restored from `train.py.bak` before you exit.
+> `worklogs/runs/<run_id>/train.py` realizing the update rule
+> faithfully. Pick the panel stage that exercises the principle.
+> Run the panel, write `worklogs/runs/<run_id>/result.json`, and
+> ensure the repo-root `train.py` is restored from `train.py.bak`
+> before you exit.
 
 After return, verify both `worklogs/runs/<run_id>/train.py` and
 `worklogs/runs/<run_id>/result.json` exist AND that the repo-root
-`train.py` is unchanged (`git diff --quiet train.py`). If `train.py` is
-dirty, restore it via `git checkout -- train.py` and note the slip in
-your post-iteration log. If `worklogs/runs/<run_id>/train.py` does not
-exist (Engineer crashed before authoring), the Engineer should have
-written `result.json` with `status: killed-error`; if even `result.json`
-is missing, write a stub with
-`status: killed-error, error: "engineer produced neither train.py nor
-result.json"` and continue to Step 5.
+`train.py` is unchanged (`git diff --quiet train.py`). If `train.py`
+is dirty, restore it via `git checkout -- train.py` and note the slip.
+If `worklogs/runs/<run_id>/train.py` does not exist (Engineer crashed
+before authoring), the Engineer should have written `result.json` with
+`status: killed-error`; if even `result.json` is missing, write a stub
+with `status: killed-error,
+error: "engineer produced neither train.py nor result.json"` and
+continue to Step 5.
 
 ### Step 5 — Curator
 
 Spawn the `curator` subagent with this exact prompt:
 
-> Synthesize iteration `<run_id>`. Read hypothesis.md, review.md,
-> result.json, panel.txt (if present), then write `curator.md`,
-> append to `worklogs/ledger.jsonl`, and update the corpus per the
-> verdict-conditional outputs in your agent definition.
+> Synthesize iteration `<run_id>`. Read hypothesis.md, review.md (if
+> present), result.json, panel.txt (if present), then write
+> `curator.md`, append to `worklogs/ledger.jsonl`, and update the
+> corpus per the verdict-conditional outputs in your agent definition.
+> If the run is `proven-on-substrate`, also write
+> `worklogs/HALT_REQUESTED.md` so the loop halts for user review.
 
 After return, verify:
 - `worklogs/runs/<run_id>/curator.md` exists.
@@ -199,79 +221,65 @@ with this exact prompt:
 > Recovery for `<run_id>`: your `curator.md` exists but no matching
 > ledger line was appended. Re-read `curator.md` and append the
 > corresponding line to `worklogs/ledger.jsonl`. Do not rewrite
-> `curator.md` or modify `prior_attempts.md` / `worklogs/{attempts,
-> candidates}/`.
+> `curator.md` or modify `prior_attempts.md` / `worklogs/attempts/` /
+> `worklogs/promotions/`.
 
 If after the recovery attempt the ledger still has no matching line,
 write `worklogs/HALT_REQUESTED.md` saying "Curator failed to append
-ledger line for `<run_id>` after recovery attempt" and exit. Do NOT
-proceed to the next iteration with a missing ledger entry — the
-post-iteration step reads the ledger and would silently miscount
-errors.
+ledger line for `<run_id>` after recovery attempt" and exit.
 
 ### Step 6 — auto-commit the iteration
 
-Once Curator verification has passed, snapshot the iteration's corpus
-updates so the working tree stays clean across the next pre-flight and
-so unattended runs leave a per-iteration audit trail in `git log`.
+Once Curator verification has passed:
 
 ```bash
 git add worklogs/ prior_attempts.md
-# Empty diff is fine (e.g. abandoned-rebadge runs touch only the ledger
-# inside worklogs/, which is captured by the path above; if for some
-# reason there is nothing to commit, skip silently).
 if ! git diff --cached --quiet; then
-  git commit -m "iter <run_id>: <verdict>" -m "status: <status>  beat_strong: <N>" \
+  git commit -m "iter <run_id>: <verdict>" -m "status: <status>" \
     || { echo "auto-commit failed for <run_id>" \
          > worklogs/HALT_REQUESTED.md; exit 0; }
 fi
 ```
 
-Use **targeted paths** (`worklogs/ prior_attempts.md`), not `git add
--A` — unrelated user-staged edits in the working tree must not be
-swept into iteration commits. If `git commit` itself fails (e.g. a
-pre-commit hook rejects the change, repo is in a detached weird state,
-identity not configured), that is a real systemic signal: write
-`HALT_REQUESTED.md` and exit rather than silently leaving uncommitted
-state to confuse the next pre-flight.
-
-This step is intentionally *after* Curator verification: a Curator
-that crashed mid-corpus-update should NOT be auto-committed; the user
-needs to see that diff. Verification passing is the precondition for
-commit.
+Use targeted paths (`worklogs/ prior_attempts.md`), not `git add -A`.
+Empty-hand and reviewer-rejected iterations may produce no diff
+beyond a ledger line — that is fine; the commit just captures the
+ledger update.
 
 ## Post-iteration update
 
 1. `iters_done += 1`.
-2. Read the last line of `worklogs/ledger.jsonl`. Parse `status`.
+2. Read the last line of `worklogs/ledger.jsonl`. Parse `verdict` and
+   `status`.
 3. Print one summary line to stdout:
    `[research] iter=<iters_done> run_id=<...> verdict=<...>
-    beat_strong=<N> status=<...>`.
-
-(`consecutive_errors` is NOT tracked here — it is derived from the
-ledger at each pre-flight; see "State to track across iterations".)
+    status=<...>`.
 
 Then loop back to pre-flight.
 
 ## Cool-down between iterations
 
-A short pause is useful for two reasons: (a) lets file-system writes
-flush, (b) gives a watching human a chance to write
-`HALT_REQUESTED.md`. Sleep 10s between iterations:
+Sleep 10s between iterations:
 
 ```bash
 sleep 10
 ```
 
+Empty-hand iterations will return very quickly, so the cool-down also
+serves to keep the loop from spinning at full speed when the
+Researcher has nothing to propose. If you find yourself in a long
+streak of empty-hand verdicts (≥ 20), increase the cool-down to 60s
+to reduce wasted cycles — but do **not** halt for emptiness. Empty is
+the correct behavior; the loop survives weeks of empty turns.
+
 ## Stop / resume
 
 When `/research` exits cleanly (any halt reason), the corpus is in a
-consistent state — every `worklogs/runs/<run_id>/` either has a
-`curator.md` or is missing one because the iteration was interrupted
-mid-run. The user can:
+consistent state. The user can:
 
-- Inspect `worklogs/ledger.jsonl` to see what happened.
-- Inspect `worklogs/HALT_REQUESTED.md` for the halt reason.
+- Inspect `worklogs/ledger.jsonl` and `worklogs/HALT_REQUESTED.md`.
+- For a `proven-on-substrate` halt, inspect
+  `worklogs/promotions/<run_id>.md`.
 - Run `/curate` to clean up any uncurated runs.
 - Delete `worklogs/HALT_REQUESTED.md` and re-invoke `/research` to
   resume.
@@ -279,27 +287,17 @@ mid-run. The user can:
 ## Forbidden actions
 
 These bind the orchestrator (this `/research` loop), not the subagents.
-The Curator subagent's required corpus updates (appending to
-`prior_attempts.md`, writing `worklogs/attempts/<NN>-<slug>.md`,
-parking in `worklogs/candidates/`, appending to
-`worklogs/ledger.jsonl`) are explicitly part of its role and are NOT
-forbidden — they're what Step 5 commissions and Step 6 commits.
 
-- The orchestrator itself never edits `harness.py`, `run_panel.py`,
-  `baselines.json`, `prior_attempts.md`, `worklogs/TEMPLATE.md`,
-  `worklogs/attempts/*`, or any subagent's run directory contents.
-  The Curator owns the corpus files; the Engineer owns its run
-  directory; the orchestrator only orchestrates.
+- The orchestrator never edits `harness.py`, `run_panel.py`,
+  `baselines.json`, `prior_attempts.md`, `worklogs/exemplars.md`,
+  `worklogs/TEMPLATE.md`, `worklogs/attempts/*`, or any subagent's
+  run directory contents. Subagents own their files.
 - Skipping pre-flight checks "just to fit one more iteration in."
-- Modifying `worklogs/HALT_REQUESTED.md` to suppress a halt — if a halt
-  fired, the loop must exit. The user removes the file when they want
-  to resume.
-- Auto-committing with `git add -A` (use targeted paths in Step 6 so
-  unrelated working-tree edits aren't swept into iteration commits).
-- Asking the user anything between iterations. The whole point of
-  `/research` is unattended operation. If you find yourself wanting
-  to ask the user a question, instead write
-  `worklogs/HALT_REQUESTED.md` with the question and exit.
+- Modifying `worklogs/HALT_REQUESTED.md` to suppress a halt.
+- Auto-committing with `git add -A`.
+- Asking the user anything between iterations.
+- Counting `empty-hand` or `reviewer-rejected` as errors. They are
+  the loop's expected dominant outcome.
 
 ## Final summary on exit
 
