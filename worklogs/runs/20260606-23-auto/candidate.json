@@ -1,0 +1,19 @@
+{
+  "run_id": "20260606-23-auto",
+  "algorithm_name": "TRACE",
+  "principle": "Update the policy by score-function ascent where each step's per-step gradient weight is the squared log-likelihood gap of the realized action between source and successor states under the current policy, multiplied by the unicriterial return-to-go.",
+  "primitive_name": "policy commitment gap field",
+  "primitive_type": "Pi x S x A x S -> R, with delta_theta(s,a,s') := log pi_theta(a|s) - log pi_theta(a|s')",
+  "update_family": "direct_policy_update",
+  "memory": "none",
+  "feedback_signal": "scalar return-to-go from env reward (channel 1 only on vector envs); policy log-likelihoods at consecutive states",
+  "uses_reward": true,
+  "uses_vector_reward": false,
+  "claimed_stage": "quick",
+  "nearest_disqualifier": "policy_gradient",
+  "novelty_boundary": "REINFORCE weights every step's score by G_t alone; TRACE weights by G_t * delta_t^2 where delta_t^2 = (log pi(a_t|s_t) - log pi(a_t|s_{t+1}))^2 is a policy-state-conditional log-likelihood gap of the realized action between consecutive states. The weight is reward-independent in form (function of policy and (s,a,s') only), uses no rolling buffer, no value function, no kernel, no extra learned head, and reduces to REINFORCE only when the policy is action-distribution-invariant on consecutive visited states. Distinct from baselines (multiplied not subtracted), advantage (no value), AWR (quadratic not exponential), curiosity (no reward modification, no separate predictor), Fisher PG (no direction change), Stein PG (no kernel/population), COPDEV/PARGRAD (no rolling buffer, no channel structure), orthogonal gradient descent (no projection).",
+  "empirical_claim": "On the quick stage (DST-concave-v0, 4-action grid), TRACE produces (a) mean(c_t) > 0 with std(c_t)/mean > 0.5 within 20 episodes, (b) rollout-mean cosine alignment between TRACE and uniform-weight REINFORCE gradients strictly < 0.95 (typically 0.5-0.9), and (c) a measurably distinct mean-episode-return trajectory vs. the uniform-weight ablation within 120s budget.",
+  "falsifier": "Primary: if mean(c_t) is essentially zero or cosine alignment between TRACE and REINFORCE gradients >= 0.95 within seed variance throughout training, the primitive is decorative. Secondary: if TRACE's mean episode return matches the uniform-weight ablation's within seed variance throughout despite a nonzero cosine gap, the per-step weight produces no measurable behavioral effect. Tertiary: if TRACE's final hypervolume on DST-concave is strictly worse than both the random baseline (194) and the ablation, the credit-assignment direction is harmful.",
+  "ablation_plan": "Primary: in train_ablate.py, replace c_t := delta_t^2 with c_t := 1 (skip computing log pi(a_t|s_{t+1}) and delta_t entirely). All other steps identical: returns-to-go computation, score-function gradient, parameter update. This is exactly REINFORCE-without-baseline. Secondary diagnostic: c_t ~ Exponential(1) sampled iid per step (preserves non-uniformity but removes policy-correlation). The discriminator is the cosine alignment between TRACE and REINFORCE gradients (logged scalar) plus the divergence in mean episode return trajectories.",
+  "proof_debt": "1) Convergence of TRACE updates to stationary points of J_tilde(theta) := E_tau[sum_t G_t * delta_t(theta)^2 * log pi_theta(a_t|s_t)] under stop-gradient on delta_t^2. 2) Characterize stationary points: are they exactly REINFORCE's stationary points restricted to {delta_t^2 > 0}, plus the spurious fixed-point set of commitment-invariant (state-independent on visited consecutive states) policies? 3) Bound the bias of the stop-gradient form vs. the true gradient of J_tilde (which includes a 2*delta_t*(grad log pi(a_t|s_t) - grad log pi(a_t|s_{t+1})) term). 4) Show variance reduction: down-weighting commitment-flat steps strictly lowers the gradient estimator variance vs. REINFORCE under what conditions."
+}
