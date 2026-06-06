@@ -1,0 +1,3 @@
+# 20260606-34-auto — empty-handed
+
+reason: Searched for a one-sentence principle outside the exemplar set (Bellman fixed point, policy gradient, KL trust region, mirror descent, MaxEnt soft-Bellman, MCTS regret, AlphaZero distillation, GAE) and outside dead families A-G; the candidates that survived the principle/primitive/theorem check (Wasserstein NPG, Fenchel-dual occupancy LP / DICE, convex-MDP Frank-Wolfe, regret-matching-as-MDP-CFR, distributional Bellman in Wasserstein) were all already published methods that the Reviewer's literature search would correctly flag as rebadges. Nothing reached the bar this turn.
