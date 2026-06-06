@@ -133,6 +133,16 @@ have a theorem, cannot be implemented faithfully because the
 sprint-4 entries that filed extra components under "side
 information."
 
+## Family H — Algebraic-topology / cochain-complex value iteration
+
+**Shape.** Frame the Bellman operator on the cochain complex of the policy graph `G_π = (S, E_π, w)`, augmenting the value function V (a 0-cochain) with higher cochains (e.g., a 1-cochain ψ representing cycle potentials) and using sheaf-Hodge or cellular-homology operators to couple ψ into V, claiming that exploiting `H_k(G_π)` (the k-th homology group of the policy graph) accelerates value iteration.
+
+**Why it dies.** The cochain-complex identity `δ_1 ∘ δ_0 = 0` kills every V←higher-cochain feedback operator. The (1,2) block of the joint iteration operator H equals `(δ_1 δ_0)^T = 0` in any weighting, making the joint update block lower-triangular. The spectrum of the joint operator is the union of the V-only and ψ-only spectra; the ψ block cannot improve the V-only convergence rate, and on cyclic policy graphs it generically slows convergence by an amount controlled by the spectral gap of `L_2 = δ_1 δ_1^T`. Any implementation collapses to residual-gradient TD (Baird 1995) plus an inert side-buffer.
+
+**Verdict.** Dead by fundamental cochain identity. Any approach that proposes to exploit `H_k(G_π)` via a cochain-complex coupling to the Bellman operator faces the same obstruction, regardless of weighting, step-size matching, or which homology degree is targeted.
+
+**Attempts in this family:** 40 CBI (negative closure of seed 20260606-05-auto).
+
 ---
 
 ## Disqualifier families (the standard negative space)
@@ -206,3 +216,4 @@ optimizer, a replay buffer, a sequence model). They cannot be the
 | 37 | HRC | A | `worklogs/attempts/37-hrc-horizon-recursive-concordance.md` |
 | 38 | CSA | A | `worklogs/attempts/38-csa-channel-spectral-action-influence.md` |
 | 39 | BLIC | A, D | `worklogs/attempts/39-blic-block-lookback-imminence-concordance.md` |
+| 40 | CBI (negative closure) | H | `worklogs/attempts/40-cbi-negative-closure.md` |

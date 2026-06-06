@@ -1,0 +1,13 @@
+{
+  "run_id": "20260606-07-auto",
+  "stage": null,
+  "envs": [],
+  "scores": {},
+  "beat_random": 0,
+  "beat_strong": 0,
+  "wallclock_s": 0.0,
+  "n_retries": 0,
+  "status": "structural-failure",
+  "note": "negative closure of seed 20260606-05-auto (CBI); hypothesis explicitly states no train.py should be authored — cochain identity delta_1 o delta_0 = 0 forces V<-psi block to zero, collapsing CBI to Baird 1995 residual-gradient TD with inert psi. No algorithm to run.",
+  "commit": "3bc431394a866903d77bd402560367ec2a482fea"
+}
