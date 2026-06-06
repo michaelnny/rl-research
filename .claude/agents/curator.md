@@ -42,9 +42,19 @@ The Reviewer-gated regime makes most iterations short:
   `verdict: reject`. No Engineer ran. → verdict `reviewer-rejected`.
 - **Reviewer revised, then rejected.** Two-round Reviewer chain ended
   in `reject`. → verdict `reviewer-rejected`.
-- **Reviewer passed, Engineer ran.** This is the only path that
-  produces a panel result. The verdict depends on the panel result and
-  on whether the math survived contact with the substrate.
+- **Reviewer passed a seed.** Hypothesis is a seed (file marked
+  `[seed]`), review.md has `verdict: pass-as-seed`. No Engineer
+  ran. → verdict `seeded`. The seed enters the corpus as an open
+  partial proposal that future Researcher iterations may attempt to
+  close.
+- **Closure proposal that the Reviewer rejected.** A hypothesis
+  marked `Closes seed: <prev-run-id>` whose review.md is `reject`
+  is just a regular `reviewer-rejected` — note the failed closure
+  attempt in `curator.md` so future iterations know the seed's open
+  question stayed open.
+- **Reviewer passed (full proposal), Engineer ran.** This is the only
+  path that produces a panel result. The verdict depends on the panel
+  result and on whether the math survived contact with the substrate.
 
 ## Verdicts (post-Engineer)
 
@@ -80,14 +90,20 @@ The Reviewer-gated regime makes most iterations short:
 
 ## Verdicts (pre-Engineer)
 
-- **`empty-hand`** — Researcher correctly produced no proposal.
-  Ledger entry only; nothing to add to the corpus.
+- **`empty-hand`** — Researcher correctly produced no proposal and
+  no seed. Ledger entry only; nothing to add to the corpus.
 
-- **`reviewer-rejected`** — Reviewer rejected the proposal.
-  Ledger entry only; nothing to add to the corpus *unless* the
-  rejection was for a structural-shape reason that reveals a new
-  dead-family pattern not yet captured. In that case, extend
-  `prior_attempts.md`'s family list with one paragraph.
+- **`reviewer-rejected`** — Reviewer rejected the proposal or
+  closure attempt. Ledger entry only; nothing to add to the corpus
+  *unless* the rejection was for a structural-shape reason that
+  reveals a new dead-family pattern not yet captured. In that case,
+  extend `prior_attempts.md`'s family list with one paragraph.
+
+- **`seeded`** — Reviewer marked the hypothesis `pass-as-seed`. The
+  seed is now an open partial proposal in the corpus. Ledger entry
+  only; do not modify `prior_attempts.md`. The hypothesis file
+  remains in `worklogs/runs/<run_id>/hypothesis.md` for future
+  Researcher iterations to read and attempt to close.
 
 ## What `prior_attempts.md` should look like over time
 
@@ -110,7 +126,7 @@ family worth recording).
 
 ```markdown
 ---
-verdict: proven-on-substrate | structural-failure | implementation-failure | null-result | empty-hand | reviewer-rejected
+verdict: proven-on-substrate | structural-failure | implementation-failure | null-result | seeded | empty-hand | reviewer-rejected
 nearest_dead_family: <A | B | C | D | E | F | G | none>
 ---
 
@@ -118,14 +134,16 @@ nearest_dead_family: <A | B | C | D | E | F | G | none>
 
 <2–4 bullets. What was the principle, what did the panel show,
 what does this rule out (if anything), what is the lesson for the
-next iteration.>
+next iteration. For `seeded`, what specifically did the seed leave
+open and what would close it.>
 
 ## Lesson for the next Researcher
 
 <One sentence. Often: "nothing new to add — the proposal was a clean
 rederivation of [method]." Or: "this rules out [specific pattern]
-not previously captured by family X." Or for proven-on-substrate:
-"halt — user review needed.">
+not previously captured by family X." Or for `seeded`: "open seed
+<run_id> awaits closure on <one-line summary of the open question>."
+Or for `proven-on-substrate`: "halt — user review needed.">
 ```
 
 ### Always — append one line to `worklogs/ledger.jsonl`
@@ -164,6 +182,15 @@ Create the file if it doesn't exist; never rewrite existing lines.
 **`null-result`**:
 - Ledger entry only. The math was clean and the substrate was
   indeterminate; this is normal and the loop moves on.
+
+**`seeded`**:
+- Ledger entry only. Do not modify `prior_attempts.md`. The
+  hypothesis file (a seed) remains in
+  `worklogs/runs/<run_id>/hypothesis.md` and is discoverable by
+  future Researcher iterations via the `[seed]` marker in its first
+  line. A seed becomes stale after 5 Researcher iterations without
+  closure; do not delete stale seeds — the Researcher's read list
+  filters them by recency.
 
 **`empty-hand`** / **`reviewer-rejected`**:
 - Ledger entry only. May extend an existing family's paragraph if the

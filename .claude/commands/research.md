@@ -1,20 +1,28 @@
 ---
-description: Autonomous research loop. Researcher → Reviewer → (Engineer →) Curator. Designed for unattended weeks-long runs. Empty-handed Researcher turns and Reviewer rejections are normal; the loop only halts on proven candidates, the disk cap, the consecutive-error circuit breaker, or an explicit halt request.
+description: Autonomous research loop. Researcher → Reviewer → (Engineer →) Curator. The Researcher writes a full proposal, a seed (slots 1-3 plus an open question, carried forward for future closure), or an empty-hand note. Halts on proven candidates, the disk cap, the consecutive-error circuit breaker, a 15-iteration empty-hand streak (loop-design problem), or an explicit halt request.
 argument-hint: "[--max-iters N] [--max-hours H]"
 allowed-tools: Agent, Read, Write, Edit, Bash
 ---
 
 You are running the autonomous research loop of the rl-research project.
-Each iteration: Researcher (proposes math or returns empty-hand) →
-Reviewer (adversarial referee, default reject) → branch on verdict →
-Engineer (only if Reviewer passed) → Curator (synthesizes the result).
+Each iteration: Researcher (proposes a full proposal, a seed, or
+returns empty-hand) → Reviewer (adversarial referee, default reject) →
+branch on verdict → Engineer (only if Reviewer `pass`-ed a full
+proposal) → Curator (synthesizes the result).
 
-**Empty-handed Researcher turns and Reviewer rejections are the
-expected dominant outcome.** The loop is calibrated for a low-frequency
-search of high-quality candidates, not a high-throughput search of
-heuristics. A healthy week of unattended operation might produce 100+
-empty-hand notes, ~10 reviewer-rejected proposals, ~1 reviewer-passed
-proposal, and ideally one promotion that halts for user review.
+**Reviewer rejections are common and expected.** The Researcher's
+output mix in steady state should be roughly ~20% full proposals
+(most rejected by Reviewer), ~50% seeds (some closed in future turns,
+most retiring stale), ~30% empty-hand. A long streak of pure
+empty-hand notes is **not** correct behavior — it indicates the
+Researcher has converged on the empty-hand basin and partial
+structure is no longer compounding across iterations. The pre-flight
+breaks the streak by halting (see "empty-hand streak" below).
+
+A healthy week of unattended operation might produce dozens of seeds
+(most stale, some closed), some reviewer-rejected proposals, ~1–3
+reviewer-passed full proposals that get run through the panel, and
+ideally one promotion that halts for user review.
 
 ## Arguments
 
@@ -76,6 +84,17 @@ In this exact order. Any failure → log reason and exit cleanly.
    exit. Empty-hand and reviewer-rejected verdicts do **not** count
    as errors for this circuit breaker.
 
+6. **Empty-hand streak.** Read the trailing 15 lines of
+   `worklogs/ledger.jsonl`. If all 15 have `verdict` equal to
+   `empty-hand`, write a `HALT_REQUESTED.md` saying "fifteen
+   consecutive empty-hand iterations — Researcher has converged on
+   the empty-hand basin and partial structure is no longer compounding
+   across iterations; loop design needs human attention" and exit.
+   The seed mechanism exists precisely to avoid this; if it is
+   producing zero seeds across 15 turns, that is a loop-design
+   problem, not the calibrated dominant outcome. (If the ledger has
+   fewer than 15 entries total, this check is a no-op.)
+
 ## One iteration — the state machine
 
 ### Step 0 — allocate run_id
@@ -90,12 +109,17 @@ Capture the printed `run_id`. Then `mkdir -p worklogs/runs/<run_id>`.
 
 Spawn the `researcher` subagent with this exact prompt:
 
-> Run ID is `<run_id>`. Read `worklogs/exemplars.md` and
-> `prior_attempts.md`. Either propose a candidate that meets the
-> four-slot contract (principle, derivation, primitive, theorem) by
-> writing `worklogs/runs/<run_id>/hypothesis.md`, or write the
-> empty-hand note if nothing reaches the bar. Halt after writing the
-> file. You do not write or read any code.
+> Run ID is `<run_id>`. Read `worklogs/exemplars.md`,
+> `prior_attempts.md`, and the recent hypothesis files per your
+> agent definition. Produce one of: (a) a full proposal meeting the
+> four-slot contract, (b) a seed (slots 1–3 filled, slot 4 replaced
+> by an explicit `## Open question`) — preferred when the principle
+> is fresh but the theorem is rough, or when you can close a recent
+> open seed only by writing a fresh seed yourself, (c) the empty-hand
+> note only after honestly attempting to close any recent open seeds
+> and at least one fresh region. Write
+> `worklogs/runs/<run_id>/hypothesis.md`. Halt after writing. You do
+> not write or read any code.
 
 After the subagent returns, verify
 `worklogs/runs/<run_id>/hypothesis.md` exists. If not, write a stub
@@ -103,43 +127,73 @@ After the subagent returns, verify
 error: "researcher produced no hypothesis"` and skip to Step 5
 (Curator).
 
-Then read the hypothesis file's first line to detect the empty-hand
-note (header of the form `# <run_id> — empty-handed`). If empty-hand:
-write a stub `result.json`:
+Then read the hypothesis file's first line to detect the output type:
 
-```json
-{
-  "run_id": "<run_id>",
-  "stage": null,
-  "envs": [],
-  "scores": {},
-  "beat_random": 0,
-  "beat_strong": 0,
-  "wallclock_s": 0.0,
-  "n_retries": 0,
-  "status": "no-proposal",
-  "commit": "<git rev-parse HEAD>"
-}
-```
+- `# <run_id> — empty-handed` → empty-hand. Write a stub
+  `result.json`:
 
-Skip to Step 5 (Curator) — do not spawn the Reviewer or Engineer.
+  ```json
+  {
+    "run_id": "<run_id>",
+    "stage": null,
+    "envs": [],
+    "scores": {},
+    "beat_random": 0,
+    "beat_strong": 0,
+    "wallclock_s": 0.0,
+    "n_retries": 0,
+    "status": "no-proposal",
+    "commit": "<git rev-parse HEAD>"
+  }
+  ```
+
+  Skip to Step 5 (Curator) — do not spawn the Reviewer or Engineer.
+
+- `# <run_id> — <Name> [seed]` → seed. Continue to Step 2 (Reviewer).
+  The Reviewer applies its seed verdict set; the Engineer never
+  runs on a seed.
+
+- `# <run_id> — <Name>` (no `[seed]`) → full proposal (possibly with
+  a `Closes seed: <prev-run-id>` line). Continue to Step 2.
 
 ### Step 2 — Reviewer
 
 Spawn the `reviewer` subagent with this exact prompt:
 
-> Review `worklogs/runs/<run_id>/hypothesis.md`. Check the math step
-> by step. Search for the principle and update rule to confirm the
-> proposal is not a renamed published method. Write
-> `worklogs/runs/<run_id>/review.md` with frontmatter
-> `verdict: pass | revise | reject` and reasoning.
+> Review `worklogs/runs/<run_id>/hypothesis.md`. The hypothesis is a
+> full proposal or a seed (file marked `[seed]`); your verdict set
+> differs by type. Check the math step by step. Search for the
+> principle and update rule to confirm the proposal/seed is not a
+> renamed published method. Write `worklogs/runs/<run_id>/review.md`
+> with frontmatter `verdict: pass | pass-as-seed | revise | reject`
+> and `hypothesis_type: proposal | seed` plus reasoning per your
+> agent definition.
 
 After return, parse the `verdict:` line out of `review.md`'s
 frontmatter.
 
 ### Step 3 — Branch on verdict
 
-- **`pass`** → continue to Step 4.
+- **`pass`** (full proposal) → continue to Step 4 (Engineer).
+
+- **`pass-as-seed`** (seed) → write a stub `result.json`:
+  ```json
+  {
+    "run_id": "<run_id>",
+    "stage": null,
+    "envs": [],
+    "scores": {},
+    "beat_random": 0,
+    "beat_strong": 0,
+    "wallclock_s": 0.0,
+    "n_retries": 0,
+    "status": "seeded",
+    "commit": "<git rev-parse HEAD>"
+  }
+  ```
+  Then skip to Step 5. The Engineer does **not** run on a seed; the
+  seed enters the corpus for future Researcher iterations to attempt
+  to close.
 
 - **`revise`** → respawn `researcher` ONCE with prompt:
 
@@ -148,12 +202,16 @@ frontmatter.
   > listed in the Decision section and rewrite hypothesis.md. Do not
   > propose a different algorithm; only fix the issues the Reviewer
   > named. If the fixes would require abandoning the principle,
-  > replace the file with the empty-hand note instead.
+  > replace the file with the empty-hand note instead. If slot 4
+  > cannot be tightened to a real theorem but slots 1–3 are clean,
+  > you may downgrade a full proposal to a seed (add `[seed]` to the
+  > header and replace the Theorem section with `## Open question`).
 
   Then respawn `reviewer` for a re-review. Whatever the second
-  Reviewer's verdict is, accept it: `pass` → Step 4, anything else →
-  write a stub `result.json` with `status: abandoned-revise` and skip
-  to Step 5.
+  Reviewer's verdict is, accept it: `pass` → Step 4,
+  `pass-as-seed` → write stub `result.json` with `status: seeded` and
+  skip to Step 5, anything else → write a stub `result.json` with
+  `status: abandoned-revise` and skip to Step 5.
 
 - **`reject`** → write a stub `result.json`:
   ```json
@@ -267,10 +325,12 @@ sleep 10
 
 Empty-hand iterations will return very quickly, so the cool-down also
 serves to keep the loop from spinning at full speed when the
-Researcher has nothing to propose. If you find yourself in a long
-streak of empty-hand verdicts (≥ 20), increase the cool-down to 60s
-to reduce wasted cycles — but do **not** halt for emptiness. Empty is
-the correct behavior; the loop survives weeks of empty turns.
+Researcher has nothing to propose. The pre-flight's empty-hand-streak
+check (step 6) halts the loop after 15 consecutive empty-hand
+iterations — do not try to extend the streak by lengthening the
+cool-down. If the seed mechanism is producing zero seeds across many
+turns, that is a loop-design problem requiring human attention, not
+something to wait out.
 
 ## Stop / resume
 
@@ -296,8 +356,10 @@ These bind the orchestrator (this `/research` loop), not the subagents.
 - Modifying `worklogs/HALT_REQUESTED.md` to suppress a halt.
 - Auto-committing with `git add -A`.
 - Asking the user anything between iterations.
-- Counting `empty-hand` or `reviewer-rejected` as errors. They are
-  the loop's expected dominant outcome.
+- Counting `empty-hand`, `seeded`, or `reviewer-rejected` as errors.
+  None of them are infrastructure failures. (A 15-iteration empty-hand
+  streak DOES halt the loop via pre-flight step 6, but that is a
+  loop-design halt, not an error halt.)
 
 ## Final summary on exit
 

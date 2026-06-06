@@ -10,8 +10,10 @@ The original framing is in `RESEARCH_IDEA.md`.
 ## Mission, in one sentence
 
 Find the next AlphaZero-class RL algorithm. The bar is calibrated against
-`worklogs/exemplars.md`. Most loop iterations correctly produce no
-proposal; that is the design.
+`worklogs/exemplars.md`. Most loop iterations produce a seed, a rejected
+proposal, or an empty-hand note rather than a Reviewer-passed full
+proposal — that is the design. A 15-iteration empty-hand streak halts
+the loop as a design problem; see `.claude/commands/research.md`.
 
 ## Read first
 
@@ -55,47 +57,60 @@ uv run run_panel.py --stage all    --time-budget-s 120  # adds Craftax
 
 ## Subagent roles (canonical scope)
 
-- **Researcher** — proposes ideas under the four-slot contract
-  (principle, derivation, primitive, theorem) or returns the empty-hand
-  note. Reads `worklogs/exemplars.md` + `prior_attempts.md` and may
-  use web search for mathematical machinery (not for RL paper
+- **Researcher** — produces one of: a full proposal under the
+  four-slot contract (principle, derivation, primitive, theorem),
+  a **seed** (slots 1–3 filled, slot 4 replaced by an explicit
+  open question — carried forward in the corpus for future
+  closure), or an empty-hand note. Reads `worklogs/exemplars.md`,
+  `prior_attempts.md`, and recent hypothesis headers + open seeds;
+  may use web search for mathematical machinery (not for RL paper
   imitation). Writes `worklogs/runs/<run_id>/hypothesis.md`. Never
   reads or writes code.
 - **Reviewer** — adversarial referee. Default verdict is `reject`.
-  Verifies the derivation step-by-step and searches the web to confirm
-  the proposal is not a renamed published method. Reads
-  `worklogs/runs/<run_id>/hypothesis.md` + `prior_attempts.md` (family
-  level) + `worklogs/exemplars.md`. Writes
+  Verifies the derivation step-by-step and searches the web to
+  confirm the proposal is not a renamed published method. Reads
+  `worklogs/runs/<run_id>/hypothesis.md` + `prior_attempts.md`
+  (family level) + `worklogs/exemplars.md`. Writes
   `worklogs/runs/<run_id>/review.md` with verdict
-  `pass | revise | reject`.
-- **Engineer** — runs only when Reviewer's verdict is `pass`. Authors
-  `worklogs/runs/<run_id>/train.py` from the hypothesis, runs it
-  through the panel, captures `worklogs/runs/<run_id>/result.json`.
-  Restores the repo-root `train.py` before exiting.
-- **Curator** — synthesizes hypothesis + review + result into a per-run
-  verdict (`proven-on-substrate`, `structural-failure`,
-  `implementation-failure`, `null-result`, `empty-hand`,
+  `pass | pass-as-seed | revise | reject` (`pass-as-seed` applies
+  only to seeds; the seed verdict still requires slots 1–3 at
+  exemplar quality and a checkable open question).
+- **Engineer** — runs only when Reviewer's verdict is `pass` on a
+  full proposal. Authors `worklogs/runs/<run_id>/train.py` from the
+  hypothesis, runs it through the panel, captures
+  `worklogs/runs/<run_id>/result.json`. Restores the repo-root
+  `train.py` before exiting. Does **not** run on seeds.
+- **Curator** — synthesizes hypothesis + review + result into a
+  per-run verdict (`proven-on-substrate`, `structural-failure`,
+  `implementation-failure`, `null-result`, `seeded`, `empty-hand`,
   `reviewer-rejected`). Writes `worklogs/runs/<run_id>/curator.md`,
   appends to `worklogs/ledger.jsonl`, and updates the corpus. On
-  `proven-on-substrate`, also writes `worklogs/HALT_REQUESTED.md` to
-  halt the loop for user review.
+  `proven-on-substrate`, also writes `worklogs/HALT_REQUESTED.md`
+  to halt the loop for user review.
 
 The orchestration is `.claude/commands/research.md`.
 
 ## Loop economics
 
-The loop expects a high empty-hand and reviewer-rejected rate. A
-healthy week of unattended operation:
+The loop's expected steady-state output mix per Researcher turn is
+roughly:
 
-- 100+ empty-hand notes (Researcher correctly couldn't reach the bar)
-- ~10 reviewer-rejected proposals (Reviewer caught flaws)
-- ~1 reviewer-passed proposal that got run through the panel
-- ideally 1 promotion that halts for user review
+- ~20% full proposals (most rejected by Reviewer)
+- ~50% seeds (some closed by future iterations, most retiring stale)
+- ~30% empty-hand notes (after honest seed-closure attempts and
+  fresh-region attempts both failed to produce slots 1–3)
 
-Anything denser than that means the bar slipped. Empty-hand turns and
-rejections are the *correct* dominant outcome; the loop is calibrated
-for low-frequency search of high-quality candidates, not
-high-throughput search of heuristics.
+A healthy month of unattended operation might produce dozens of
+seeds (most stale, some closed), reviewer-rejected proposals,
+~1–3 reviewer-passed full proposals that get run through the panel,
+and ideally one promotion that halts for user review.
+
+Anything that looks denser than this — many full proposals passing
+Reviewer per week — likely means the bar slipped. Anything that
+looks far sparser — long pure-empty-hand streaks — means the seed
+mechanism is failing and the loop converged on the empty-hand basin
+(the pre-flight halts after 15 consecutive empty-hands as a design
+breaker).
 
 ## Promotion halts the loop
 
