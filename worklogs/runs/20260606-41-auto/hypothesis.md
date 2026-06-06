@@ -1,0 +1,3 @@
+# 20260606-41-auto — empty-handed
+
+reason: Surveyed candidate principles outside the exemplar list (Wasserstein gradient flow on occupancies, primal-dual on the MDP LP, CFR-style state-level regret matching, Boltzmann posterior / RL-as-inference, score-based policies via reverse-time SDE, Kelly / log-utility return, Tsallis-entropy soft RL, robust-MDP saddle points, replicator dynamics, Bellman-residual implicit differentiation). Each either reduces to an exemplar under variable renaming (soft-Q, NPG, mirror descent, TRPO/PPO), is a published method whose theorem is already known, or leaves slot 4 (theorem) as hand-waving. No clean four-slot proposal at exemplar quality; correct outcome is no candidate.
