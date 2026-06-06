@@ -171,6 +171,31 @@ Existing methods may appear as **components** (a torch network, an
 optimizer, a replay buffer, a sequence model). They cannot be the
 *explanation* for why the method works.
 
+## Substrate budget constraint — vector-stage floor clamping
+
+**Pattern.** Across runs 15–18 (and earlier in runs 13–17 cited in
+those hypotheses), every score-function / policy-gradient probe at the
+vector stage (DST-concave + RG, 120s budget) lands at DST=99.0,
+RG=0.011 for **both candidate and ablation**. `ablation_delta` is 0.0
+on every env. The ablation comparison is vacuous because neither arm
+departs the random floor within budget.
+
+**Why this happens.** DST-concave and RG under the vector-stage 120s
+budget provide too little compute for a policy-gradient method to find
+even one non-nearest-treasure trajectory. The mechanism under test (e.g.
+Pareto-frontier KDE, coverage growth, etc.) cannot fire until the policy
+first discovers a non-trivial trajectory. At 120s, that discovery rarely
+happens. The result is that candidate and ablation are both stuck at the
+initial random-walk floor, and any mechanism difference is invisible.
+
+**Constraint for the Researcher.** Do not claim a vector-stage win for a
+mechanism whose novelty fires only *after* the policy departs the random
+floor, unless a simpler warm-start (quick or sparse stage first) confirms
+that some learning occurs within budget. If the quick/sparse stage shows
+nonzero lift, the vector stage can be trusted. If quick/sparse also
+yields floor scores, the mechanism is not learning on this substrate at
+all and a different probe direction is needed.
+
 ---
 
 ## Appendix — attempt-to-family map

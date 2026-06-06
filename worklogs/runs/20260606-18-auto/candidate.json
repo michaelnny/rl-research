@@ -1,0 +1,19 @@
+{
+  "run_id": "20260606-18-auto",
+  "algorithm_name": "PRISM",
+  "principle": "Score-function policy ascent on the log-density of the realized terminal vector return under a rolling kernel-density estimate of the Pareto-non-dominated subset of past terminal returns.",
+  "primitive_name": "rolling_pareto_frontier_kde",
+  "primitive_type": "vector_return_space (R^m) -> nonneg_density (R_>=0); a finite-support kernel density estimate on R^m whose support is the Pareto-non-dominated subset of the last N terminal vector returns",
+  "update_family": "direct_policy_update",
+  "memory": "other",
+  "feedback_signal": "info[\"vector\"] per-component vector return at terminal; the episode-terminal cumulative vector y_tau in R^m feeds a non-parametric KDE that produces a scalar log-density weight for that trajectory",
+  "uses_reward": true,
+  "uses_vector_reward": true,
+  "claimed_stage": "vector",
+  "nearest_disqualifier": "topk_cloning",
+  "novelty_boundary": "CEM/topk-cloning weights trajectories by a 0/1 elite indicator above a scalar threshold; PRISM weights by a continuous KDE density on vector-return space whose level sets are non-linear (sums of Gaussians around frontier corners). Two trajectories with the same scalar return can have very different PRISM weights based on where in R^m they land relative to frontier corners. Also distinct from linear scalarization w^T r: the weight log mu*(y) = log sum_p exp(-||y-p||^2/(2h^2)) - const cannot be written as w^T y + const for any fixed or trajectory-constant w; counterexample at three equilateral frontier points produces non-linear concentric level sets that no linear functional has. Distinct from MOO-SVGD (single policy, no particle ensemble, no policy-space repulsion), Latent-Conditioned PG (no preference conditioning input to policy), and Continuous Pareto Frontier Approximation (single policy, not a parametric manifold of policies).",
+  "empirical_claim": "On vector stage (deep-sea-treasure-concave-v0 + resource-gathering-v0), PRISM shows growing rolling-frontier coverage |F_n| >= 3 by end of training, and achieves hypervolume strictly above the nearest-treasure-collapse score (DST > 99, RG > 0.011) on at least one env within 120s. The frontier-coverage observable distinguishes PRISM from any algorithm that converges to a single Pareto point.",
+  "falsifier": "If coverage |F_n| stays at 1 throughout training (only the nearest-treasure terminal in the rolling Pareto front), the frontier-extension mechanism never fires and PRISM collapses to constant-weight REINFORCE. If PRISM matches the random-density ablation on hypervolume AND on coverage |F_n|, the rolling-frontier target measure is decorative.",
+  "ablation_plan": "Replace the rolling Pareto-frontier KDE target with a fixed isotropic Gaussian centered at the origin: mu*_ablate(y) = (2 pi sigma^2)^{-m/2} exp(-||y||^2 / (2 sigma^2)), sigma estimated from the first 8 random rollouts then frozen. The ablation log-weight is monotone in -||y||^2, with NO frontier-tracking. Same vector-return computation, same score-function update, same baselining. The coverage |F_n| observable is degenerate (always 1 since no frontier is tracked), so the discriminator is the empirical hypervolume difference and the empirical coverage growth in the candidate.",
+  "proof_debt": "(1) Wasserstein-2 convergence of policy-induced terminal-return distribution nu_pi to a measure supported on upper Pareto frontier under matched-time-scale step sizes (two-timescale Borkar 2008 argument with target on slow timescale); (2) frontier-coverage growth rate (logarithmic lower bound conjecture); (3) bias of the median-heuristic bandwidth estimator on vector-return space; (4) hypervolume monotonicity along the PRISM update trajectory; (5) strict dominance of PRISM over any linear-scalarization-with-fixed-w on non-convex Pareto frontiers."
+}
