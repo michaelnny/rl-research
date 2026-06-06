@@ -1,0 +1,19 @@
+{
+  "run_id": "20260606-16-auto",
+  "algorithm_name": "TEAR (Trajectory-Empirical Adjoint Reflection)",
+  "principle": "The optimal policy is identified by Pontryagin's discrete-time maximum principle on the trajectory-empirical transition operator: a vector-valued adjoint co-state is propagated backward along each rollout by a linear recursion with terminal boundary equal to the realized terminal vector reward, and the per-step Hamiltonian becomes the score-function weight for policy ascent.",
+  "primitive_name": "trajectory-empirical adjoint co-state",
+  "primitive_type": "({episodes} x {0,...,T}) -> R^k vector path satisfying lambda_T = pad(r_vec_T) and lambda_t = pad(r_vec_t) + J_t^T lambda_{t+1} with rank-1 empirical Jacobian J_t",
+  "update_family": "direct_policy_update",
+  "memory": "episode",
+  "feedback_signal": "vector reward r_vec_t from info['vector']; for sparse scalar envs, augmented to (r_t, 1) so the constant time-marker channel guarantees nonzero terminal boundary",
+  "uses_reward": true,
+  "uses_vector_reward": true,
+  "claimed_stage": "vector",
+  "nearest_disqualifier": "actor_critic",
+  "novelty_boundary": "Unlike actor-critic, the adjoint lambda_t is per-trajectory (not a learned function over state space), is propagated by a linear backward recursion (no max, no Bellman backup), is vector-valued (one component per reward channel, not a scalar critic), and the score-function weight is a per-step Hamiltonian inner product, not a cumulative return-to-go or TD-based advantage. The vector stage is appropriate because lambda is genuinely vector-valued; the weight is not a scalarization w^T r because lambda_{t+1} varies with both t and tau through the backward recursion driven by the realized trajectory's empirical Jacobian, and is not of the form w^T r_t for any t-independent or policy-independent w.",
+  "empirical_claim": "On the vector stage (DST-concave + resource-gathering), TEAR should achieve hypervolume strictly above the random baseline (DST random=194.0, RG random=1.331) on at least one of the two envs within the 120s budget. DST's constant per-step penalty channel guarantees a non-zero terminal-boundary lambda_T, avoiding LYRA's cold-start failure.",
+  "falsifier": "If TEAR's hypervolume is at-or-below the random baseline on both vector envs, OR if the random-i.i.d.-lambda ablation matches TEAR's hypervolume within seed noise, the trajectory-empirical adjoint primitive is decorative and the probe is falsified.",
+  "ablation_plan": "Replace the trajectory-empirical backward adjoint with random i.i.d. vectors lambda~_t ~ N(0, I_k) resampled at each step (no Jacobian, no backward recursion). Compute the score-function weight as H_t = <r_vec_t, 1_m> + <lambda~_{t+1}, J_t · onehot(a_t)_proj> using the random vector. If this ablation matches TEAR's hypervolume, the adjoint primitive is not load-bearing.",
+  "proof_debt": "(1) Consistency of the rank-1 trajectory-empirical Jacobian J_t = I + (phi_{t+1}-phi_t) phi_t^T / ||phi_t||^2 as an estimator of the true conditional state-feature Jacobian under stationarity. (2) Convergence of the Pontryagin-weighted score-function update theta <- theta + alpha · sum_t H_t · grad log pi_theta as a Robbins-Monro stochastic-gradient procedure for J(pi_theta). (3) Hypervolume monotone-improvement theorem: the expected vector return mu_vec(pi_theta_n) has non-decreasing dominated hypervolume along the TEAR policy-update flow."
+}
