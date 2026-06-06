@@ -72,3 +72,4 @@
 {"run_id":"20260606-09-auto","ts":"2026-06-06T23:30:00Z","verdict":"empty-hand","stage":null,"beat_strong":0,"beat_random":0,"status":"no-engineer","commit":"a7b4a23"}
 {"run_id":"20260606-10-auto","ts":"2026-06-06T23:59:00Z","verdict":"empty-hand","stage":null,"beat_strong":0,"beat_random":0,"status":"no-engineer","commit":"a7b4a23"}
 {"run_id":"20260606-11-auto","ts":"2026-06-06T23:59:59Z","verdict":"empty-hand","stage":null,"beat_strong":0,"beat_random":0,"status":"no-engineer","commit":"a7b4a23"}
+{"run_id":"20260606-12-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"empty-hand","stage":null,"beat_strong":0,"beat_random":0,"status":"no-proposal","commit":"024b93d4805587f26e6edeb27cdac83d52d6f236"}
