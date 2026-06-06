@@ -29,6 +29,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--time-budget-s", type=int, default=harness.TIME_BUDGET_S)
     p.add_argument("--workers", type=int, default=None)
+    p.add_argument(
+        "--train-path",
+        type=Path,
+        default=ROOT / "train.py",
+        help="Candidate train.py path; defaults to repo-root train.py",
+    )
     return p.parse_args()
 
 
@@ -48,12 +54,19 @@ def eval_grace_s(env_id: str) -> int:
     return CRAFTAX_EVAL_GRACE_S if env_id == "Craftax-Symbolic-v1" else DEFAULT_EVAL_GRACE_S
 
 
-def run_one(env_id: str, seed: int, budget: int) -> float:
+def resolve_train_path(path: Path) -> Path:
+    out = path if path.is_absolute() else ROOT / path
+    if not out.exists():
+        raise SystemExit(f"train path does not exist: {out}")
+    return out.resolve()
+
+
+def run_one(env_id: str, seed: int, budget: int, train_path: Path) -> float:
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     log_path = RUN_DIR / f"{env_id}.log"
     cmd = [
         sys.executable,
-        str(ROOT / "train.py"),
+        str(train_path),
         "--env",
         env_id,
         "--seed",
@@ -80,6 +93,7 @@ def run_one(env_id: str, seed: int, budget: int) -> float:
 def main() -> None:
     args = parse_args()
     envs = select_envs(args)
+    train_path = resolve_train_path(args.train_path)
     workers = args.workers or len(envs)
     baselines = harness.load_baselines()
 
@@ -87,13 +101,17 @@ def main() -> None:
         shutil.rmtree(RUN_DIR)
 
     print(
-        f"[run] stage={args.stage} envs={','.join(envs)} budget={args.time_budget_s}s workers={workers}",
+        f"[run] stage={args.stage} envs={','.join(envs)} budget={args.time_budget_s}s "
+        f"workers={workers} train_path={train_path}",
         flush=True,
     )
     t0 = time.monotonic()
     scores: dict[str, float] = {}
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(run_one, env, args.seed, args.time_budget_s): env for env in envs}
+        futures = {
+            pool.submit(run_one, env, args.seed, args.time_budget_s, train_path): env
+            for env in envs
+        }
         for fut in as_completed(futures):
             env = futures[fut]
             try:

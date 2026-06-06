@@ -1,370 +1,283 @@
 ---
-description: Autonomous research loop. Researcher → Reviewer → (Engineer →) Curator. The Researcher writes a full proposal, a seed (slots 1-3 plus an open question, carried forward for future closure), or an empty-hand note. Halts on proven candidates, the disk cap, the consecutive-error circuit breaker, a 15-iteration empty-hand streak (loop-design problem), or an explicit halt request.
+description: Autonomous empirical-probe research loop. Researcher -> schema validation -> Reviewer triage -> Engineer ladder/ablation run -> Curator. Halts on promotions, disk cap, repeated infrastructure errors, repeated no-panel iterations, or explicit halt request.
 argument-hint: "[--max-iters N] [--max-hours H]"
 allowed-tools: Agent, Read, Write, Edit, Bash
 ---
 
 You are running the autonomous research loop of the rl-research project.
-Each iteration: Researcher (proposes a full proposal, a seed, or
-returns empty-hand) → Reviewer (adversarial referee, default reject) →
-branch on verdict → Engineer (only if Reviewer `pass`-ed a full
-proposal) → Curator (synthesizes the result).
+The loop is now probe-first: mathematical novelty and coherence are
+screened before compute, but a full theorem is not required before the
+Engineer runs the fixed panel. The panel must become part of the search
+pressure.
 
-**Reviewer rejections are common and expected.** The Researcher's
-output mix in steady state should be roughly ~20% full proposals
-(most rejected by Reviewer), ~50% seeds (some closed in future turns,
-most retiring stale), ~30% empty-hand. A long streak of pure
-empty-hand notes is **not** correct behavior — it indicates the
-Researcher has converged on the empty-hand basin and partial
-structure is no longer compounding across iterations. The pre-flight
-breaks the streak by halting (see "empty-hand streak" below).
+Each iteration is:
 
-A healthy week of unattended operation might produce dozens of seeds
-(most stale, some closed), some reviewer-rejected proposals, ~1–3
-reviewer-passed full proposals that get run through the panel, and
-ideally one promotion that halts for user review.
+Researcher writes a probe plus `candidate.json`, a negative closure, or
+an empty-hand note -> the orchestrator validates the candidate schema ->
+Reviewer performs novelty/coherence triage -> Engineer runs every
+Reviewer-approved probe through the panel ladder and ablation -> Curator
+converts the result into corpus signal.
+
+The Reviewer is still adversarial about rebadges, dead families, and
+incoherent updates. The Reviewer is no longer a theorem gate. Empirical
+results are allowed to arrive before a convergence proof, matching the
+historical path by which the exemplars in `worklogs/exemplars.md` became
+worth theorizing about.
 
 ## Arguments
 
-Parse `$ARGUMENTS` for these optional flags (whitespace-separated):
+Parse `$ARGUMENTS` for optional flags:
 
-- `--max-iters N` — stop after N completed iterations (default: unbounded).
-- `--max-hours H` — stop after H wallclock hours from when this command
-  started (default: unbounded).
+- `--max-iters N` - stop after N completed iterations.
+- `--max-hours H` - stop after H wallclock hours from command start.
 
-If neither is given, the loop runs unbounded and stops only on the
-file-based halt conditions below.
+If neither is given, run until a file-based halt condition triggers.
 
-## State to track across iterations
+## State
 
-`consecutive_errors` is **derived from `worklogs/ledger.jsonl` at each
-pre-flight** — NOT held in your own context. Read the trailing N lines
-of the ledger; count how many of the trailing entries have `status` in
-{`killed-error`, `forbidden-import`} BEFORE a non-error entry breaks
-the streak. This survives Claude context compaction and session
-restarts.
+`consecutive_errors` and `consecutive_no_panel` are derived from
+`worklogs/ledger.jsonl` at each pre-flight. Do not keep them only in
+context; context compaction and session restarts must not erase safety
+state.
 
-`iters_done` and `started_at` are tracked in your context for the
-optional `--max-iters` and `--max-hours` guards. They reset when the
-session restarts — that is acceptable, because those guards are
-user-supplied conveniences, not safety mechanisms.
+For the no-panel counter, count only ledger entries whose JSON object has
+`"mode":"probe-v1"`. Legacy entries without that field do not count.
 
-## Pre-flight (before EACH iteration)
+## Pre-flight Before Each Iteration
 
-In this exact order. Any failure → log reason and exit cleanly.
+Stop cleanly on the first triggered condition.
 
-1. **Halt-requested file.** If `worklogs/HALT_REQUESTED.md` exists,
-   read it, print its contents, exit. The Curator writes this file on
-   `proven-on-substrate` to halt the loop for user review; do not
-   suppress it.
-2. **Max iters / hours.** If `iters_done >= max_iters` (when set), exit.
-   If wallclock since `started_at` >= `max_hours` (when set), exit.
-3. **Disk cap.** `du -s worklogs/runs 2>/dev/null | awk '{print $1}'`
-   — if > 5_000_000 (KB, ~5 GB), write a `HALT_REQUESTED.md` saying
-   "disk cap exceeded" and exit.
-4. **Substrate dirty.**
-   `git status --porcelain harness.py run_panel.py baselines.json
-    train.py worklogs/TEMPLATE.md`
-   — if non-empty, write a `HALT_REQUESTED.md` with the diff and exit.
-   The substrate must be clean before any iteration runs.
+1. **Halt request.** If `worklogs/HALT_REQUESTED.md` exists, read it,
+   print its contents, and exit.
+2. **Max iters / hours.** If the user-supplied guard is reached, exit.
+3. **Disk cap.** Run `du -s worklogs/runs 2>/dev/null | awk '{print $1}'`.
+   If it is greater than 5,000,000 KB, write `worklogs/HALT_REQUESTED.md`
+   with "disk cap exceeded" and exit.
+4. **Substrate dirty.** Run
+   `git status --porcelain harness.py run_panel.py baselines.json train.py worklogs/TEMPLATE.md`.
+   If non-empty, write `worklogs/HALT_REQUESTED.md` with the diff and
+   exit. Corpus files are allowed to change between iterations; the
+   fixed substrate is not.
+5. **Consecutive infrastructure errors.** Read trailing ledger entries
+   and count consecutive statuses in `{killed-error, killed-budget,
+   forbidden-import}`. If the count is 3 or more, write a halt file:
+   "three consecutive errored iterations - likely systemic regression".
+6. **No-panel streak.** Among trailing `mode=probe-v1` entries, count
+   consecutive entries with `stage` equal to null before a non-null
+   stage breaks the streak. If the count reaches 8, write a halt file:
+   "eight probe-v1 iterations produced no panel run - triage or
+   Researcher has become too restrictive". This replaces the old
+   empty-hand-streak breaker.
 
-   The check intentionally lists ONLY sealed-immutable files plus
-   `train.py` for contamination detection. `prior_attempts.md`,
-   `worklogs/attempts/*`, `worklogs/runs/*`, `worklogs/promotions/*`,
-   `worklogs/exemplars.md`, and `worklogs/ledger.jsonl` are corpus
-   files owned by the Curator subagent and may be modified between
-   iterations — they MUST NOT block the next iteration. Step 6
-   (auto-commit) keeps the working tree clean across iterations.
+## One Iteration
 
-5. **Consecutive errors.** Derive `consecutive_errors` from
-   `worklogs/ledger.jsonl` (trailing lines, count consecutive error
-   statuses). If `consecutive_errors >= 3`, write a
-   `HALT_REQUESTED.md` saying "three consecutive errored iterations —
-   likely systemic regression, see worklogs/runs/*/result.json" and
-   exit. Empty-hand and reviewer-rejected verdicts do **not** count
-   as errors for this circuit breaker.
-
-6. **Empty-hand streak.** Read the trailing 15 lines of
-   `worklogs/ledger.jsonl`. If all 15 have `verdict` equal to
-   `empty-hand`, write a `HALT_REQUESTED.md` saying "fifteen
-   consecutive empty-hand iterations — Researcher has converged on
-   the empty-hand basin and partial structure is no longer compounding
-   across iterations; loop design needs human attention" and exit.
-   The seed mechanism exists precisely to avoid this; if it is
-   producing zero seeds across 15 turns, that is a loop-design
-   problem, not the calibrated dominant outcome. (If the ledger has
-   fewer than 15 entries total, this check is a no-op.)
-
-## One iteration — the state machine
-
-### Step 0 — allocate run_id
+### Step 0 - Allocate run_id
 
 ```bash
 uv run python scripts/next_run_id.py auto
 ```
 
-Capture the printed `run_id`. Then `mkdir -p worklogs/runs/<run_id>`.
+Capture the printed `run_id`. Create `worklogs/runs/<run_id>`.
 
-### Step 1 — Researcher
+### Step 1 - Researcher
 
-Spawn the `researcher` subagent with this exact prompt:
+Spawn `researcher` with this exact prompt:
 
 > Run ID is `<run_id>`. Read `worklogs/exemplars.md`,
-> `prior_attempts.md`, and the recent hypothesis files per your
-> agent definition. Produce one of: (a) a full proposal meeting the
-> four-slot contract, (b) a seed (slots 1–3 filled, slot 4 replaced
-> by an explicit `## Open question`) — preferred when the principle
-> is fresh but the theorem is rough, or when you can close a recent
-> open seed only by writing a fresh seed yourself, (c) the empty-hand
-> note only after honestly attempting to close any recent open seeds
-> and at least one fresh region. Write
-> `worklogs/runs/<run_id>/hypothesis.md`. Halt after writing. You do
-> not write or read any code.
+> `prior_attempts.md`, recent `worklogs/ledger.jsonl` entries, and
+> recent hypothesis/curator summaries per your agent definition.
+> Produce `worklogs/runs/<run_id>/hypothesis.md`. For a runnable
+> `[probe]`, also produce `worklogs/runs/<run_id>/candidate.json` using
+> the schema in your agent definition. Prefer a runnable `[probe]`:
+> one-sentence principle, typed primitive, derivation sketch, update
+> rule, empirical claim, ablation plan, novelty boundary, and explicit
+> proof debt. A full theorem is not required. Write a
+> `[negative-closure]` only when you can close a prior direction with a
+> checkable negative result. Write `empty-handed` only when no coherent,
+> non-rebadged probe can be made after reading recent failures. Do not
+> read or write code. Halt after writing.
 
-After the subagent returns, verify
-`worklogs/runs/<run_id>/hypothesis.md` exists. If not, write a stub
-`result.json` with `status: killed-error,
-error: "researcher produced no hypothesis"` and skip to Step 5
-(Curator).
+After return, verify `hypothesis.md` exists. If it does not, write a
+minimal `result.json` with `status: killed-error` and skip to Curator.
 
-Then read the hypothesis file's first line to detect the output type:
+Detect type from the first line:
 
-- `# <run_id> — empty-handed` → empty-hand. Write a stub
-  `result.json`:
+- `# <run_id> - empty-handed` or `# <run_id> -- empty-handed`:
+  write a stub `result.json` with `stage: null`, `status: no-proposal`,
+  `mode: probe-v1`, then skip to Curator.
+- Header containing `[negative-closure]`: continue to Reviewer.
+- Header containing `[probe]`: verify `candidate.json` exists and run:
 
-  ```json
-  {
-    "run_id": "<run_id>",
-    "stage": null,
-    "envs": [],
-    "scores": {},
-    "beat_random": 0,
-    "beat_strong": 0,
-    "wallclock_s": 0.0,
-    "n_retries": 0,
-    "status": "no-proposal",
-    "commit": "<git rev-parse HEAD>"
-  }
+  ```bash
+  uv run python scripts/validate_candidate.py worklogs/runs/<run_id>/candidate.json
   ```
 
-  Skip to Step 5 (Curator) — do not spawn the Reviewer or Engineer.
+  If validation fails, respawn Researcher once with:
 
-- `# <run_id> — <Name> [seed]` → seed. Continue to Step 2 (Reviewer).
-  The Reviewer applies its seed verdict set; the Engineer never
-  runs on a seed.
+  > `candidate.json` is missing or invalid for `<run_id>`. Run
+  > `uv run python scripts/validate_candidate.py worklogs/runs/<run_id>/candidate.json`,
+  > fix only the schema/mismatch issues, and leave the core principle
+  > unchanged. If the principle cannot be represented honestly in the
+  > schema, replace the hypothesis with an empty-hand note.
 
-- `# <run_id> — <Name>` (no `[seed]`) → full proposal (possibly with
-  a `Closes seed: <prev-run-id>` line). Continue to Step 2.
+  Re-read the hypothesis header. If it became empty-handed, write the
+  `no-proposal` stub and skip to Curator. If it remains a probe, re-run
+  validation. If validation still fails, write a stub `result.json` with
+  `status: candidate-invalid`, `stage: null`, `mode: probe-v1`, then
+  skip to Curator.
+- Any other header: continue to Reviewer, but the Reviewer should treat
+  missing `[probe]` as a format issue and normally return `revise` or
+  `reject`.
 
-### Step 2 — Reviewer
+### Step 2 - Reviewer Triage
 
-Spawn the `reviewer` subagent with this exact prompt:
+Spawn `reviewer` with this exact prompt:
 
-> Review `worklogs/runs/<run_id>/hypothesis.md`. The hypothesis is a
-> full proposal or a seed (file marked `[seed]`); your verdict set
-> differs by type. Check the math step by step. Search for the
-> principle and update rule to confirm the proposal/seed is not a
-> renamed published method. Write `worklogs/runs/<run_id>/review.md`
-> with frontmatter `verdict: pass | pass-as-seed | revise | reject`
-> and `hypothesis_type: proposal | seed` plus reasoning per your
-> agent definition.
+> Review `worklogs/runs/<run_id>/hypothesis.md` and, for probes,
+> `worklogs/runs/<run_id>/candidate.json`. This is a probe-first loop.
+> Your job is to block rebadges, dead-family shapes, incoherent
+> derivations, non-typed primitives, non-implementable update rules,
+> missing/weak ablations, and vector scalarization. Do not require a
+> convergence theorem before compute; explicit proof debt is allowed.
+> For `[negative-closure]`, verify the negative result. Write
+> `worklogs/runs/<run_id>/review.md`
+> with frontmatter `verdict: probe | revise | reject | negative-closure`
+> and `hypothesis_type: probe | negative-closure | empty-hand`.
 
-After return, parse the `verdict:` line out of `review.md`'s
-frontmatter.
+Parse `verdict:` from `review.md`.
 
-### Step 3 — Branch on verdict
+### Step 3 - Branch
 
-- **`pass`** (full proposal) → continue to Step 4 (Engineer).
+- **`probe`** -> Engineer.
+- **`negative-closure`** -> write stub `result.json` with `stage: null`,
+  `status: negative-closure`, `mode: probe-v1`, then Curator.
+- **`revise`** -> respawn `researcher` once:
 
-- **`pass-as-seed`** (seed) → write a stub `result.json`:
-  ```json
-  {
-    "run_id": "<run_id>",
-    "stage": null,
-    "envs": [],
-    "scores": {},
-    "beat_random": 0,
-    "beat_strong": 0,
-    "wallclock_s": 0.0,
-    "n_retries": 0,
-    "status": "seeded",
-    "commit": "<git rev-parse HEAD>"
-  }
-  ```
-  Then skip to Step 5. The Engineer does **not** run on a seed; the
-  seed enters the corpus for future Researcher iterations to attempt
-  to close.
+  > Revise `worklogs/runs/<run_id>/hypothesis.md` using the Decision
+  > section in `review.md`. Keep the same core principle; fix only the
+  > issues named. If the principle cannot survive, replace the file with
+  > an empty-hand note. Do not write code.
 
-- **`revise`** → respawn `researcher` ONCE with prompt:
+  Then respawn `reviewer` once. Accept the second verdict. `probe` goes
+  to Engineer, `negative-closure` gets the stub above, anything else gets
+  a stub `result.json` with `status: reviewer-rejected` and `mode:
+  probe-v1`, then Curator.
+- **`reject`** -> write stub `result.json` with `stage: null`,
+  `status: reviewer-rejected`, `mode: probe-v1`, then Curator.
 
-  > Revise the hypothesis. Reviewer wrote
-  > `worklogs/runs/<run_id>/review.md`. Address the specific fixes
-  > listed in the Decision section and rewrite hypothesis.md. Do not
-  > propose a different algorithm; only fix the issues the Reviewer
-  > named. If the fixes would require abandoning the principle,
-  > replace the file with the empty-hand note instead. If slot 4
-  > cannot be tightened to a real theorem but slots 1–3 are clean,
-  > you may downgrade a full proposal to a seed (add `[seed]` to the
-  > header and replace the Theorem section with `## Open question`).
+Each stub result must include:
 
-  Then respawn `reviewer` for a re-review. Whatever the second
-  Reviewer's verdict is, accept it: `pass` → Step 4,
-  `pass-as-seed` → write stub `result.json` with `status: seeded` and
-  skip to Step 5, anything else → write a stub `result.json` with
-  `status: abandoned-revise` and skip to Step 5.
+```json
+{
+  "run_id": "<run_id>",
+  "mode": "probe-v1",
+  "stage": null,
+  "envs": [],
+  "scores": {},
+  "beat_random": 0,
+  "beat_strong": 0,
+  "wallclock_s": 0.0,
+  "n_retries": 0,
+  "status": "<status>",
+  "commit": "<git rev-parse HEAD>"
+}
+```
 
-- **`reject`** → write a stub `result.json`:
-  ```json
-  {
-    "run_id": "<run_id>",
-    "stage": null,
-    "envs": [],
-    "scores": {},
-    "beat_random": 0,
-    "beat_strong": 0,
-    "wallclock_s": 0.0,
-    "n_retries": 0,
-    "status": "reviewer-rejected",
-    "commit": "<git rev-parse HEAD>"
-  }
-  ```
-  Then skip to Step 5.
-
-### Step 4 — Engineer
+### Step 4 - Engineer
 
 Spawn `engineer` with this exact prompt:
 
-> Run ID is `<run_id>`. Reviewer passed the proposal. Read
-> `worklogs/runs/<run_id>/hypothesis.md` and
-> `worklogs/runs/<run_id>/review.md`, then author
-> `worklogs/runs/<run_id>/train.py` realizing the update rule
-> faithfully. Pick the panel stage that exercises the principle.
-> Run the panel, write `worklogs/runs/<run_id>/result.json`, and
-> ensure the repo-root `train.py` is restored from `train.py.bak`
-> before you exit.
-
-After return, verify both `worklogs/runs/<run_id>/train.py` and
-`worklogs/runs/<run_id>/result.json` exist AND that the repo-root
-`train.py` is unchanged (`git diff --quiet train.py`). If `train.py`
-is dirty, restore it via `git checkout -- train.py` and note the slip.
-If `worklogs/runs/<run_id>/train.py` does not exist (Engineer crashed
-before authoring), the Engineer should have written `result.json` with
-`status: killed-error`; if even `result.json` is missing, write a stub
-with `status: killed-error,
-error: "engineer produced neither train.py nor result.json"` and
-continue to Step 5.
-
-### Step 5 — Curator
-
-Spawn the `curator` subagent with this exact prompt:
-
-> Synthesize iteration `<run_id>`. Read hypothesis.md, review.md (if
-> present), result.json, panel.txt (if present), then write
-> `curator.md`, append to `worklogs/ledger.jsonl`, and update the
-> corpus per the verdict-conditional outputs in your agent definition.
-> If the run is `proven-on-substrate`, also write
-> `worklogs/HALT_REQUESTED.md` so the loop halts for user review.
+> Run ID is `<run_id>`. Reviewer approved this hypothesis for empirical
+> probe. Read `CLAUDE.md`, `README.md`, `harness.py`, `run_panel.py`,
+> repo-root `train.py`, `worklogs/runs/<run_id>/hypothesis.md`,
+> `worklogs/runs/<run_id>/review.md`, and `candidate.json`. Author
+> `worklogs/runs/<run_id>/train.py` realizing the probe's update rule
+> faithfully, plus `worklogs/runs/<run_id>/train_ablate.py` implementing
+> the ablation plan. Run the smoke -> claim -> ablation -> conditional
+> confirmation ladder with
+> `uv run python scripts/run_probe_ladder.py worklogs/runs/<run_id>`,
+> verify `panel-*.txt` files and `result.json`, and leave repo-root
+> `train.py` unchanged.
 
 After return, verify:
+
+- `worklogs/runs/<run_id>/train.py` exists.
+- `worklogs/runs/<run_id>/train_ablate.py` exists.
+- `worklogs/runs/<run_id>/result.json` exists.
+- `git diff --quiet train.py` succeeds.
+
+If the Engineer left root `train.py` dirty, write `worklogs/HALT_REQUESTED.md`
+with "Engineer left train.py dirty for `<run_id>`" and exit rather than
+silently continuing on a contaminated substrate.
+
+If `result.json` is missing, write a minimal killed-error result and
+continue to Curator.
+
+### Step 5 - Curator
+
+Spawn `curator` with this exact prompt:
+
+> Synthesize iteration `<run_id>`. Read hypothesis.md, candidate.json (if
+> present), review.md (if present), result.json, panel-*.txt or panel.txt
+> (if present), and fix notes (if present). Write `curator.md`, append one JSON line to
+> `worklogs/ledger.jsonl`, and update corpus files per your agent
+> definition. If the verdict is `proven-on-substrate`, write
+> `worklogs/HALT_REQUESTED.md` so the loop halts for user review.
+
+Verify:
+
 - `worklogs/runs/<run_id>/curator.md` exists.
-- `worklogs/ledger.jsonl` has at least one line whose `run_id` matches.
-- Substrate files are still clean (`git status --porcelain harness.py
-  run_panel.py baselines.json` is empty).
+- `worklogs/ledger.jsonl` has a line for `run_id`.
+- `git status --porcelain harness.py run_panel.py baselines.json train.py`
+  is empty.
 
-**Recovery on missing ledger line.** If `curator.md` exists but the
-ledger has no matching `run_id`, the Curator crashed between writing
-its verdict file and appending to the ledger. Respawn `curator` ONCE
-with this exact prompt:
+If `curator.md` exists but the ledger line is missing, respawn Curator
+once with:
 
-> Recovery for `<run_id>`: your `curator.md` exists but no matching
-> ledger line was appended. Re-read `curator.md` and append the
-> corresponding line to `worklogs/ledger.jsonl`. Do not rewrite
-> `curator.md` or modify `prior_attempts.md` / `worklogs/attempts/` /
-> `worklogs/promotions/`.
+> Recovery for `<run_id>`: `curator.md` exists but no matching ledger
+> line was appended. Re-read `curator.md` and `result.json`, append the
+> corresponding ledger line, and do not modify other corpus files.
 
-If after the recovery attempt the ledger still has no matching line,
-write `worklogs/HALT_REQUESTED.md` saying "Curator failed to append
-ledger line for `<run_id>` after recovery attempt" and exit.
+If recovery fails, write a halt file and exit.
 
-### Step 6 — auto-commit the iteration
-
-Once Curator verification has passed:
+### Step 6 - Auto-commit Iteration Corpus
 
 ```bash
 git add worklogs/ prior_attempts.md
 if ! git diff --cached --quiet; then
-  git commit -m "iter <run_id>: <verdict>" -m "status: <status>" \
-    || { echo "auto-commit failed for <run_id>" \
-         > worklogs/HALT_REQUESTED.md; exit 0; }
+  git commit -m "iter <run_id>: <verdict>" -m "status: <status>" || { echo "auto-commit failed for <run_id>" > worklogs/HALT_REQUESTED.md; exit 0; }
 fi
 ```
 
-Use targeted paths (`worklogs/ prior_attempts.md`), not `git add -A`.
-Empty-hand and reviewer-rejected iterations may produce no diff
-beyond a ledger line — that is fine; the commit just captures the
-ledger update.
+Use targeted paths. Do not `git add -A`.
 
-## Post-iteration update
+### Post-iteration
 
-1. `iters_done += 1`.
-2. Read the last line of `worklogs/ledger.jsonl`. Parse `verdict` and
-   `status`.
-3. Print one summary line to stdout:
-   `[research] iter=<iters_done> run_id=<...> verdict=<...>
-    status=<...>`.
+Increment `iters_done`, read the last ledger line, and print:
 
-Then loop back to pre-flight.
-
-## Cool-down between iterations
-
-Sleep 10s between iterations:
-
-```bash
-sleep 10
+```text
+[research] iter=<iters_done> run_id=<run_id> verdict=<verdict> status=<status> stage=<stage>
 ```
 
-Empty-hand iterations will return very quickly, so the cool-down also
-serves to keep the loop from spinning at full speed when the
-Researcher has nothing to propose. The pre-flight's empty-hand-streak
-check (step 6) halts the loop after 15 consecutive empty-hand
-iterations — do not try to extend the streak by lengthening the
-cool-down. If the seed mechanism is producing zero seeds across many
-turns, that is a loop-design problem requiring human attention, not
-something to wait out.
+Sleep 10 seconds, then loop to pre-flight.
 
-## Stop / resume
+## Forbidden Actions
 
-When `/research` exits cleanly (any halt reason), the corpus is in a
-consistent state. The user can:
-
-- Inspect `worklogs/ledger.jsonl` and `worklogs/HALT_REQUESTED.md`.
-- For a `proven-on-substrate` halt, inspect
-  `worklogs/promotions/<run_id>.md`.
-- Run `/curate` to clean up any uncurated runs.
-- Delete `worklogs/HALT_REQUESTED.md` and re-invoke `/research` to
-  resume.
-
-## Forbidden actions
-
-These bind the orchestrator (this `/research` loop), not the subagents.
-
-- The orchestrator never edits `harness.py`, `run_panel.py`,
-  `baselines.json`, `prior_attempts.md`, `worklogs/exemplars.md`,
-  `worklogs/TEMPLATE.md`, `worklogs/attempts/*`, or any subagent's
-  run directory contents. Subagents own their files.
-- Skipping pre-flight checks "just to fit one more iteration in."
-- Modifying `worklogs/HALT_REQUESTED.md` to suppress a halt.
+- Skipping pre-flight checks.
+- Modifying `harness.py`, `run_panel.py`, `baselines.json`, or
+  `worklogs/TEMPLATE.md` during an iteration.
+- Suppressing `worklogs/HALT_REQUESTED.md`.
+- Treating `reviewer-rejected`, `negative-closure`, `candidate-invalid`,
+  or `no-proposal` as infrastructure errors. They count toward the
+  no-panel breaker, not the error breaker.
+- Asking the user between iterations.
 - Auto-committing with `git add -A`.
-- Asking the user anything between iterations.
-- Counting `empty-hand`, `seeded`, or `reviewer-rejected` as errors.
-  None of them are infrastructure failures. (A 15-iteration empty-hand
-  streak DOES halt the loop via pre-flight step 6, but that is a
-  loop-design halt, not an error halt.)
 
-## Final summary on exit
+## Final Summary On Exit
 
-Print to stdout:
-- Halt reason
+Print:
+
+- halt reason
 - `iters_done`
-- Wallclock duration
-- Last 5 ledger entries (run_id + verdict + status)
+- wallclock duration
+- last 5 ledger entries (`run_id`, `verdict`, `status`, `stage`)

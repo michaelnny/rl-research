@@ -1,11 +1,11 @@
 ---
-description: Standalone Curator pass — synthesize any uncurated runs (e.g. after an interrupted iteration).
+description: Standalone Curator pass - synthesize any uncurated probe-first runs after an interrupted iteration.
 allowed-tools: Agent, Read, Bash
 ---
 
 Find every `worklogs/runs/<run_id>/` that has a `result.json` but no
 `curator.md`, and spawn the `curator` subagent for each in chronological
-order (oldest first).
+order.
 
 ## Discovery
 
@@ -18,19 +18,21 @@ for dir in worklogs/runs/*/; do
 done
 ```
 
-## For each uncurated run_id
+## For each run_id
 
-Spawn `curator` with this exact prompt:
+Spawn `curator` with this prompt:
 
-> Synthesize iteration `<run_id>`. Read hypothesis.md, review.md,
-> result.json, panel.txt (if present), then write `curator.md`,
-> append to `worklogs/ledger.jsonl`, and update the corpus per the
-> verdict-conditional outputs in your agent definition.
+> Synthesize iteration `<run_id>`. Read hypothesis.md, candidate.json (if
+> present), review.md (if present), result.json, panel-*.txt or panel.txt
+> (if present), and fix/blocker notes (if present). Write curator.md,
+> append to worklogs/ledger.jsonl, and update corpus files per your agent
+> definition. If the verdict is `proven-on-substrate`, write
+> worklogs/HALT_REQUESTED.md.
 
-After each subagent returns, verify `curator.md` was written and the
-ledger has a matching line. Do not retry — if a curator run failed,
-surface it to the user.
+After each Curator returns, verify `curator.md` exists and the ledger has
+one matching line. Do not retry more than once; surface failures to the
+user.
 
-## Final summary
+## Final Summary
 
-List the run_ids that were curated, each with its assigned verdict.
+List curated run_ids with verdict, status, and stage.

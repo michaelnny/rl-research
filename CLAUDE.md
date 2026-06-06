@@ -1,121 +1,99 @@
 # CLAUDE.md
 
 Substrate rules and hot-path commands for `rl-research`. The research
-mission and quality bar live in `worklogs/exemplars.md` and the subagent
-prompts (`.claude/agents/{researcher,reviewer,engineer,curator}.md`);
-this file is the operational spec that surrounds them.
+mission and quality bar live in `worklogs/exemplars.md`; the operational
+agent loop is in `.claude/commands/research.md` and
+`.claude/agents/*.md`.
 
-The original framing is in `RESEARCH_IDEA.md`.
+The project now uses a schema-backed probe-first loop. Novelty,
+coherence, and ablation quality are screened before compute, but
+theorem-level review no longer blocks the first empirical panel run. This fixes the failure mode documented in
+`PROBLEM.md`: the previous loop made empirical evidence downstream of a
+bar that the historical exemplars generally did not clear before being
+tried.
 
 ## Mission, in one sentence
 
-Find the next AlphaZero-class RL algorithm. The bar is calibrated against
-`worklogs/exemplars.md`. Most loop iterations produce a seed, a rejected
-proposal, or an empty-hand note rather than a Reviewer-passed full
-proposal — that is the design. A 15-iteration empty-hand streak halts
-the loop as a design problem; see `.claude/commands/research.md`.
+Find a novel RL algorithm of the same class as Q-learning, PPO,
+AlphaZero, mirror descent, SAC, MCTS, and GAE, using the fixed panel as
+an empirical filter without accepting baseline modifications as novelty.
 
 ## Read first
 
-1. `worklogs/exemplars.md` — what the bar looks like (Q-learning, PPO,
-   AlphaZero, mirror descent, SAC, MCTS, GAE).
-2. `prior_attempts.md` — dead mechanism *families* (A–G) and the
-   standard disqualifier list. Family-level only; the appendix maps
-   individual sealed attempts to families if the Reviewer needs to
-   disambiguate a borderline rebadge claim.
-3. `README.md` — hot-path commands and active envs.
+1. `worklogs/exemplars.md` - calibration set, not a menu.
+2. `prior_attempts.md` - family-level negative space and disqualifiers.
+3. `README.md` - active environments and hot-path commands.
+4. `PROBLEM.md` - why the loop moved from theorem-gated to probe-first.
 
-`worklogs/attempts/<NN>-<slug>.md` per-attempt detail files are sealed
-archival evidence. Open one only when a specific structural-distinction
-question requires the math from a prior attempt; the family list is
-designed to be self-sufficient otherwise.
-
-`worklogs/_archive/candidates/` holds the parking-lot files from the
-prior loop design. Preserved for traceability; not active corpus.
+`worklogs/attempts/<NN>-<slug>.md` files are sealed archival evidence.
+Open one only to resolve a specific structural distinction. The family
+list in `prior_attempts.md` should normally be enough.
 
 ## Substrate boundary
 
-The repo is intentionally small. Do not add orchestration frameworks,
-new docs, or benchmark tiers unless the user explicitly asks.
+- Keep `harness.py`, `run_panel.py`, and `baselines.json` fixed during an
+  algorithm attempt.
+- `run_panel.py --train-path <path>` can run a candidate or ablation file
+  directly. The Engineer should leave repo-root `train.py` unchanged.
+- For vector envs, training must consume `info["vector"]`. Training only
+  on scalar reward in vector envs is scalarization and is disallowed.
+- No baseline RL libraries are allowed. Neural nets, optimizers, replay
+  buffers, and environment wrappers are allowed as components.
 
-- The Engineer subagent edits `train.py` (or
-  `worklogs/runs/<run_id>/train.py`) for candidate algorithms. No other
-  role touches code.
-- Keep `harness.py`, `run_panel.py`, and `baselines.json` fixed during
-  an algorithm attempt. Tampering invalidates the panel score.
-- For vector envs, training MUST consume `info["vector"]`. Optimizing
-  the scalar `reward` on a vector env is a scalarization rebadge by
-  definition.
-- Run the smallest relevant stage first:
+Run the smallest relevant stage first:
 
 ```bash
+uv run run_panel.py --stage quick  --time-budget-s 120
 uv run run_panel.py --stage sparse --time-budget-s 120
 uv run run_panel.py --stage vector --time-budget-s 120
-uv run run_panel.py --stage core   --time-budget-s 120  # sparse + vector
-uv run run_panel.py --stage all    --time-budget-s 120  # adds Craftax
+uv run run_panel.py --stage core   --time-budget-s 120
+uv run run_panel.py --stage all    --time-budget-s 120
 ```
 
-## Subagent roles (canonical scope)
+## Subagent roles
 
-- **Researcher** — produces one of: a full proposal under the
-  four-slot contract (principle, derivation, primitive, theorem),
-  a **seed** (slots 1–3 filled, slot 4 replaced by an explicit
-  open question — carried forward in the corpus for future
-  closure), or an empty-hand note. Reads `worklogs/exemplars.md`,
-  `prior_attempts.md`, and recent hypothesis headers + open seeds;
-  may use web search for mathematical machinery (not for RL paper
-  imitation). Writes `worklogs/runs/<run_id>/hypothesis.md`. Never
-  reads or writes code.
-- **Reviewer** — adversarial referee. Default verdict is `reject`.
-  Verifies the derivation step-by-step and searches the web to
-  confirm the proposal is not a renamed published method. Reads
-  `worklogs/runs/<run_id>/hypothesis.md` + `prior_attempts.md`
-  (family level) + `worklogs/exemplars.md`. Writes
-  `worklogs/runs/<run_id>/review.md` with verdict
-  `pass | pass-as-seed | revise | reject` (`pass-as-seed` applies
-  only to seeds; the seed verdict still requires slots 1–3 at
-  exemplar quality and a checkable open question).
-- **Engineer** — runs only when Reviewer's verdict is `pass` on a
-  full proposal. Authors `worklogs/runs/<run_id>/train.py` from the
-  hypothesis, runs it through the panel, captures
-  `worklogs/runs/<run_id>/result.json`. Restores the repo-root
-  `train.py` before exiting. Does **not** run on seeds.
-- **Curator** — synthesizes hypothesis + review + result into a
-  per-run verdict (`proven-on-substrate`, `structural-failure`,
-  `implementation-failure`, `null-result`, `seeded`, `empty-hand`,
-  `reviewer-rejected`). Writes `worklogs/runs/<run_id>/curator.md`,
-  appends to `worklogs/ledger.jsonl`, and updates the corpus. On
-  `proven-on-substrate`, also writes `worklogs/HALT_REQUESTED.md`
-  to halt the loop for user review.
-
-The orchestration is `.claude/commands/research.md`.
+- **Researcher** - writes one runnable `[probe]`, one
+  `[negative-closure]`, or an empty-hand note. A probe has a principle,
+  typed primitive, derivation sketch, update rule, empirical claim,
+  ablation plan, novelty boundary, proof debt, and a machine-readable
+  `candidate.json`. The Researcher reads corpus summaries but never reads
+  or writes code.
+- **Reviewer** - triages schema validity, novelty, coherence,
+  implementability, and ablation quality. The verdict set is
+  `probe | revise | reject | negative-closure`. The Reviewer rejects
+  rebadges and dead families, but does not require a convergence theorem
+  before compute.
+- **Engineer** - runs on Reviewer verdict `probe`. Authors
+  `worklogs/runs/<run_id>/train.py` and `train_ablate.py`, runs
+  `scripts/run_probe_ladder.py` for the smoke -> claim -> ablation ->
+  conditional confirmation ladder, writes
+  `panel-*.txt` and `result.json`, and leaves repo-root `train.py`
+  unchanged.
+- **Curator** - converts hypothesis + review + result into corpus signal,
+  appends `worklogs/ledger.jsonl`, updates negative space only when a
+  family-level lesson is warranted, and halts on `proven-on-substrate`.
 
 ## Loop economics
 
-The loop's expected steady-state output mix per Researcher turn is
-roughly:
+A healthy unattended run should produce frequent panel executions.
+Reviewer rejections still happen, but a long streak of `stage: null`
+entries in `mode=probe-v1` is a design failure because empirical signal
+has again been pushed out of the loop. `/research` halts after eight
+probe-v1 iterations without a panel run.
 
-- ~20% full proposals (most rejected by Reviewer)
-- ~50% seeds (some closed by future iterations, most retiring stale)
-- ~30% empty-hand notes (after honest seed-closure attempts and
-  fresh-region attempts both failed to produce slots 1–3)
+Expected output mix after the redesign:
 
-A healthy month of unattended operation might produce dozens of
-seeds (most stale, some closed), reviewer-rejected proposals,
-~1–3 reviewer-passed full proposals that get run through the panel,
-and ideally one promotion that halts for user review.
-
-Anything that looks denser than this — many full proposals passing
-Reviewer per week — likely means the bar slipped. Anything that
-looks far sparser — long pure-empty-hand streaks — means the seed
-mechanism is failing and the loop converged on the empty-hand basin
-(the pre-flight halts after 15 consecutive empty-hands as a design
-breaker).
+- many `null-result` runs that faithfully tested coherent probes;
+- many `ablation-failure` runs that show the claimed primitive was not
+  load-bearing;
+- some `empirical-signal` runs worth sharpening or retesting;
+- occasional `reviewer-rejected` or `negative-closure` entries that keep
+  the novelty boundary clean;
+- rare `proven-on-substrate` promotions that halt for user review.
 
 ## Promotion halts the loop
 
-When the Curator records `proven-on-substrate`, it writes
-`worklogs/HALT_REQUESTED.md`. The loop halts. The user reviews
-`worklogs/promotions/<run_id>.md` and decides what happens next. The
-loop does not auto-continue past a real promotion — the next step
-after a real candidate is human attention, not another iteration.
+When Curator records `proven-on-substrate`, it writes
+`worklogs/HALT_REQUESTED.md` and `worklogs/promotions/<run_id>.md`. The
+loop stops. The next step after a real substrate win is human review, not
+another automatic iteration.
