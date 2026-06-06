@@ -1,0 +1,19 @@
+{
+  "run_id": "20260606-17-auto",
+  "algorithm_name": "SNELL",
+  "principle": "Improve the policy by score-function ascent on Snell-envelope-truncated rollouts: a learned predictable continuation value regressed toward suffix-maxima of cumulative reward induces a stopping time, and policy gradient is taken only on the prefix up to that stopping time with the locked-in cumulative reward as weight.",
+  "primitive_name": "Snell continuation value",
+  "primitive_type": "S -> R, where C(s) = E_pi[ max_{u >= t+1} R_u | s_t = s ]; the least supermartingale dominating path-suffix maxima of cumulative reward, satisfying the max-inside-expectation fixed-point C(s) = E_pi[max(R_{t+1}, R_{t+1} + gamma C(s_{t+1})) | s_t = s].",
+  "update_family": "direct_policy_update",
+  "memory": "network",
+  "feedback_signal": "scalar reward (cumulative R_t and suffix-maxima); for vector envs, sum-of-components used for stopping decision only",
+  "uses_reward": true,
+  "uses_vector_reward": false,
+  "claimed_stage": "quick",
+  "nearest_disqualifier": "policy_gradient",
+  "novelty_boundary": "REINFORCE weights every step by full return G_t; SNELL weights only the prefix t <= tau* by the locked-in cumulative R_{tau*}, where tau* is a predictable stopping time computed from a Snell-envelope continuation value (max-inside-expectation fixed point). This differs from Q-learning (max-outside-expectation Bellman value), from REINFORCE-with-baseline (subtraction is order-preserving), from DUAL-IR (which uses anticipative arg-sup-time, not predictable stopping), and from horizon-truncated PG (which is fixed, not state-conditional and learned).",
+  "empirical_claim": "On CartPole-v1 and Acrobot-v1 (quick stage), SNELL should match or exceed REINFORCE on mean episodic return within 120s, and should exhibit (i) mean(tau*)/T < 1 in at least 30% of episodes during training, and (ii) corr(tau*, R_{tau*}) > 0.3 over batched rollouts.",
+  "falsifier": "Random-threshold truncation ablation matches SNELL on both mean episodic return AND on the corr(tau*, R_{tau*}) observable. Or: the discriminating observable corr(tau*, R_{tau*}) stays below 0.1 throughout training. Either kills the predictable-stopping primitive.",
+  "ablation_plan": "Replace the learned continuation value C_phi with a per-rollout uniform random threshold theta_random ~ Uniform(0, max_t R_t) and use tau_random = min{t : R_t >= theta_random} for trajectory truncation. Keep prefix-gradient and locked-in-reward weighting identical. The discriminating observable is corr(tau, R_tau): SNELL should produce strongly positive correlation; random ablation produces near-zero correlation by construction.",
+  "proof_debt": "Conjecture: under SNELL updates, J(pi_{n+1}) >= J(pi_n) - O(epsilon_n) where epsilon_n is the regression error of C_phi to the true Snell envelope. Sub-debts: (i) contraction of the Snell averaging-of-max operator T_Snell f(s) = E[max(R_{t+1}, R_{t+1} + gamma f(s'))]; (ii) convergence of SGD regression to suffix-max targets under non-stationary pi; (iii) bias of the truncated, locked-in-reward score-function gradient relative to grad_theta E[R_tau*(theta)]."
+}
