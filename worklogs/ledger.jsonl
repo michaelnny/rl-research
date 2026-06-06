@@ -87,3 +87,4 @@
 {"run_id":"20260606-24-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"reviewer-rejected","stage":null,"beat_strong":0,"beat_random":0,"status":"reviewer-rejected","commit":"6402d4df616f4b02b51ffa69ef0c688dd5daea40"}
 {"run_id":"20260606-25-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"empty-hand","stage":null,"beat_strong":0,"beat_random":0,"status":"no-proposal","commit":"fe5f1a563681ea38912bcec1e24d036d5f586d04"}
 {"run_id":"20260606-26-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"reviewer-rejected","stage":null,"beat_strong":0,"beat_random":0,"status":"reviewer-rejected","commit":"92ce39341337b13f21fd0d5a59fbc534d24db887"}
+{"run_id":"20260606-27-auto","mode":"probe-v1","ts":"2026-06-06T23:59:59Z","verdict":"ablation-failure","stage":"quick","beat_strong":0,"beat_random":0,"status":"completed","commit":"56c8d6d71ae574d9429cd93e759e6bf1c396778f"}

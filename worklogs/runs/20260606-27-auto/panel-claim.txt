@@ -1,0 +1,8 @@
+[run] stage=quick envs=deep-sea-treasure-concave-v0 budget=120s workers=1 train_path=/home/michael/projects/rl-research/worklogs/runs/20260606-27-auto/train.py
+[env] deep-sea-treasure-concave-v0         score=    0.000000 random=194.000000 strong=285.000000 margin_random= -194.000000 margin_strong= -285.000000 beat_random=0 beat_strong=0
+---
+stage:           quick
+n_envs:          1
+n_beat_random:   0
+n_beat_strong:   0
+wallclock_s:     116.8
