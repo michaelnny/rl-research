@@ -1,0 +1,12 @@
+{
+  "run_id": "20260606-56-auto",
+  "stage": null,
+  "envs": [],
+  "scores": {},
+  "beat_random": 0,
+  "beat_strong": 0,
+  "wallclock_s": 0.0,
+  "n_retries": 0,
+  "status": "no-proposal",
+  "commit": "53218d07fd21e4948c8f702dde75b51e8ff9a891"
+}
