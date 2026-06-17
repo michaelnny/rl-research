@@ -1,79 +1,168 @@
-# rl-research
+# RLH Bench
 
-Lean substrate for fast RL algorithm probes across three axes:
+**RLH Bench** is a small research package for studying **recoverable long-horizon sparse-feedback reinforcement learning**.
 
-- long-horizon sparse reward: `MiniGrid-DoorKey-8x8-v0`, `MiniGrid-KeyCorridorS3R3-v0`
-- native vector reward: `deep-sea-treasure-concave-v0`, `resource-gathering-v0`
-- open-ended symbolic control: `Craftax-Symbolic-v1`
+It contains two deterministic benchmark families designed for the Phase 1 / Phase 2 research goal:
 
-The quality bar for proposed algorithms lives in `worklogs/exemplars.md`
-(Q-learning, PPO, AlphaZero, mirror descent, SAC, MCTS, GAE - calibration,
-not a menu). The negative space lives in `prior_attempts.md` as
-family-level dead-mechanism descriptions, with sealed per-attempt detail
-preserved in `worklogs/attempts/`.
+1. **RecoverablePointMaze** — continuous-control navigation with soft collisions, long horizons, terminal-only feedback, and optional terminal vector rewards.
+2. **RecoverableResourceAllocation** — structured continuous allocation with soft dependencies, large action dimension, long horizons, terminal-only feedback, and natural vector outcomes.
 
-The autonomous loop is schema-backed and probe-first: Researcher writes a
-`candidate.json`, Reviewer blocks rebadges and incoherent updates, then
-Engineer runs coherent novel probes plus ablations on the fixed panel
-before theorem-level work is required. See `PROBLEM.md` and `CLAUDE.md`
-for the rationale.
+The environments are intentionally lightweight: they use NumPy only, run on CPU, and do not require robot simulators, large models, transformers, or GPUs.
 
-## Hot Path
+---
 
-```bash
-uv sync
-uv run pytest
-uv run python scripts/build_baselines.py
-uv run python scripts/validate_candidate.py worklogs/runs/<run_id>/candidate.json
-uv run python scripts/run_probe_ladder.py worklogs/runs/<run_id>
-uv run run_panel.py --stage sparse --time-budget-s 120
-uv run run_panel.py --train-path worklogs/runs/<run_id>/train.py --stage vector --time-budget-s 120
-uv run run_panel.py --stage vector --time-budget-s 120
-uv run run_panel.py --stage all --time-budget-s 120
-```
+## Target problem class
 
-Manual single-file attempts can still edit repo-root `train.py`.
-Automated probes should write `worklogs/runs/<run_id>/train.py` and
-`train_ablate.py`, then run them with `run_panel.py --train-path`. Each
-entry point must expose:
+The package focuses on deterministic episodic tasks with these properties:
 
-```python
-train(env_id: str, seed: int, time_budget_s: int) -> harness.PolicyFn
-```
+- long adjustable horizon;
+- sparse or terminal-only environmental feedback;
+- hard but recoverable exploration;
+- difficult credit assignment;
+- continuous or large structured action spaces;
+- cheap deterministic simulation;
+- optional terminal vector-valued environmental reward.
 
-For vector envs, training must consume `info["vector"]`; using scalar
-reward as the training signal is a scalarization rebadge.
-
-## Files
+The vector rewards are **environment outcomes**, not intrinsic rewards and not auxiliary shaping. During an episode, reward is zero. At the terminal step, the environment reports a vector such as:
 
 ```text
-harness.py                  env factory, eval, hypervolume, baselines
-train.py                    agent-editable algorithm entry point
-run_panel.py                parallel stage runner
-scripts/build_baselines.py  random-floor baseline builder
-scripts/validate_candidate.py schema check for candidate.json
-scripts/run_probe_ladder.py smoke/claim/ablation/confirmation runner
-baselines.json              compact baseline scores for the active envs
-worklogs/exemplars.md       quality bar (calibration set, not menu)
-prior_attempts.md           dead-mechanism families (negative space)
-worklogs/runs/              probe, review, panel, result, curator trail
-worklogs/attempts/          sealed per-attempt detail; do not delete
-worklogs/_archive/          archived prior-loop artifacts
+[success, negative final distance, negative energy, negative collisions, negative path length]
 ```
 
-## Stages
+or:
 
-| Stage | Envs |
-| --- | --- |
-| `quick` | DST-concave |
-| `sparse` | DoorKey, KeyCorridor |
-| `vector` | DST-concave, Resource-Gathering |
-| `craft` | Craftax-Symbolic |
-| `core` | sparse + vector |
-| `all` | all five active envs |
+```text
+[success, service level, negative cost, negative delay, negative safety violation]
+```
 
-Keep/kill rule: a candidate must improve its claimed axis and explain why
-the lift is not a known disqualifier from `prior_attempts.md`. Do not
-promote from a single lucky env or from a candidate that fails its own
-ablation; confirm with multiple random seeds before spending larger
-compute.
+---
+
+## Installation
+
+From the package directory:
+
+```bash
+pip install -e .
+```
+
+For optional PyTorch REINFORCE baseline:
+
+```bash
+pip install -e .[torch]
+```
+
+For optional Gymnasium interop:
+
+```bash
+pip install -e .[gymnasium]
+```
+
+The core environments and tests require only NumPy and pytest.
+
+---
+
+## Quick start
+
+```python
+from rlh_bench.envs import make_env
+from rlh_bench.baselines import make_heuristic_policy
+from rlh_bench.metrics import rollout
+
+# Scalar reward mode: returned reward is weighted scalar, vector is still in info.
+env = make_env("RecoverablePointMaze-v0")
+policy = make_heuristic_policy(env)
+result = rollout(env, policy, seed=0)
+
+print(result.scalar_return)
+print(result.reward_vector)
+print(result.info["reward_names"])
+```
+
+Vector reward mode:
+
+```python
+env = make_env("RecoverableResourceAllocation-v0", reward_mode="vector")
+obs, info = env.reset(seed=0)
+
+terminated = truncated = False
+while not (terminated or truncated):
+    action = env.action_space.sample()
+    obs, reward, terminated, truncated, info = env.step(action)
+
+print(reward)                 # terminal vector reward
+print(info["reward_vector"])  # same vector
+```
+
+---
+
+## Available environment IDs
+
+```python
+from rlh_bench.envs import registered_envs
+print(registered_envs())
+```
+
+Current IDs:
+
+```text
+RecoverablePointMaze-Small-v0
+RecoverablePointMaze-v0
+RecoverablePointMaze-HD-v0
+RecoverableResourceAllocation-Small-v0
+RecoverableResourceAllocation-v0
+RecoverableResourceAllocation-Large-v0
+```
+
+---
+
+## Baselines
+
+The package includes lightweight baselines:
+
+- `RandomPolicy`
+- `ZeroPolicy`
+- `MazeWaypointPolicy`
+- `ResourceGreedyPolicy`
+- `train_cem` — CPU-friendly Cross-Entropy Method policy search
+- `train_reinforce` — optional PyTorch REINFORCE baseline
+
+Example:
+
+```bash
+PYTHONPATH=src python examples/run_heuristics.py
+PYTHONPATH=src python examples/train_cem.py
+```
+
+---
+
+## Tests
+
+Run from the package root:
+
+```bash
+PYTHONPATH=src pytest -q
+```
+
+The test suite checks:
+
+- deterministic reset and rollout behavior;
+- terminal-only reward behavior;
+- vector reward mode;
+- recoverability after bad actions;
+- heuristic feasibility;
+- registry construction;
+- CEM and optional REINFORCE smoke tests;
+- Pareto utility behavior.
+
+---
+
+## Research use
+
+The package is meant to support the next research phase by giving you a controlled benchmark scaffold, not a final benchmark claim. Recommended next steps:
+
+1. Run the included diagnostics across horizon, action dimension, and recoverability settings.
+2. Decide which environment family best isolates the phenomenon you care about.
+3. Add benchmark reports for random-policy success, first-success episodes, terminal vector trade-offs, and recovery after injected early mistakes.
+4. Only then use these environments to compare new algorithms.
+
+See `DESIGN.md` and `docs/PHASE_PLAN.md` for details.

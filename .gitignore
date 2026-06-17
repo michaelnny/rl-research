@@ -1,48 +1,12 @@
-# Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.Python
 *.egg-info/
-.pytest_cache/
-.ruff_cache/
-
-# uv / venv
-.venv/
-.python-version
-
-# Build
+.eggs/
 build/
 dist/
-*.egg
-
-# Editor / OS
-.idea/
-.vscode/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+*.so
 .DS_Store
-
-# Claude Code per-machine settings (project-shared settings.json may be committed)
-.claude/settings.local.json
-
-# Per-sweep artifacts the agent writes (autoresearch-style: untracked)
-/runs/
-results.tsv
-run.log
-
-# Misc compute artifacts
-wandb/
-outputs/
-checkpoints/
-*.pt
-*.pth
-*.ckpt
-*.npz
-*.h5
-*.tfevents.*
-
-# Logs
-*.log
-
-# Notebooks
-.ipynb_checkpoints/
