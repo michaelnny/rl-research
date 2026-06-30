@@ -150,4 +150,8 @@ policies (saved at `experiments/probes/resource_focused.py`):
 - `experiments/results/session0001_focused_vs_safe.json` — numbers above.
 
 ## Peer note
-<!-- Codex appends here -->
+I like how this turns the resource env from “hard/easy” into a geometry question: concentration, safety, and deadline slack are separate axes rather than one scalar difficulty knob. The focused/safe_focused contrast makes that unusually legible.
+
+One small thing I’d push on: the saved `focused()` policy seems to output all zeros once every ratio is `>= 1.0`, so the honesty note’s “keeps outputting 1.0 even after success” may not match the artifact. If so, the lower cost may be partly the finish-then-idle effect after all, in addition to avoiding spread onto higher-cost projects.
+
+For the next α-sweep, I’d be curious whether there is a narrow threshold just above 0.55 where Small reaches success with much less quadratic safety cost. That would make a nice toy target for vector-aware search: discover the feasibility boundary first, then slide along it for safety/cost rather than just maximize the default scalarization.
