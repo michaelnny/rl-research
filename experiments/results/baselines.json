@@ -1,0 +1,473 @@
+{
+  "seed": 0,
+  "envs": {
+    "RecoverablePointMaze-HD-v0": {
+      "random": {
+        "episodes": 500,
+        "mean_return": -2.290752410888672,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          -0.9976999759674072,
+          -481.2228088378906,
+          -16.0,
+          -3.3882999420166016
+        ],
+        "reward_names": [
+          "success",
+          "neg_final_distance",
+          "neg_energy",
+          "neg_collisions",
+          "neg_path_length"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 180.0,
+        "mean_sec_per_episode": 0.003965209263944417,
+        "pareto_non_dominated_count": 500
+      },
+      "heuristic": {
+        "episodes": 20,
+        "mean_return": -2.6257550716400146,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          1.0,
+          -0.027300000190734863,
+          -1178.423828125,
+          0.0,
+          -4.114699840545654
+        ],
+        "reward_names": [
+          "success",
+          "neg_final_distance",
+          "neg_energy",
+          "neg_collisions",
+          "neg_path_length"
+        ],
+        "success_rate": 1.0,
+        "first_success_episode": 1,
+        "mean_length": 180.0,
+        "mean_sec_per_episode": 0.004917306249626563,
+        "pareto_non_dominated_count": 20
+      },
+      "cem": {
+        "episodes": 20,
+        "mean_return": -1.0645487308502197,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          -0.22450000047683716,
+          -314.3172912597656,
+          -1.0,
+          -1.211899995803833
+        ],
+        "reward_names": [
+          "success",
+          "neg_final_distance",
+          "neg_energy",
+          "neg_collisions",
+          "neg_path_length"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 180.0,
+        "mean_sec_per_episode": 0.004004527100914856,
+        "pareto_non_dominated_count": 20,
+        "cem_train_seconds": 1.1312015830044402,
+        "cem_best_train_score": -1.0645487308502197,
+        "cem_iterations": 8,
+        "cem_population": 32
+      }
+    },
+    "RecoverablePointMaze-Small-v0": {
+      "random": {
+        "episodes": 500,
+        "mean_return": -0.9821661114692688,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          -0.7767000198364258,
+          -87.4375,
+          -14.0,
+          -3.3417999744415283
+        ],
+        "reward_names": [
+          "success",
+          "neg_final_distance",
+          "neg_energy",
+          "neg_collisions",
+          "neg_path_length"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 120.0,
+        "mean_sec_per_episode": 0.0026292473618959775,
+        "pareto_non_dominated_count": 500
+      },
+      "heuristic": {
+        "episodes": 20,
+        "mean_return": 0.3690658211708069,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          1.0,
+          -0.03440000116825104,
+          -186.42849731445312,
+          0.0,
+          -3.066499948501587
+        ],
+        "reward_names": [
+          "success",
+          "neg_final_distance",
+          "neg_energy",
+          "neg_collisions",
+          "neg_path_length"
+        ],
+        "success_rate": 1.0,
+        "first_success_episode": 1,
+        "mean_length": 120.0,
+        "mean_sec_per_episode": 0.0030684998502692904,
+        "pareto_non_dominated_count": 20
+      },
+      "cem": {
+        "episodes": 20,
+        "mean_return": -0.5448822975158691,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          -0.9564999938011169,
+          -6.365099906921387,
+          -6.0,
+          -2.9419000148773193
+        ],
+        "reward_names": [
+          "success",
+          "neg_final_distance",
+          "neg_energy",
+          "neg_collisions",
+          "neg_path_length"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 120.0,
+        "mean_sec_per_episode": 0.002760806249352754,
+        "pareto_non_dominated_count": 20,
+        "cem_train_seconds": 0.7677533329988364,
+        "cem_best_train_score": -0.5448822975158691,
+        "cem_iterations": 8,
+        "cem_population": 32
+      }
+    },
+    "RecoverablePointMaze-v0": {
+      "random": {
+        "episodes": 500,
+        "mean_return": -1.1902754306793213,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          -0.6298999786376953,
+          -114.44170379638672,
+          -19.0,
+          -4.398799896240234
+        ],
+        "reward_names": [
+          "success",
+          "neg_final_distance",
+          "neg_energy",
+          "neg_collisions",
+          "neg_path_length"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 160.0,
+        "mean_sec_per_episode": 0.003529286073957337,
+        "pareto_non_dominated_count": 500
+      },
+      "heuristic": {
+        "episodes": 20,
+        "mean_return": 0.14056873321533203,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          1.0,
+          -0.013399999588727951,
+          -259.6817932128906,
+          0.0,
+          -3.8189001083374023
+        ],
+        "reward_names": [
+          "success",
+          "neg_final_distance",
+          "neg_energy",
+          "neg_collisions",
+          "neg_path_length"
+        ],
+        "success_rate": 1.0,
+        "first_success_episode": 1,
+        "mean_length": 160.0,
+        "mean_sec_per_episode": 0.004088739400322084,
+        "pareto_non_dominated_count": 20
+      },
+      "cem": {
+        "episodes": 20,
+        "mean_return": -0.9079614281654358,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          1.0,
+          -0.040300000458955765,
+          -68.42729949951172,
+          -53.0,
+          -5.03000020980835
+        ],
+        "reward_names": [
+          "success",
+          "neg_final_distance",
+          "neg_energy",
+          "neg_collisions",
+          "neg_path_length"
+        ],
+        "success_rate": 1.0,
+        "first_success_episode": 1,
+        "mean_length": 160.0,
+        "mean_sec_per_episode": 0.003833064499485772,
+        "pareto_non_dominated_count": 20,
+        "cem_train_seconds": 1.0163085000021965,
+        "cem_best_train_score": -0.9079614281654358,
+        "cem_iterations": 8,
+        "cem_population": 32
+      }
+    },
+    "RecoverableResourceAllocation-Large-v0": {
+      "random": {
+        "episodes": 500,
+        "mean_return": -0.9246582984924316,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          0.41179999709129333,
+          -141.16700744628906,
+          -7.688499927520752,
+          0.0
+        ],
+        "reward_names": [
+          "success",
+          "service_level",
+          "neg_cost",
+          "neg_delay",
+          "neg_safety_violation"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 120.0,
+        "mean_sec_per_episode": 0.0050919149860565085,
+        "pareto_non_dominated_count": 500
+      },
+      "heuristic": {
+        "episodes": 20,
+        "mean_return": -0.6674210429191589,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          0.6126999855041504,
+          -143.58999633789062,
+          -6.348800182342529,
+          0.0
+        ],
+        "reward_names": [
+          "success",
+          "service_level",
+          "neg_cost",
+          "neg_delay",
+          "neg_safety_violation"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 120.0,
+        "mean_sec_per_episode": 0.005672616751326132,
+        "pareto_non_dominated_count": 20
+      },
+      "cem": {
+        "episodes": 20,
+        "mean_return": -0.5242911577224731,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          0.5875999927520752,
+          -131.53660583496094,
+          -5.116099834442139,
+          0.0
+        ],
+        "reward_names": [
+          "success",
+          "service_level",
+          "neg_cost",
+          "neg_delay",
+          "neg_safety_violation"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 120.0,
+        "mean_sec_per_episode": 0.005138783199799946,
+        "pareto_non_dominated_count": 20,
+        "cem_train_seconds": 1.3287224160012556,
+        "cem_best_train_score": -0.5242911577224731,
+        "cem_iterations": 8,
+        "cem_population": 32
+      }
+    },
+    "RecoverableResourceAllocation-Small-v0": {
+      "random": {
+        "episodes": 500,
+        "mean_return": -0.08555622398853302,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          0.6371999979019165,
+          -70.46880340576172,
+          -2.834399938583374,
+          -0.061400000005960464
+        ],
+        "reward_names": [
+          "success",
+          "service_level",
+          "neg_cost",
+          "neg_delay",
+          "neg_safety_violation"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 60.0,
+        "mean_sec_per_episode": 0.0023793442520691314,
+        "pareto_non_dominated_count": 500
+      },
+      "heuristic": {
+        "episodes": 20,
+        "mean_return": 0.05433085560798645,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          0.7926999926567078,
+          -72.10420227050781,
+          -2.446000099182129,
+          0.0
+        ],
+        "reward_names": [
+          "success",
+          "service_level",
+          "neg_cost",
+          "neg_delay",
+          "neg_safety_violation"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 60.0,
+        "mean_sec_per_episode": 0.002671008350807824,
+        "pareto_non_dominated_count": 20
+      },
+      "cem": {
+        "episodes": 20,
+        "mean_return": 0.10098832845687866,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          0.7322999835014343,
+          -65.9657974243164,
+          -1.770900011062622,
+          0.0
+        ],
+        "reward_names": [
+          "success",
+          "service_level",
+          "neg_cost",
+          "neg_delay",
+          "neg_safety_violation"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 60.0,
+        "mean_sec_per_episode": 0.002442637350759469,
+        "pareto_non_dominated_count": 20,
+        "cem_train_seconds": 0.6322929579982883,
+        "cem_best_train_score": 0.10098832845687866,
+        "cem_iterations": 8,
+        "cem_population": 32
+      }
+    },
+    "RecoverableResourceAllocation-v0": {
+      "random": {
+        "episodes": 500,
+        "mean_return": -0.12168827652931213,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          0.7583000063896179,
+          -117.49629974365234,
+          -2.6187000274658203,
+          -0.0024999999441206455
+        ],
+        "reward_names": [
+          "success",
+          "service_level",
+          "neg_cost",
+          "neg_delay",
+          "neg_safety_violation"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 100.0,
+        "mean_sec_per_episode": 0.003986556166128139,
+        "pareto_non_dominated_count": 500
+      },
+      "heuristic": {
+        "episodes": 20,
+        "mean_return": 1.134709358215332,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          1.0,
+          1.0,
+          -114.0969009399414,
+          -1.7300000190734863,
+          0.0
+        ],
+        "reward_names": [
+          "success",
+          "service_level",
+          "neg_cost",
+          "neg_delay",
+          "neg_safety_violation"
+        ],
+        "success_rate": 1.0,
+        "first_success_episode": 1,
+        "mean_length": 100.0,
+        "mean_sec_per_episode": 0.004456937449504039,
+        "pareto_non_dominated_count": 20
+      },
+      "cem": {
+        "episodes": 20,
+        "mean_return": 0.049031078815460205,
+        "std_return": 0.0,
+        "mean_reward_vector": [
+          0.0,
+          0.8736000061035156,
+          -117.2041015625,
+          -1.6720000505447388,
+          0.0
+        ],
+        "reward_names": [
+          "success",
+          "service_level",
+          "neg_cost",
+          "neg_delay",
+          "neg_safety_violation"
+        ],
+        "success_rate": 0.0,
+        "first_success_episode": null,
+        "mean_length": 100.0,
+        "mean_sec_per_episode": 0.004089191650928114,
+        "pareto_non_dominated_count": 20,
+        "cem_train_seconds": 1.0587533329962753,
+        "cem_best_train_score": 0.049031078815460205,
+        "cem_iterations": 8,
+        "cem_population": 32
+      }
+    }
+  }
+}

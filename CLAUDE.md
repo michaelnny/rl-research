@@ -48,6 +48,22 @@ PYTHONPATH=src python examples/train_reinforce.py   # requires torch
 - `src/rlh_bench/` — environments, registry, metrics, wrappers, baselines.
 - `tests/` — substrate regression tests.
 - `examples/` — runnable baselines.
+- `experiments/` — non-substrate research scaffold:
+  `run_baselines.py` for the Phase 1 sweep, `algorithms/runner.py`
+  with the `Algorithm` protocol + `evaluate_algorithm`, and
+  `algorithms/<name>.py` for candidates.
 - `docs/PHASE_PLAN.md` — Phase 1 (problem validation) → Phase 2
   (benchmark prototype) → Phase 3 (algorithm research).
+- `docs/SUBSTRATE_MAP.md` — one-page cheat-sheet of the substrate API.
+- `docs/AGENT_GUIDE.md` — how a coding agent plugs in a new algorithm,
+  what counts as novelty, and the evaluation protocol.
+- `docs/baseline_report.md` — honest random / heuristic / CEM numbers
+  across all six env IDs; the bar a candidate must beat.
 - `DESIGN.md` — environment contracts and reward-vector convention.
+
+## Local env
+
+A project-local `.venv` (Python 3.12, `uv`) is installed with the
+`[dev,torch,gymnasium]` extras. Run the suite with
+`PYTHONPATH=src .venv/bin/python -m pytest -q` and candidate algorithms
+with `PYTHONPATH=src:. .venv/bin/python experiments/algorithms/<x>.py`.

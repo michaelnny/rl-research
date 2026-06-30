@@ -1,0 +1,172 @@
+{
+  "algorithm": "random-shooting",
+  "env_id": "RecoverablePointMaze-Small-v0",
+  "reward_mode": "scalar",
+  "train_seed": 0,
+  "eval_seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "train_seconds": 0.20789329099352472,
+  "success_rate": 0.0,
+  "mean_return": -1.8565186262130737,
+  "std_return": 0.0,
+  "mean_reward_vector": [
+    0.0,
+    -0.48859745264053345,
+    -62.928077697753906,
+    -48.0,
+    -4.057758808135986
+  ],
+  "reward_names": [
+    "success",
+    "neg_final_distance",
+    "neg_energy",
+    "neg_collisions",
+    "neg_path_length"
+  ],
+  "mean_length": 120.0,
+  "first_success_episode": null,
+  "pareto_non_dominated_count": 10,
+  "per_episode": [
+    {
+      "seed": 0,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    },
+    {
+      "seed": 1,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    },
+    {
+      "seed": 2,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    },
+    {
+      "seed": 3,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    },
+    {
+      "seed": 4,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    },
+    {
+      "seed": 5,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    },
+    {
+      "seed": 6,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    },
+    {
+      "seed": 7,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    },
+    {
+      "seed": 8,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    },
+    {
+      "seed": 9,
+      "scalar_return": -1.8565186262130737,
+      "reward_vector": [
+        0.0,
+        -0.48859742283821106,
+        -62.928077697753906,
+        -48.0,
+        -4.057758808135986
+      ],
+      "success": 0,
+      "length": 120
+    }
+  ],
+  "notes": "example algorithm, not a research contender"
+}
