@@ -1,26 +1,26 @@
 # Substrate map
 
-One-page cheat sheet for the `rlh_bench` substrate. The substrate is the
-**frozen** problem definition — environments, registry, metrics,
-wrappers, and reference baselines. Algorithms live **outside** the
-substrate. Do not edit substrate files to rescue a candidate algorithm
-(see `CLAUDE.md`).
+One-page cheat sheet for the `rlh_bench` substrate after the v2
+redesign (2026-06-30). The substrate is the **frozen** problem
+definition — environments, registry, metrics, wrappers, and reference
+baselines. Algorithms live **outside** the substrate. Do not edit
+substrate files to rescue a candidate algorithm (see `CLAUDE.md`).
 
 ## Entry points
 
 ```python
 from rlh_bench import (
     RewardSpec,
-    RecoverablePointMazeEnv, RecoverableMazeConfig, Rectangle, DEFAULT_MAZE_REWARD_SPEC,
-    RecoverableResourceAllocationEnv, ResourceAllocationConfig, DEFAULT_RESOURCE_REWARD_SPEC,
+    CapacitySchedulingConfig, RecoverableCapacitySchedulingEnv,
+    DEFAULT_SCHEDULING_REWARD_SPEC,
+    KeyFuelMazeConfig, RecoverableKeyFuelMazeEnv,
+    DEFAULT_KEYFUEL_REWARD_SPEC,
     make_env, registered_envs,
     rollout, evaluate_policy, pareto_non_dominated,
 )
+from rlh_bench.baselines import SCHEDULING_BASELINES, MAZE_BASELINES
+from rlh_bench.seed_bands import seed_band_for
 ```
-
-`from rlh_bench.wrappers import ScalarizeRewardWrapper, GymnasiumAdapter`
-gives optional interop. `from rlh_bench.baselines import ...` exposes
-the reference baselines.
 
 ## Env contract (`rlh_bench.core`)
 
@@ -41,59 +41,79 @@ after termination raises `RuntimeError` — `reset()` is mandatory.
 
 Either way, the **vector is always in `info["reward_vector"]`** and the
 component names are in `info["reward_names"]`. `info["is_success"]` is a
-bool. Vector-reward learning means consuming that vector pre-scalarization
-(see `CLAUDE.md`); collapsing it to a weighted scalar before the learner
-is scalarization, not vector learning.
+bool.
+
+## Seed → world contract
+
+`reset(seed=s)` deterministically generates the entire world from `s`
+(graph topology, demand schedule, actuator matrix, key/seal placement,
+etc.). Same seed → same world. Different seeds → measurably different
+worlds.
+
+Held-out evaluation is a first-class substrate property. Each tier
+publishes train / validation / held-out / debug seed ranges via
+`rlh_bench.seed_bands.seed_band_for(env_id)`. Algorithms that train
+against the public train block should be reported against the held-out
+block.
 
 ## Registry (`rlh_bench.envs.registration`)
 
-| Env ID                                    | Family   | Horizon | Action dim | Notes                                |
-| ----------------------------------------- | -------- | ------- | ---------- | ------------------------------------ |
-| `RecoverablePointMaze-Small-v0`           | Maze     | 120     | 2          | shorter; quick smoke tests           |
-| `RecoverablePointMaze-v0`                 | Maze     | 160     | 2          | canonical maze                       |
-| `RecoverablePointMaze-HD-v0`              | Maze     | 180     | 8          | redundant actuator pairs             |
-| `RecoverableResourceAllocation-Small-v0`  | Resource | 60      | 4          | shorter; quick smoke tests           |
-| `RecoverableResourceAllocation-v0`        | Resource | 100     | 5          | canonical allocator                  |
-| `RecoverableResourceAllocation-Large-v0`  | Resource | 120     | 8          | larger structured action             |
+| Env ID                                       | Family    | H      | Action dim | Notes                              |
+| -------------------------------------------- | --------- | ------ | ---------- | ---------------------------------- |
+| `RecoverableCapacityScheduling-Small-v0`     | Scheduling| 500    | 32         | K=16 M=4 P=4; smoke tier           |
+| `RecoverableCapacityScheduling-v0`           | Scheduling| 2000   | 96         | K=48 M=8 P=8; canonical            |
+| `RecoverableCapacityScheduling-Large-v0`     | Scheduling| 10000  | 224        | K=128 M=16 P=16; stretch           |
+| `RecoverableKeyFuelMaze-Small-v0`            | Maze      | 500    | 16         | 24×24 world; 2 keys / 2 seals      |
+| `RecoverableKeyFuelMaze-v0`                  | Maze      | 2000   | 32         | 48×48 world; 4 keys / 6 seals      |
+| `RecoverableKeyFuelMaze-Large-v0`            | Maze      | 10000  | 64         | 96×96 world; 6 keys / 12 seals     |
 
 `make_env(env_id, reward_mode="scalar"|"vector", ...)` forwards extra
 kwargs to the env constructor. `registered_envs()` returns the sorted
 tuple of IDs.
 
-## Family A — `RecoverablePointMazeEnv`
+## Family A — `RecoverableCapacitySchedulingEnv`
 
-- **Obs (7,)**: `[x, y, vx, vy, goal_x, goal_y, t / H]` (vels scaled to ~[-1, 1]).
-- **Action `[-1, 1]^d`**, `d` even. Pairs of channels are averaged into a 2D acceleration with weights `1 / (1 + i)`, so extra dims are redundant actuators, not new degrees of freedom.
-- **Dynamics**: damped point mass, soft collisions against `Rectangle` obstacles and the unit-square boundary. Collisions are recoverable: velocity bounces, position is clamped, the episode keeps going.
-- **Terminal vector** (`DEFAULT_MAZE_REWARD_SPEC`):
-  - names: `("success", "neg_final_distance", "neg_energy", "neg_collisions", "neg_path_length")`
-  - weights: `(1.0, 0.30, 0.003, 0.03, 0.02)`
-- **Difficulty knobs** (`RecoverableMazeConfig`): `horizon`, `action_dim`, `start`, `goal`, `goal_radius`, `obstacles`, `dt`, `acceleration_scale`, `damping`, `max_speed`, `agent_radius`.
+Allocation / scheduling with multiple cross-time couplings (wear,
+setup inertia, heat, inventory perishability, contract bundles).
 
-## Family B — `RecoverableResourceAllocationEnv`
+- **Action `Box([-1, 1]^D)`** decomposed by the env into:
+  - project allocation logits (K)
+  - mode allocation logits (M)
+  - per-mode maintenance intensity (M)
+  - per-mode setup-change intensity (M)
+  - per-product inventory release (P)
+  - trailing dims beyond `K + 3M + P` are unused (allows the registry to advertise larger action spaces at higher tiers without changing semantics).
+- **Obs**: per-project (cumulative service, backlog, deadline slack, priority); per-mode (utilization EMA, wear, heat, maintenance debt); setup mixture (M×P); per-product (inventory, age); multi-scale future demand summaries (16/64/256-step windows); previous-action aggregates; `t/H`.
+- **Dynamics**: production per project = `mode_capacity × setup_alignment × compat × proj_alloc`. Capacity reduces with wear and heat. Setup retargeting costs same-step capacity. Inventory builds from unused capacity and can perish. Contract bundles require all-of-N projects above quality threshold.
+- **Terminal vector** (`DEFAULT_SCHEDULING_REWARD_SPEC`):
+  - 11 components: `(success, weighted_fill_rate, mandatory_fill_rate, neg_lateness, neg_shortfall_tail, neg_wear, neg_heat_violation, neg_setup_churn, neg_inventory_waste, neg_energy, resilience_margin)`.
 
-- **Obs (3K+1,)**: `[progress_ratio[K], readiness[K], last_allocation[K], t / H]`.
-- **Action `[0, 1]^K`**, projected to the per-step `budget` (default 1.0).
-- **Dynamics**: each project accumulates `efficiency_i * readiness_i * allocation_i`, capped at `demand_i * progress_cap_factor`. `readiness_i = min_readiness + (1 - min_readiness) * clip(ratio_{i-1}, 0, 1)` — downstream is never fully locked, so early bad allocations are wasteful but recoverable. Per-project allocation above `safe_allocation` accrues a quadratic safety violation.
-- **Terminal vector** (`DEFAULT_RESOURCE_REWARD_SPEC`):
-  - names: `("success", "service_level", "neg_cost", "neg_delay", "neg_safety_violation")`
-  - weights: `(1.0, 0.65, 0.003, 0.10, 0.08)`
-- **Difficulty knobs** (`ResourceAllocationConfig`): `horizon`, `num_projects`, `budget`, `demand`, `efficiency`, `cost`, `deadlines`, `min_readiness`, `safe_allocation`, `progress_cap_factor`.
+## Family B — `RecoverableKeyFuelMazeEnv`
+
+Continuous-control 2D point-mass with a structured task: visit a set
+of key regions (dwell to collect), then visit seal regions (each
+requires specific keys + an optional timed-gate open phase), then
+reach an extraction zone. All before fuel runs out.
+
+- **Action `Box([-1, 1]^D)`** mapped through a per-world deterministic actuator matrix `A ∈ R^{2 × D}` into 2-D force. Per-actuator energy/heat cost weights are also per-world. Higher D means more redundant actuators, NOT more force dimensions; choosing the right basis costs less fuel/heat.
+- **Obs**: position(2), velocity(2), fuel(1), heat(1), damage(1), keys held(K_t), seal status(S), 3 nearest unfinished landmarks (each: dx, dy, kind one-hot[4], key-type one-hot[K_t]), gate phases(G), `t/H`, prev-action energy.
+- **Dynamics**: damped point mass with soft boundary collisions. Fuel decreases with distance + actuator energy. Fuel stations recharge with cooldowns. Keys collected by dwelling in a key region for several steps. Seals require keys + optional gate-open phase. Final extraction zone for success.
+- **Terminal vector** (`DEFAULT_KEYFUEL_REWARD_SPEC`):
+  - 9 components: `(success, seal_completion, key_coverage, fuel_margin, neg_damage, neg_lateness, neg_energy, neg_collision, route_efficiency)`.
 
 ## Reward orientation
 
-All vector components are **larger-is-better**. Costs/delays/collisions
-appear as negative quantities (`neg_*`). This makes the vectors directly
-usable for Pareto analysis, hypervolume, and convex scalarization.
-`pareto_non_dominated(points)` returns a boolean mask under that
-maximization assumption.
+All vector components are **larger-is-better**. Costs / delays /
+violations appear as negative quantities (`neg_*`). This makes the
+vectors directly usable for Pareto analysis, hypervolume, and convex
+scalarization. `pareto_non_dominated(points)` returns a boolean mask
+under that maximization assumption.
 
 ## Metrics (`rlh_bench.metrics`)
 
 - `rollout(env, policy, seed=None, max_steps=None) -> EpisodeResult` —
-  one episode. `EpisodeResult` holds `scalar_return` (always a scalar,
-  computed via `reward_spec.scalarize` when the env is in vector mode),
-  `reward_vector`, `length`, `terminated`, `truncated`, `info`.
+  one episode. `EpisodeResult` holds `scalar_return`, `reward_vector`,
+  `length`, `terminated`, `truncated`, `info`.
 - `evaluate_policy(env_factory, policy_factory, episodes=5, seed=0) -> EvaluationSummary` —
   rebuilds env and policy each episode, with seeds `seed + ep`. Policy
   factory may take `()` or `(env)`. Reports `mean_return`, `std_return`,
@@ -102,25 +122,29 @@ maximization assumption.
 
 ## Wrappers
 
-- `ScalarizeRewardWrapper(env, weights)` — collapse a vector-mode env
-  back to a scalar with user-chosen weights. Vector still in
-  `info["reward_vector"]`.
-- `GymnasiumAdapter(env)` — wrap as `gymnasium.Env` for external code.
-  Optional dep; converts the internal `Box`/`Discrete`/`MultiDiscrete`
-  spaces.
+- `ScalarizeRewardWrapper(env, weights)` — collapse a vector-mode env back to a scalar with user-chosen weights. Vector still in `info["reward_vector"]`.
+- `GymnasiumAdapter(env)` — wrap as `gymnasium.Env` for external code. Optional dep; converts the internal `Box`/`Discrete`/`MultiDiscrete` spaces.
 
 ## Reference baselines (`rlh_bench.baselines`)
 
-- `RandomPolicy(action_space, seed)`, `ZeroPolicy(action_space)`.
-- `MazeWaypointPolicy(env)` — PD waypoint follower for the maze.
-- `ResourceGreedyPolicy(env)` — greedy ready-then-deficient allocator.
-- `make_heuristic_policy(env)` — returns the right one by type.
-- `train_cem(env_factory, iterations, population, elite_frac, init_std, min_std, eval_episodes, seed) -> CEMResult` —
-  CEM over a linear tanh policy (`LinearPolicy`, params shape
-  `action_dim * (obs_dim + 1)`). NumPy only.
-- `train_reinforce(env_factory, episodes, hidden_size, lr, gamma, entropy_coef, seed) -> ReinforceResult` —
-  tiny Gaussian-MLP REINFORCE with a moving-average baseline. Requires
-  the `[torch]` extra. CPU-only on macOS is fine.
+Each new family ships with a *portfolio* of cheap heuristics plus a
+decomposition diagnostic. No single heuristic is the difficulty
+signal. The decomposition diagnostic checks whether the env truly
+rewards long-horizon credit assignment — if it solves the env, the
+long-horizon claim fails.
+
+**Scheduling** (`baselines.scheduling.SCHEDULING_BASELINES`):
+zero, uniform, backlog_priority, earliest_deadline, maintenance_aware,
+setup_aware, short_horizon_rollout (decomposition diagnostic).
+
+**Maze** (`baselines.maze.MAZE_BASELINES`):
+zero, random_constant, greedy_landmark, fuel_aware_greedy,
+efficient_actuator, short_horizon_lookahead (decomposition diagnostic).
+
+**Legacy** (`baselines.random`, `baselines.cem`, `baselines.reinforce`):
+`RandomPolicy`, `ZeroPolicy`, `train_cem`, `train_reinforce` — still
+available; CEM and REINFORCE on the new envs use the standard
+`LinearPolicy`.
 
 These baselines are *not* contenders; their role is to confirm tasks
 are feasible-but-non-trivial. New algorithm work should beat them, not
@@ -129,20 +153,21 @@ re-derive them.
 ## Substrate boundary — what an algorithm may and may not touch
 
 May:
-- Build new policies, learners, replay buffers, optimizers, exploration
-  bonuses, hindsight relabelers, scalarization schedulers, etc., as
-  *components* in `experiments/` (or a new dir of yours), importing
-  the substrate.
-- Read `info["reward_vector"]` / `info["reward_names"]` /
-  `info["is_success"]` — those are the substrate's intended outputs.
+- Build new policies, learners, replay buffers, optimizers, exploration bonuses, hindsight relabelers, scalarization schedulers, etc., as *components* in `experiments/` (or a new dir of yours), importing the substrate.
+- Read `info["reward_vector"]` / `info["reward_names"]` / `info["is_success"]` — those are the substrate's intended outputs.
 - Construct any wrapper of your own, including custom Gym adapters.
 
 May not:
-- Edit anything under `src/rlh_bench/`, including registry, metrics,
-  reward specs, and reward orientations, to make an algorithm work.
-- Add per-step shaping rewards back into the env (the terminal-only
-  property is load-bearing).
-- Use a scalarization step inside the learner and call it "vector RL"
-  (see `CLAUDE.md`).
-- Pull in baseline RL libraries (stable-baselines3, RLlib, cleanrl,
-  etc.). NumPy and the optional PyTorch dep are the bar.
+- Edit anything under `src/rlh_bench/`, including registry, metrics, reward specs, and reward orientations, to make an algorithm work.
+- Add per-step shaping rewards back into the env (the terminal-only property is load-bearing).
+- Use a scalarization step inside the learner and call it "vector RL" (see `CLAUDE.md`).
+- Pull in baseline RL libraries (stable-baselines3, RLlib, cleanrl, etc.). NumPy and the optional PyTorch dep are the bar.
+
+## Legacy env classes
+
+The pre-redesign families remain importable from
+`rlh_bench.envs.continuous_maze.RecoverablePointMazeEnv` and
+`rlh_bench.envs.resource_allocation.RecoverableResourceAllocationEnv`,
+but are **not** in `registered_envs()`. They are kept for backward
+compatibility with code that referenced them; new work targets the
+two new families above.

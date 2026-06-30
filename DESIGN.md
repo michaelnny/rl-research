@@ -1,6 +1,25 @@
 # RLH Bench Design Document
 
-## 1. Research motivation
+## 1. Status (v2 redesign, 2026-06-30)
+
+This document describes the *original* two env families used in the
+pre-v2 substrate (`RecoverablePointMaze` and `RecoverableResourceAllocation`).
+After the v2 redesign, the canonical families are
+`RecoverableCapacityScheduling` and `RecoverableKeyFuelMaze`. See:
+
+- `docs/SUBSTRATE_MAP.md` for the current one-page API.
+- `lab/notes/PLAN_substrate_redesign_v2_2026-06-30.md` for the v2 plan.
+- `lab/notes/codex_redteam_substrate_redesign_2026-06-30.md` for the
+  red-team that drove the redesign.
+- `lab/notes/codex_counterdesign_substrate_2026-06-30.md` for the
+  counter-design that became the v2 plan.
+
+The legacy env classes remain importable from
+`rlh_bench.envs.continuous_maze` and `rlh_bench.envs.resource_allocation`
+but are NOT in `registered_envs()`. Their design notes below are kept
+as historical record.
+
+## 2. Research motivation
 
 The package is designed for a specific problem class:
 

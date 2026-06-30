@@ -131,9 +131,11 @@ contender, just the right shape.
 ## Evaluation protocol
 
 For each candidate algorithm, report on every env ID returned by
-`rlh_bench.registered_envs()` (currently 6), with:
+`rlh_bench.registered_envs()` (currently 6, across two families), with:
 
-- `eval_seeds=range(20)` minimum;
+- `eval_seeds` taken from the **held-out** band of
+  `rlh_bench.seed_bands.seed_band_for(env_id)` (training seeds go
+  in the train band; the headline result is on held-out seeds);
 - both `reward_mode="scalar"` (for headline numbers) and
   `reward_mode="vector"` (for any vector-native learner);
 - training seed varied across at least 3 seeds when claiming the result
@@ -142,26 +144,36 @@ For each candidate algorithm, report on every env ID returned by
 Aim for a markdown report in `docs/` that puts your numbers next to
 `docs/baseline_report.md` row by row. A new row is interesting when:
 
-- success rate ≥ heuristic success rate **and** mean reward vector is
-  not dominated by the heuristic, OR
-- the algorithm solves an env that random + heuristic + CEM all leave
-  at success = 0 (currently the resource-allocation Small and Large
-  configurations).
+- success rate ≥ best policy in the family's portfolio **and** mean
+  reward vector is not dominated by that policy, OR
+- the candidate solves an env that the entire portfolio leaves at
+  success = 0 (currently the v0 / Large tiers of both families have
+  baselines below 50% success), OR
+- the candidate consumes `info["reward_vector"]` natively without
+  scalarization and improves the Pareto frontier across multiple
+  components.
 
 ## Recommended first targets
 
 In order of cost:
 
-1. `RecoverableResourceAllocation-Small-v0` — small action dim,
-   short horizon, **heuristic and CEM both fail at success = 0**. A
-   small win here would be the most informative signal.
-2. `RecoverableResourceAllocation-Large-v0` — same shape, larger action
-   space; useful for testing scaling.
-3. `RecoverablePointMaze-HD-v0` — redundant actuator pairs; tests
-   whether your method exploits the redundancy or wastes capacity.
-4. `RecoverableResourceAllocation-v0` — canonical allocator. Heuristic
-   succeeds; if you beat it on the vector you're learning useful
-   structure beyond the greedy rule.
+1. `RecoverableCapacityScheduling-Small-v0` — small action dim,
+   short horizon. Heuristic portfolio is currently competitive
+   here; a small win on the Pareto vector would be informative.
+2. `RecoverableKeyFuelMaze-Small-v0` — short-horizon spatial
+   control with the redundant actuator basis. Greedy proxies leave
+   visible headroom in seal_completion and fuel_margin.
+3. `RecoverableCapacityScheduling-v0` — canonical scheduling
+   problem. Acceptance gate calibration is still being tuned at
+   this tier (see `lab/notes/codex_v0_calibration_oneshot.md`);
+   results here should be treated as provisional until calibration
+   stabilizes.
+4. `RecoverableKeyFuelMaze-v0` — canonical maze. The 6 seals + 3
+   gates + 4 key types puzzle is challenging at this tier; expect
+   to need genuinely long-horizon credit assignment.
+5. `RecoverableCapacityScheduling-Large-v0` /
+   `RecoverableKeyFuelMaze-Large-v0` — stretch tier (H=10000).
+   Baselines deferred per the v2 plan; use sparingly.
 
 ## File layout
 
