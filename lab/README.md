@@ -6,12 +6,24 @@ is the dry operator's manual.
 
 ## Files
 
-- `prompts/claude_session.md` — what Claude gets per session.
-- `prompts/codex_peer.md` — what Codex (profile `jelly`) gets per
-  session.
-- `run_lab.sh` — the dumb loop that wires the two together and commits.
+- `prompts/claude_system.md` — Claude's lab system prompt (the source
+  of truth for how Claude should behave in a session). Loaded via
+  `--bare --system-prompt-file`, which fully replaces Claude Code's
+  ~37k-token default engineering prompt and disables auto-memory.
+- `prompts/claude_session.md` — thin per-iteration user prompt for
+  Claude; carries only the session number and a pointer to begin.
+- `prompts/codex_system.md` — Codex's lab system prompt (peer
+  reviewer disposition). Loaded via
+  `-c model_instructions_file=...`, which replaces the default
+  `base_instructions` for that one invocation.
+- `prompts/codex_peer.md` — thin per-iteration user prompt for Codex;
+  carries only the journal entry path and a pointer to begin.
+- `run_lab.sh` — the dumb loop that wires the two together and
+  commits.
 - `logs/` — per-iteration logs (`iter-NNNN/{claude,codex}_{stdout,stderr,prompt}.txt`)
-  plus a `run.log` heartbeat.
+  plus a `run.log` heartbeat. Gitignored.
+- `notes/` — lab-meta artifacts (prompt reviews, design notes). Not
+  research findings; those go in `docs/journal/`.
 
 ## Running
 

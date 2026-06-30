@@ -11,4 +11,3 @@ venv/
 *.so
 .DS_Store
 lab/logs/
-lab/prompts/codex_reviewer_oneshot.md

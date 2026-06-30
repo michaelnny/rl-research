@@ -1,21 +1,45 @@
-# Agent guide — exploring novel RL algorithms on RLH-Bench
+# Agent guide — plugging a candidate algorithm into the runner
 
-This is the page a coding agent (or a human) reads before starting work on a
-new algorithm. Background on the substrate itself lives in
-`docs/SUBSTRATE_MAP.md`. Project-wide rules of engagement are in `CLAUDE.md`.
+This is the technical reference for the `implement` shape of a lab
+session: when a researcher decides to write code, evaluate it, and
+record the result, this is the protocol. For everything else (read,
+play, propose, synthesize, tool-build, …), see
+[`docs/LAB.md`](LAB.md) and the system prompt that loaded for the
+session.
 
-## TL;DR
+Substrate background: [`docs/SUBSTRATE_MAP.md`](SUBSTRATE_MAP.md).
+Project rules: [`CLAUDE.md`](../CLAUDE.md).
 
-1. Substrate (`src/rlh_bench/`) is **frozen**. Don't edit it to make your
-   algorithm work.
+## Probes vs. candidates
+
+There are two shapes of "I wrote code this session":
+
+- **probe** (`experiments/probes/<slug>.py`): a quick ablation, trace,
+  or one-off script. Doesn't need to satisfy any protocol. Often the
+  right shape for a `play` or `read` session that needs to *run*
+  something to be honest. Mention the path in the journal entry.
+
+- **candidate** (`experiments/algorithms/<slug>.py`): a candidate
+  algorithm you actually want to evaluate against the baselines.
+  Targets the `Algorithm` protocol below and gets a JSON record
+  under `experiments/results/`.
+
+Do not promote every probe into a full candidate. Most sessions that
+write code should produce probes, not candidates.
+
+## TL;DR for candidates
+
+1. Substrate (`src/rlh_bench/`) is **frozen**. Don't edit it to make
+   your algorithm work.
 2. Build the candidate under `experiments/algorithms/<your_name>.py`.
 3. It must satisfy the `Algorithm` protocol in
-   `experiments/algorithms/runner.py` — basically: `name` + `train(env_factory, *, seed) -> policy`.
+   `experiments/algorithms/runner.py` — `name` + `train(env_factory, *, seed) -> policy`.
 4. Run it through `evaluate_algorithm(...)`. Drop the JSON record into
    `experiments/results/`.
-5. Compare against `docs/baseline_report.md` (random / heuristic / CEM).
-   "Beats baselines" means same-or-better success rate **and** a Pareto-
-   competitive mean reward vector, not just higher scalar return.
+5. Compare against `docs/baseline_report.md` (random / heuristic /
+   CEM). "Beats baselines" means same-or-better success rate **and**
+   a Pareto-competitive mean reward vector — not just higher scalar
+   return.
 
 ## What counts as novelty
 
@@ -147,6 +171,8 @@ experiments/
         runner.py               # Algorithm protocol + evaluate_algorithm
         example_random_shooting.py
         <your_algorithm>.py
+    probes/
+        <your_probe>.py         # one-off scripts that don't need a protocol
     results/
         baselines.json
         example_random_shooting.json
@@ -159,12 +185,10 @@ docs/
 
 ## Hot-path commands
 
-```bash
-# one-time setup
-uv venv --python 3.12 .venv
-VIRTUAL_ENV=$(pwd)/.venv uv pip install -e ".[dev,torch,gymnasium]"
+Setup is in [`README.md`](../README.md). Once the venv exists:
 
-# tests, baselines, examples
+```bash
+# tests, baselines, example
 PYTHONPATH=src .venv/bin/python -m pytest -q
 PYTHONPATH=src .venv/bin/python experiments/run_baselines.py
 PYTHONPATH=src:. .venv/bin/python experiments/algorithms/example_random_shooting.py
