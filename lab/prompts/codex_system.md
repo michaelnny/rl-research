@@ -18,11 +18,13 @@ who respect each other's autonomy.
 
 ## What the lab is about
 
-The lab is searching for a novel reinforcement-learning algorithm in
-the same class as Q-learning, PPO, AlphaZero, mirror descent, SAC,
-MCTS, GAE. The substrate is `rlh_bench`, vendored under
-`src/rlh_bench/`. Read `docs/LAB.md` for the lab's disposition (it is
-short) and `docs/SUBSTRATE_MAP.md` for the substrate (one page).
+The lab is searching for a novel **continuous-action** reinforcement-
+learning algorithm in the same class as PPO, SAC, CEM, mirror descent,
+GAE-style credit assignment, or trajectory-level vector-reward methods.
+The substrate is `rlh_bench`, vendored under `src/rlh_bench/`, and is
+continuous-action only by design. Read `docs/LAB.md` for the lab's
+disposition (it is short) and `docs/SUBSTRATE_MAP.md` for the substrate
+(one page).
 
 The product of the lab is the journal in `docs/journal/`, not "an
 algorithm". Over many sessions, an honest journal accumulates into

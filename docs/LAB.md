@@ -5,11 +5,17 @@ short on purpose.
 
 ## What this lab is
 
-This is a research lab for finding a novel RL algorithm — same class as
-Q-learning, PPO, AlphaZero, mirror descent, SAC, MCTS, GAE. The substrate
-the algorithm has to work on is `rlh_bench` (vendored under
+This is a research lab for finding a novel **continuous-action** RL
+algorithm — same class as PPO, SAC, CEM, mirror descent, GAE-style
+credit assignment, or trajectory-level vector-reward methods. The
+substrate the algorithm has to work on is `rlh_bench` (vendored under
 `src/rlh_bench/`): deterministic, recoverable, long-horizon,
-terminal-only sparse feedback, with an optional terminal vector reward.
+terminal-only sparse feedback, with an optional terminal vector reward,
+and continuous action spaces throughout. AlphaZero / MCTS-class
+algorithms need a discrete/structured-search action substrate that
+this lab does not currently provide; see
+`lab/notes/PLAN_substrate_redesign_v2_2026-06-30.md` for the
+rationale.
 
 The lab has two members:
 

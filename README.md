@@ -11,12 +11,15 @@ honest and varied.
 
 ## What the lab is trying to find
 
-A novel RL algorithm in the same class as Q-learning, PPO, AlphaZero,
-mirror descent, SAC, MCTS, or GAE. Not a tweak on an existing
-algorithm; an idea that wasn't there before. The mission, hard rules,
-and substrate boundary are in [`CLAUDE.md`](CLAUDE.md). The lab's
-spirit — no verdicts, journal-as-product, bad ideas welcome — is in
-[`docs/LAB.md`](docs/LAB.md).
+A novel **continuous-action** RL algorithm in the same class as PPO,
+SAC, CEM, mirror descent, GAE-style credit assignment, or trajectory-
+level vector-reward methods. Not a tweak on an existing algorithm; an
+idea that wasn't there before. The mission, hard rules, and substrate
+boundary are in [`CLAUDE.md`](CLAUDE.md). The lab's spirit — no
+verdicts, journal-as-product, bad ideas welcome — is in
+[`docs/LAB.md`](docs/LAB.md). The substrate is continuous-action only
+by design; AlphaZero / MCTS-class algorithms need a different action
+substrate that this lab does not currently provide.
 
 ## What "substrate" means here
 

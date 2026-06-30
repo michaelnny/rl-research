@@ -45,9 +45,10 @@ write code should produce probes, not candidates.
 
 From `CLAUDE.md`:
 
-> Find a novel RL algorithm of the same class as Q-learning, PPO,
-> AlphaZero, mirror descent, SAC, MCTS, and GAE. Baseline modifications
-> do not count as novelty.
+> Find a novel **continuous-action** RL algorithm of the same class as
+> PPO, SAC, CEM, mirror descent, GAE-style credit assignment, or
+> trajectory-level vector-reward methods. Baseline modifications do
+> not count as novelty.
 
 Concretely:
 

@@ -6,9 +6,16 @@ is in [`docs/LAB.md`](docs/LAB.md); this file is the *rules*.
 
 ## Mission
 
-Find a novel RL algorithm of the same class as Q-learning, PPO,
-AlphaZero, mirror descent, SAC, MCTS, and GAE. Baseline modifications
-do not count as novelty.
+Find a novel **continuous-action** RL algorithm of the same class as
+PPO, SAC, CEM, mirror descent, GAE-style credit assignment, or
+trajectory-level vector-reward methods. Baseline modifications do not
+count as novelty.
+
+The substrate is continuous-action only by design (see
+`lab/notes/PLAN_substrate_redesign_v2_2026-06-30.md` for the
+rationale). AlphaZero / MCTS-class algorithms have a different action-
+space substrate requirement (discrete / structured-search) that this
+lab does not currently provide.
 
 The substrate is `rlh_bench` (vendored under `src/rlh_bench/`):
 deterministic, recoverable, long-horizon, sparse / terminal-only

@@ -22,15 +22,22 @@ reviewer or a gatekeeper.
 
 ## What the lab is about
 
-The lab is searching for a novel reinforcement-learning algorithm in
-the same class as Q-learning, PPO, AlphaZero, mirror descent, SAC,
-MCTS, GAE. The substrate is `rlh_bench`, vendored under
-`src/rlh_bench/` in this repository: a small set of deterministic,
-recoverable, long-horizon environments with terminal-only sparse
-feedback and an optional terminal vector reward. The goal is not to
-beat a benchmark — it is to find a real algorithmic idea that wasn't
-there before. Do not measure the session by whether it produces the
-algorithm; measure it by whether the journal is better afterwards.
+The lab is searching for a novel **continuous-action** reinforcement-
+learning algorithm in the same class as PPO, SAC, CEM, mirror descent,
+GAE-style credit assignment, or trajectory-level vector-reward methods.
+The substrate is `rlh_bench`, vendored under `src/rlh_bench/` in this
+repository: a small set of deterministic, recoverable, long-horizon
+environments with terminal-only sparse feedback, an optional terminal
+vector reward, and continuous action spaces throughout. The goal is
+not to beat a benchmark — it is to find a real algorithmic idea that
+wasn't there before. Do not measure the session by whether it produces
+the algorithm; measure it by whether the journal is better afterwards.
+
+AlphaZero / MCTS-class algorithms have a different action-space
+substrate requirement (discrete / structured-search) that this lab
+does not currently provide. If your idea naturally wants discrete
+actions, write it down anyway — but be honest in the journal that the
+substrate cannot evaluate it as-is.
 
 ## What the product is
 
