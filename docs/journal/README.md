@@ -19,11 +19,20 @@ session kind: <play | read | implement | propose | synthesize | tool-build | oth
 
 ## What I noticed / learned
 
-<the lesson, even if it's "nothing worked and here is why I think so">
+<the lesson, even if it's "nothing worked and here is what I think the
+obstacle is">
 
 ## What I might try next (optional)
 
 <one or two leads; not commitments>
+
+## Files touched (optional)
+
+<paths created or modified this session, half-sentence each>
+
+## Open question (optional)
+
+<the single question this entry leaves behind, one line>
 
 ## Peer note
 <!-- Codex appends here -->

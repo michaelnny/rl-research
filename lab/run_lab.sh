@@ -106,10 +106,17 @@ while true; do
 
   set +e
   claude -p \
+    --bare \
+    --system-prompt-file "$LAB_DIR/prompts/claude_system.md" \
+    --no-session-persistence \
     --model opus \
     --effort max \
     --permission-mode bypassPermissions \
-    --append-system-prompt "You are in the rl-research lab. Follow lab/prompts/claude_session.md as your task for this session." \
+    --add-dir "$REPO_ROOT/docs" \
+    --add-dir "$REPO_ROOT/experiments" \
+    --add-dir "$REPO_ROOT/lab" \
+    --add-dir "$REPO_ROOT/src" \
+    --add-dir "$REPO_ROOT/tests" \
     "$claude_prompt" \
     > "$iter_dir/claude_stdout.txt" 2> "$iter_dir/claude_stderr.txt"
   claude_exit=$?
@@ -140,9 +147,11 @@ while true; do
   set +e
   codex exec \
     -p jelly \
+    -c "model_instructions_file=\"$LAB_DIR/prompts/codex_system.md\"" \
     --sandbox workspace-write \
     --dangerously-bypass-approvals-and-sandbox \
     -C "$REPO_ROOT" \
+    --skip-git-repo-check \
     "$codex_prompt" \
     < /dev/null \
     > "$iter_dir/codex_stdout.txt" 2> "$iter_dir/codex_stderr.txt"

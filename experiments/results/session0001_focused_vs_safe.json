@@ -1,0 +1,36 @@
+{
+  "session": 1,
+  "kind": "read+play",
+  "what": "ablation of ResourceGreedyPolicy spill behavior on the resource family",
+  "episodes_per_cell": 20,
+  "seeds": "0..19",
+  "policies": {
+    "focused": "put full 1.0 on the leftmost incomplete project; all other channels = 0",
+    "safe_focused": "put 0.55 (safe_allocation) on the leftmost incomplete project; rest unallocated (action sum = 0.55)",
+    "safe_then_done": "0.55 on most-deficient + 0.45 parked on an already-completed project (Small only)"
+  },
+  "results": {
+    "RecoverableResourceAllocation-Small-v0": {
+      "focused":        {"success": "20/20", "mean_return":  0.682, "mean_vec": [1.000, 1.000, -57.983, 0.000, -9.922]},
+      "safe_focused":   {"success":  "0/20", "mean_return":  0.178, "mean_vec": [0.000, 0.716, -36.786, -1.769, 0.000]},
+      "safe_then_done": {"success":  "0/20", "mean_return":  0.124, "mean_vec": [0.000, 0.716, -54.786, -1.769, 0.000]}
+    },
+    "RecoverableResourceAllocation-v0": {
+      "focused":      {"success": "20/20", "mean_return":  0.445, "mean_vec": [1.000, 1.000, -72.112, 0.000, -12.352]},
+      "safe_focused": {"success":  "0/20", "mean_return":  0.342, "mean_vec": [0.000, 0.920, -64.144, -0.639, 0.000]}
+    },
+    "RecoverableResourceAllocation-Large-v0": {
+      "focused":      {"success": "20/20", "mean_return": -0.285, "mean_vec": [1.000, 1.000, -115.700, 0.000, -19.845]},
+      "safe_focused": {"success":  "0/20", "mean_return": -0.102, "mean_vec": [0.000, 0.704, -73.892, -3.377, 0.000]}
+    }
+  },
+  "heuristic_baseline_for_reference": {
+    "RecoverableResourceAllocation-Small-v0": {"success": "0/20", "mean_return": 0.054, "mean_vec": [0.000, 0.793, -72.104, -2.446, 0.000]}
+  },
+  "notes": [
+    "On Small, the canonical heuristic (ResourceGreedyPolicy) keeps spending 0.55 on the most-deficient project and *spills* 0.45 onto the next-most-deficient — but min_readiness=0.08 means that spill produces almost no progress for many steps while quadratically violating nothing (because each channel is below safe_allocation=0.55).",
+    "Replacing the policy with `focused` (all 1.0 on a single project at a time) succeeds 20/20 on every resource env, including Large where heuristic and CEM both score 0. The cost is taking on neg_safety_violation (since 1.0 > 0.55), but the success and service_level gains dominate the scalar weights.",
+    "`safe_focused` (0.55 on one project, leave the rest unallocated) fails 0/20 on Small but still beats the heuristic on mean return. Interpretation: the safety penalty is non-negligible but small relative to success+service; what matters more is concentration, not the absolute amount per step.",
+    "Mechanic the heuristic ignores: with min_readiness=0.08 and decreasing efficiencies (0.092..0.078), the agent gets ~12x more progress per unit on the leftmost project than on the rightmost when nothing upstream is done. Spilling budget downstream is almost pure waste early on. The heuristic's 'allocate to next-best ready project' is exactly the wrong instinct in this regime."
+  ]
+}

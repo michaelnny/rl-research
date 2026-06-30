@@ -67,3 +67,15 @@ A project-local `.venv` (Python 3.12, `uv`) is installed with the
 `[dev,torch,gymnasium]` extras. Run the suite with
 `PYTHONPATH=src .venv/bin/python -m pytest -q` and candidate algorithms
 with `PYTHONPATH=src:. .venv/bin/python experiments/algorithms/<x>.py`.
+
+## The lab
+
+This project runs an autonomous research lab against the substrate.
+Read `docs/LAB.md` for the lab's spirit (journal-as-product, no
+verdicts, bad ideas welcome) and `lab/README.md` for the operator's
+manual. The loop is `lab/run_lab.sh`. Per iteration it invokes
+`claude -p` (Opus, max effort) to write a journal entry under
+`docs/journal/`, then `codex exec -p jelly` to append a `## Peer note`
+section to the same entry, then commits with a descriptive message.
+The loop auto-branches to `lab/auto`; `master` is for hand-curated
+commits.
