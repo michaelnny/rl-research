@@ -4,10 +4,20 @@ Same design as `scheduling.py`: a *portfolio* of cheap baselines
 plus a decomposition diagnostic. No single heuristic is the
 difficulty signal.
 
-The baseline policies read the observation (no privileged access to
-env internals beyond what is exposed through the public env API).
-Oracle diagnostics, when present, are listed separately and are not
-part of ``MAZE_BASELINES``.
+The baseline policies read the observation plus the **public model
+API** — specifically ``env.actuator_matrix`` (the per-world
+deterministic mapping from D-dim continuous action to 2-D physical
+force) and ``env.seed`` (for cache invalidation). The actuator
+matrix is treated as known-model information analogous to a robot
+knowing its own kinematic structure: it does not reveal task state
+(key positions, gate phases, etc.) and a learner that uses it is
+not cheating.
+
+What is NOT permitted in baselines: private env attributes
+(``env._key_positions``, ``env._seal_gate_requirements``,
+``env._gate_phases``, etc.). Policies that read those are oracle
+diagnostics and live in ``MAZE_ORACLE_DIAGNOSTICS``, not in
+``MAZE_BASELINES``.
 """
 
 from __future__ import annotations
@@ -397,8 +407,9 @@ MAZE_BASELINES = [
 ]
 """All learner-facing maze-family baselines. Ordered approximately by
 sophistication: zero/random_constant are sanity checks, the middle
-entries are observation-only heuristics, and the last is an
-observation-only short-horizon diagnostic."""
+entries are heuristics that read observation + public model API
+(``env.actuator_matrix``), and the last is a short-horizon
+decomposition diagnostic on the same access level."""
 
 
 MAZE_ORACLE_DIAGNOSTICS = [

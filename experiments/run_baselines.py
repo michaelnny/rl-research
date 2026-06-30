@@ -111,10 +111,11 @@ def _select_envs(include_large: bool) -> list[str]:
 def _baselines_for(env_id: str) -> list[tuple[str, Any]]:
     """Return (name, policy_factory) pairs for the given env ID.
 
-    Returns the honest learner-facing portfolio (observation-only,
-    no privileged env-internal access). Oracle diagnostics are
-    available via :func:`_oracle_diagnostics_for` and reported
-    separately.
+    Returns the honest learner-facing portfolio. Policies read the
+    observation plus the public model API (env.actuator_matrix,
+    env.seed) — they do NOT touch private underscore-prefixed env
+    attributes. Oracle diagnostics are available via
+    :func:`_oracle_diagnostics_for` and reported separately.
     """
     base_factories: list[tuple[str, Any]] = [
         ("zero", lambda env: ZeroPolicy(env.action_space)),

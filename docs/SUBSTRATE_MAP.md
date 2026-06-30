@@ -168,9 +168,20 @@ re-derive them.
 May:
 - Build new policies, learners, replay buffers, optimizers, exploration bonuses, hindsight relabelers, scalarization schedulers, etc., as *components* in `experiments/` (or a new dir of yours), importing the substrate.
 - Read `info["reward_vector"]` / `info["reward_names"]` / `info["is_success"]` — those are the substrate's intended outputs.
+- Read the **public model API**: properties exposed on the env
+  object. For KeyFuelMaze this includes ``env.actuator_matrix``
+  (the per-world deterministic mapping from D-dim action to 2-D
+  force) and ``env.seed`` (current world seed for cache
+  invalidation). These are treated as known-model information
+  analogous to a robot knowing its own kinematic structure; they
+  do not reveal task state (key positions, gate phases, etc.).
 - Construct any wrapper of your own, including custom Gym adapters.
 
 May not:
+- Read underscore-prefixed env attributes (`env._key_positions`,
+  `env._seal_gate_requirements`, `env._gate_phases`, etc.). Those
+  are the privileged hooks used by oracle diagnostics, and a
+  baseline that reads them is no longer a baseline.
 - Edit anything under `src/rlh_bench/`, including registry, metrics, reward specs, and reward orientations, to make an algorithm work.
 - Add per-step shaping rewards back into the env (the terminal-only property is load-bearing).
 - Use a scalarization step inside the learner and call it "vector RL" (see `CLAUDE.md`).
