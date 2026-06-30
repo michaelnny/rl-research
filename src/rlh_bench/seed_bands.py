@@ -63,21 +63,21 @@ DEFAULT_SMALL_BANDS = SeedBands(
     train=range(0, 100),
     validation=range(1000, 1050),
     held_out=range(10000, 10050),
-    debug=range(0, 10),
+    debug=range(900000, 900010),
 )
 
 DEFAULT_V0_BANDS = SeedBands(
     train=range(0, 1000),
     validation=range(1000, 1200),
     held_out=range(10000, 10200),
-    debug=range(0, 10),
+    debug=range(910000, 910010),
 )
 
 DEFAULT_LARGE_BANDS = SeedBands(
     train=range(0, 100),
     validation=range(1000, 1050),
     held_out=range(20000, 20050),
-    debug=range(0, 5),
+    debug=range(920000, 920005),
 )
 
 
@@ -93,8 +93,8 @@ def seed_band_for(env_id: str) -> SeedBands:
         env_id: Registered environment ID.
     """
 
-    if "Small" in env_id:
+    if env_id.endswith("-Small-v0"):
         return DEFAULT_SMALL_BANDS
-    if "Large" in env_id:
+    if env_id.endswith("-Large-v0"):
         return DEFAULT_LARGE_BANDS
     return DEFAULT_V0_BANDS

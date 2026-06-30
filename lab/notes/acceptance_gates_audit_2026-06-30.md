@@ -221,7 +221,7 @@ All well under their gates.
 | 6.  Myopic-gap                | ✓     | ⚠    | —     | Sched-v0 uniform brought down to 30%; capacity_push fills the void as stress diagnostic; structural myopia of original heuristics remains  |
 | 7.  Recoverability            | ✓     | —    | —     | Tested for Small               |
 | 8.  Action-complexity         | ✓     | ✓    | ✓     |                                |
-| 9.  Seed-generalization       | ⚠     | ⚠    | ⚠     | Infrastructure ready           |
+| 9.  Seed-generalization       | ✓     | ✓    | ✓     | `--use-held-out` flag + tests   |
 | 10. Reward-normalization      | ✓     | ✓    | ✓     | Cross-tier ≤ 3× after audit  |
 | 11. Baseline portfolio        | ✓     | ✓    | ✓     | + oracle diagnostics separated |
 | 12. Runtime                   | ✓     | ✓    | ✓     |                                |

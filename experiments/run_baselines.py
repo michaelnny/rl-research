@@ -44,6 +44,7 @@ from rlh_bench.baselines import (
 )
 from rlh_bench.baselines.maze import MAZE_BASELINES, MAZE_ORACLE_DIAGNOSTICS
 from rlh_bench.baselines.scheduling import SCHEDULING_BASELINES
+from rlh_bench.seed_bands import seed_band_for
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -51,8 +52,17 @@ RESULTS_PATH = REPO_ROOT / "experiments" / "results" / "baselines.json"
 REPORT_PATH = REPO_ROOT / "docs" / "baseline_report.md"
 
 
-def _summarize(env_id: str, policy_factory, episodes: int, seed: int) -> dict[str, Any]:
-    """Roll out `policy_factory(env)` for `episodes` seeds and aggregate."""
+def _summarize(env_id: str, policy_factory, seeds: list[int]) -> dict[str, Any]:
+    """Roll out `policy_factory(env)` against each seed in ``seeds`` and aggregate.
+
+    ``policy_factory`` is a per-rollout, no-training baseline factory. Do not
+    put trainable algorithms here: they need a train-on-train-seeds/evaluate-on-
+    held-out harness (see ``experiments/algorithms/runner.py``), not repeated
+    construction inside the evaluation loop.
+    """
+
+    if not seeds:
+        raise ValueError("_summarize requires at least one seed")
 
     returns: list[float] = []
     vectors: list[np.ndarray] = []
@@ -60,11 +70,11 @@ def _summarize(env_id: str, policy_factory, episodes: int, seed: int) -> dict[st
     lengths: list[int] = []
     durations: list[float] = []
 
-    for ep in range(episodes):
+    for seed in seeds:
         env = make_env(env_id)
         policy = policy_factory(env)
         t0 = time.perf_counter()
-        result = rollout(env, policy, seed=seed + ep)
+        result = rollout(env, policy, seed=seed)
         durations.append(time.perf_counter() - t0)
         returns.append(result.scalar_return)
         vectors.append(result.reward_vector)
@@ -76,7 +86,8 @@ def _summarize(env_id: str, policy_factory, episodes: int, seed: int) -> dict[st
     pareto_mask = pareto_non_dominated(vec) if vec.shape[0] > 0 else np.zeros(0, dtype=bool)
 
     return {
-        "episodes": episodes,
+        "episodes": len(seeds),
+        "seeds": list(seeds),
         "mean_return": float(np.mean(returns)),
         "std_return": float(np.std(returns)),
         "mean_reward_vector": vec.mean(axis=0).round(4).tolist(),
@@ -169,23 +180,47 @@ def _render_markdown(records: dict[str, Any]) -> str:
         names = next(iter(by_policy.values()))["reward_names"]
         lines.append(f"Reward names: `{names}`")
         lines.append("")
-        lines.append(
-            "| policy | episodes | success | mean return | first success ep | mean length | sec/ep | mean reward vector |"
-        )
-        lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
-        for name, row in by_policy.items():
+        held_out_by_policy = (records.get("held_out") or {}).get(env_id) or {}
+        if held_out_by_policy:
             lines.append(
-                "| {name} | {episodes} | {success:.2f} | {ret:.3f} | {fs} | {length:.1f} | {sec:.4f} | {vec} |".format(
-                    name=name,
-                    episodes=row["episodes"],
-                    success=row["success_rate"],
-                    ret=row["mean_return"],
-                    fs=row["first_success_episode"] if row["first_success_episode"] is not None else "—",
-                    length=row["mean_length"],
-                    sec=row["mean_sec_per_episode"],
-                    vec=_fmt_vec(row["mean_reward_vector"]),
-                )
+                "| policy | episodes | train succ | held-out succ | gap | train return | held-out return | sec/ep |"
             )
+            lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
+            for name, row in by_policy.items():
+                ho_row = held_out_by_policy.get(name, {})
+                train_succ = row["success_rate"]
+                ho_succ = ho_row.get("success_rate", float("nan"))
+                gap = train_succ - ho_succ
+                lines.append(
+                    "| {name} | {episodes} | {train_s:.2f} | {ho_s:.2f} | {gap:+.2f} | {train_r:.3f} | {ho_r:.3f} | {sec:.4f} |".format(
+                        name=name,
+                        episodes=row["episodes"],
+                        train_s=train_succ,
+                        ho_s=ho_succ,
+                        gap=gap,
+                        train_r=row["mean_return"],
+                        ho_r=ho_row.get("mean_return", float("nan")),
+                        sec=row["mean_sec_per_episode"],
+                    )
+                )
+        else:
+            lines.append(
+                "| policy | episodes | success | mean return | first success ep | mean length | sec/ep | mean reward vector |"
+            )
+            lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
+            for name, row in by_policy.items():
+                lines.append(
+                    "| {name} | {episodes} | {success:.2f} | {ret:.3f} | {fs} | {length:.1f} | {sec:.4f} | {vec} |".format(
+                        name=name,
+                        episodes=row["episodes"],
+                        success=row["success_rate"],
+                        ret=row["mean_return"],
+                        fs=row["first_success_episode"] if row["first_success_episode"] is not None else "—",
+                        length=row["mean_length"],
+                        sec=row["mean_sec_per_episode"],
+                        vec=_fmt_vec(row["mean_reward_vector"]),
+                    )
+                )
         lines.append("")
 
     lines.append("## Notes")
@@ -258,23 +293,69 @@ def main() -> None:
     parser.add_argument("--episodes", type=int, default=20)
     parser.add_argument("--include-large", action="store_true")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--use-held-out",
+        action="store_true",
+        help=(
+            "Evaluate on both training and held-out seed bands from "
+            "rlh_bench.seed_bands.seed_band_for(env_id). Reports the "
+            "success gap, which is the canonical gate-9 signal."
+        ),
+    )
     args = parser.parse_args()
+    if args.episodes <= 0:
+        parser.error("--episodes must be a positive integer")
 
-    records: dict[str, Any] = {"seed": args.seed, "envs": {}, "oracle_diagnostics": {}}
+    records: dict[str, Any] = {
+        "seed": args.seed,
+        "envs": {},
+        "oracle_diagnostics": {},
+        "held_out": {} if args.use_held_out else None,
+    }
     env_ids = _select_envs(args.include_large)
 
     for env_id in env_ids:
         print(f"\n=== {env_id} ===")
+        # Default seed list: contiguous range starting at args.seed
+        # (preserves the previous behavior when --use-held-out is off).
+        train_seeds = list(range(args.seed, args.seed + args.episodes))
+        if args.use_held_out:
+            bands = seed_band_for(env_id)
+            if args.episodes > len(bands.train) or args.episodes > len(bands.held_out):
+                parser.error(
+                    f"--episodes {args.episodes} exceeds seed band length for {env_id} "
+                    f"(train={len(bands.train)}, held_out={len(bands.held_out)}). "
+                    "Use a smaller value so train and held-out summaries use "
+                    "the same number of episodes."
+                )
+            # Use the documented train band (first args.episodes
+            # samples for runtime); the held-out band is sampled
+            # similarly from its own range.
+            train_seeds = list(bands.train)[: args.episodes]
+            held_out_seeds = list(bands.held_out)[: args.episodes]
+            print(f"  [train band: {train_seeds[0]}..{train_seeds[-1]}, "
+                  f"held-out: {held_out_seeds[0]}..{held_out_seeds[-1]}]")
+
         by_policy: dict[str, Any] = {}
+        held_out_by_policy: dict[str, Any] = {}
         for name, factory in _baselines_for(env_id):
             print(f"  {name:30s} ... ", end="", flush=True)
-            summary = _summarize(env_id, factory, args.episodes, args.seed)
+            summary = _summarize(env_id, factory, train_seeds)
             print(
                 f"succ={summary['success_rate']:.2f} return={summary['mean_return']:.3f} "
                 f"sec/ep={summary['mean_sec_per_episode']:.3f}"
             )
             by_policy[name] = summary
+            if args.use_held_out:
+                print(f"  {name + ' (held-out)':30s} ... ", end="", flush=True)
+                ho_summary = _summarize(env_id, factory, held_out_seeds)
+                print(
+                    f"succ={ho_summary['success_rate']:.2f} return={ho_summary['mean_return']:.3f}"
+                )
+                held_out_by_policy[name] = ho_summary
         records["envs"][env_id] = by_policy
+        if args.use_held_out:
+            records["held_out"][env_id] = held_out_by_policy
 
         # Oracle diagnostics (reported separately; not comparable to baselines)
         oracle_factories = _oracle_diagnostics_for(env_id)
@@ -282,7 +363,7 @@ def main() -> None:
             by_oracle: dict[str, Any] = {}
             for name, factory in oracle_factories:
                 print(f"  [oracle] {name:22s} ... ", end="", flush=True)
-                summary = _summarize(env_id, factory, args.episodes, args.seed)
+                summary = _summarize(env_id, factory, train_seeds)
                 print(
                     f"succ={summary['success_rate']:.2f} return={summary['mean_return']:.3f}"
                 )
