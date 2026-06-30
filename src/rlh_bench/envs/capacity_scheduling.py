@@ -689,14 +689,38 @@ class RecoverableCapacitySchedulingEnv:
             and mandatory_fill_rate >= c.success_mandatory_threshold
         )
 
-        normalized_lateness = self._total_lateness / max(c.horizon, 1)
+        horizon = max(c.horizon, 1)
+        num_projects = max(c.num_projects, 1)
+        num_modes = max(c.num_modes, 1)
+        num_products = max(c.num_products, 1)
+
+        # Lateness is accumulated per project per step, so normalize by both
+        # horizon and project count.  Without the project-count factor this
+        # component grows with tier size even when per-project service quality
+        # is comparable.
+        normalized_lateness = self._total_lateness / (horizon * num_projects)
         shortfall = float(np.sum(np.maximum(c.quality_required - service_ratio, 0.0)))
-        normalized_shortfall = shortfall / max(c.num_projects, 1)
+        # Express shortfall as a fraction of the configured required service.
+        # v0 intentionally uses a stricter quality threshold than Small/Large;
+        # normalizing by that threshold keeps the component scale comparable
+        # while preserving the harder success criterion.
+        normalized_shortfall = shortfall / (num_projects * max(c.quality_required, 1e-6))
         normalized_wear = float(np.mean(self._wear))
-        normalized_heat = float(self._total_heat_violation / max(c.horizon, 1))
-        normalized_setup_churn = float(self._total_setup_churn / max(c.horizon, 1))
-        normalized_inventory_waste = float(self._total_inventory_waste / max(c.num_products, 1))
-        normalized_energy = float(self._total_energy / (c.horizon * max(c.action_dim, 1)))
+        # Heat violation and setup churn sum over modes each step.  Report a
+        # per-mode per-step average; cap persistent heat saturation so longer
+        # tiers do not dominate scalar returns merely because they spend more
+        # post-warmup time at the heat ceiling.
+        heat_violation_cap = 0.5 * max(c.max_heat - 0.9, 0.0)
+        normalized_heat = float(
+            min(self._total_heat_violation / (horizon * num_modes), heat_violation_cap)
+        )
+        normalized_setup_churn = float(self._total_setup_churn / (horizon * num_modes))
+        # Inventory waste is also an integrated flow.  Normalize by product
+        # count and horizon so longer tiers do not accumulate a larger terminal
+        # penalty solely because there were more opportunities to overflow or
+        # perish buffers.
+        normalized_inventory_waste = float(self._total_inventory_waste / (horizon * num_products))
+        normalized_energy = float(self._total_energy / (horizon * max(c.action_dim, 1)))
 
         # Resilience margin: residual effective capacity averaged across
         # modes. Higher = more headroom at horizon end.

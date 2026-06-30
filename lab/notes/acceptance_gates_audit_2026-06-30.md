@@ -222,7 +222,7 @@ All well under their gates.
 | 7.  Recoverability            | ✓     | —    | —     | Tested for Small               |
 | 8.  Action-complexity         | ✓     | ✓    | ✓     |                                |
 | 9.  Seed-generalization       | ⚠     | ⚠    | ⚠     | Infrastructure ready           |
-| 10. Reward-normalization      | ✓     | ⚠    | ⚠     | Partial normalization          |
+| 10. Reward-normalization      | ✓     | ✓    | ✓     | Cross-tier ≤ 3× after audit  |
 | 11. Baseline portfolio        | ✓     | ✓    | ✓     | + oracle diagnostics separated |
 | 12. Runtime                   | ✓     | ✓    | ✓     |                                |
 

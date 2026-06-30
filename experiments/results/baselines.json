@@ -4,14 +4,14 @@
     "RecoverableCapacityScheduling-Small-v0": {
       "zero": {
         "episodes": 20,
-        "mean_return": -0.21623354852199556,
-        "std_return": 0.009590617313940338,
+        "mean_return": -0.043889594823122026,
+        "std_return": 0.0005994132836550823,
         "mean_reward_vector": [
           0.0,
           0.0,
           0.0,
-          -4.444699764251709,
-          -0.550000011920929,
+          -0.2777999937534332,
+          -1.0,
           0.0,
           0.0,
           0.0,
@@ -35,22 +35,22 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.07512857490073657,
+        "mean_sec_per_episode": 0.07645840819968726,
         "pareto_non_dominated_count": 1
       },
       "random": {
         "episodes": 20,
-        "mean_return": 0.04399645845405757,
-        "std_return": 0.05471475998755812,
+        "mean_return": 0.13819410651922226,
+        "std_return": 0.049722334608200476,
         "mean_reward_vector": [
           0.0,
           0.47760000824928284,
           0.05000000074505806,
-          -2.109800100326538,
-          -0.11710000038146973,
+          -0.13189999759197235,
+          -0.21279999613761902,
           -0.998199999332428,
-          -0.08489999920129776,
-          -0.027699999511241913,
+          -0.021199999377131462,
+          -0.006899999920278788,
           0.0,
           -0.3328000009059906,
           0.0
@@ -71,22 +71,22 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08238302280042262,
+        "mean_sec_per_episode": 0.08269516250038578,
         "pareto_non_dominated_count": 11
       },
       "uniform": {
         "episodes": 20,
-        "mean_return": 1.0991607107222081,
-        "std_return": 0.527352971907565,
+        "mean_return": 1.1627951301634312,
+        "std_return": 0.5266061807425296,
         "mean_reward_vector": [
           0.75,
           0.6985999941825867,
           0.5,
-          -1.3832999467849731,
-          -0.020099999383091927,
+          -0.08649999648332596,
+          -0.03660000115633011,
           -0.559499979019165,
           0.0,
-          -0.0071000000461936,
+          -0.0017999999690800905,
           0.0,
           -0.15620000660419464,
           0.29159998893737793
@@ -107,23 +107,23 @@
         "success_rate": 0.75,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08374456679885042,
+        "mean_sec_per_episode": 0.08258201890057534,
         "pareto_non_dominated_count": 7
       },
       "capacity_push": {
         "episodes": 20,
-        "mean_return": 1.546660876274109,
-        "std_return": 0.056810005638421236,
+        "mean_return": 1.6302852153778076,
+        "std_return": 0.044458299983503445,
         "mean_reward_vector": [
           1.0,
           0.9679999947547913,
           0.9750000238418579,
-          -0.11829999834299088,
-          -0.0010999999940395355,
+          -0.007400000002235174,
+          -0.0020000000949949026,
           -1.0,
           0.0,
           0.0,
-          -2.610100030899048,
+          -0.005200000014156103,
           -0.875,
           0.0
         ],
@@ -143,22 +143,22 @@
         "success_rate": 1.0,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08320973525005684,
+        "mean_sec_per_episode": 0.08303403964891913,
         "pareto_non_dominated_count": 6
       },
       "backlog_priority": {
         "episodes": 20,
-        "mean_return": 0.6089922785758972,
-        "std_return": 0.5907253325604883,
+        "mean_return": 0.6834670253098011,
+        "std_return": 0.5894801754679615,
         "mean_reward_vector": [
           0.4000000059604645,
           0.6251000165939331,
           0.25,
-          -1.6353000402450562,
-          -0.03620000183582306,
+          -0.10220000147819519,
+          -0.06589999794960022,
           -0.786300003528595,
           0.0,
-          -0.012799999676644802,
+          -0.0031999999191612005,
           0.0,
           -0.13989999890327454,
           0.0340999998152256
@@ -179,22 +179,22 @@
         "success_rate": 0.4,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08402297490029013,
+        "mean_sec_per_episode": 0.0840454437500739,
         "pareto_non_dominated_count": 3
       },
       "earliest_deadline": {
         "episodes": 20,
-        "mean_return": 0.67280538007617,
-        "std_return": 0.5904994457439702,
+        "mean_return": 0.7272581353783607,
+        "std_return": 0.5910480765018546,
         "mean_reward_vector": [
           0.4000000059604645,
           0.6904000043869019,
           0.2750000059604645,
-          -1.2206000089645386,
-          -0.04450000077486038,
+          -0.0763000026345253,
+          -0.08089999854564667,
           -0.6692000031471252,
           0.0,
-          -0.00989999994635582,
+          -0.0024999999441206455,
           0.0,
           -0.15710000693798065,
           0.14560000598430634
@@ -215,22 +215,22 @@
         "success_rate": 0.4,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08464317500001925,
+        "mean_sec_per_episode": 0.08462151250023453,
         "pareto_non_dominated_count": 4
       },
       "maintenance_aware": {
         "episodes": 20,
-        "mean_return": 0.16306502986699342,
-        "std_return": 0.2580816738342572,
+        "mean_return": 0.24556930884718894,
+        "std_return": 0.25638077584473806,
         "mean_reward_vector": [
           0.05000000074505806,
           0.5353000164031982,
           0.05000000074505806,
-          -1.8707000017166138,
-          -0.08190000057220459,
+          -0.1168999969959259,
+          -0.14890000224113464,
           -0.6001999974250793,
           0.0,
-          -0.011699999682605267,
+          -0.002899999963119626,
           0.0,
           -0.1680999994277954,
           0.1987999975681305
@@ -251,22 +251,22 @@
         "success_rate": 0.05,
         "first_success_episode": 19,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.0870520499513077,
+        "mean_sec_per_episode": 0.08556680410074477,
         "pareto_non_dominated_count": 12
       },
       "setup_aware": {
         "episodes": 20,
-        "mean_return": 0.25438539432361723,
-        "std_return": 0.4416816092758888,
+        "mean_return": 0.34240557327866555,
+        "std_return": 0.43875854827355215,
         "mean_reward_vector": [
           0.15000000596046448,
           0.5419999957084656,
           0.10000000149011612,
-          -1.9764000177383423,
-          -0.0738999992609024,
+          -0.12349999696016312,
+          -0.13439999520778656,
           -0.8920000195503235,
           0.0,
-          -0.014299999922513962,
+          -0.003599999938160181,
           0.0,
           -0.18799999356269836,
           0.003700000001117587
@@ -287,22 +287,22 @@
         "success_rate": 0.15,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08561652079952183,
+        "mean_sec_per_episode": 0.08373225410032319,
         "pareto_non_dominated_count": 7
       },
       "short_horizon_rollout": {
         "episodes": 20,
-        "mean_return": 0.5550905950367451,
-        "std_return": 0.579551155050311,
+        "mean_return": 0.6331345148384571,
+        "std_return": 0.5774782483894028,
         "mean_reward_vector": [
           0.3499999940395355,
           0.619700014591217,
           0.22499999403953552,
-          -1.7137000560760498,
-          -0.03759999945759773,
+          -0.1071000024676323,
+          -0.06840000301599503,
           -0.6500999927520752,
           0.0,
-          -0.011800000444054604,
+          -0.003000000026077032,
           0.0,
           -0.181099995970726,
           0.12890000641345978
@@ -323,21 +323,21 @@
         "success_rate": 0.35,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08554545405095268,
+        "mean_sec_per_episode": 0.08452492484902904,
         "pareto_non_dominated_count": 4
       }
     },
     "RecoverableCapacityScheduling-v0": {
       "zero": {
         "episodes": 20,
-        "mean_return": -0.6763224691152573,
-        "std_return": 0.02196743964062748,
+        "mean_return": -0.04388171620666981,
+        "std_return": 0.000457655209985293,
         "mean_reward_vector": [
           0.0,
           0.0,
           0.0,
-          -13.326399803161621,
-          -0.75,
+          -0.2775999903678894,
+          -1.0,
           0.0,
           0.0,
           0.0,
@@ -361,22 +361,22 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.4882340375494095,
+        "mean_sec_per_episode": 0.4829744601996936,
         "pareto_non_dominated_count": 1
       },
       "random": {
         "episodes": 20,
-        "mean_return": -0.3777328357100487,
-        "std_return": 0.025293045688574066,
+        "mean_return": 0.044478320702910426,
+        "std_return": 0.009065740352270854,
         "mean_reward_vector": [
           0.0,
           0.3495999872684479,
           0.006200000178068876,
-          -8.348899841308594,
-          -0.4036000072956085,
+          -0.17389999330043793,
+          -0.5382000207901001,
           -1.0,
-          -0.6309000253677368,
-          -0.05660000070929527,
+          -0.05000000074505806,
+          -0.0071000000461936,
           0.0,
           -0.33250001072883606,
           0.0
@@ -397,23 +397,23 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5286125041504419,
+        "mean_sec_per_episode": 0.5171052125006099,
         "pareto_non_dominated_count": 4
       },
       "uniform": {
         "episodes": 20,
-        "mean_return": 0.8171996921300888,
-        "std_return": 0.5134210999025252,
+        "mean_return": 0.8797081470489502,
+        "std_return": 0.5055866927000708,
         "mean_reward_vector": [
           0.30000001192092896,
           0.9190000295639038,
           0.7124999761581421,
-          -1.2621999979019165,
-          -0.016499999910593033,
+          -0.02630000002682209,
+          -0.02199999988079071,
           -0.5231000185012817,
           0.0,
-          -0.0034000000450760126,
-          -0.0364999994635582,
+          -0.00039999998989515007,
+          -0.0,
           -0.14579999446868896,
           0.47690001130104065
         ],
@@ -433,23 +433,23 @@
         "success_rate": 0.3,
         "first_success_episode": 1,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5273050582003634,
+        "mean_sec_per_episode": 0.5365023789508996,
         "pareto_non_dominated_count": 5
       },
       "capacity_push": {
         "episodes": 20,
-        "mean_return": 1.207847683876753,
-        "std_return": 0.4878164740668933,
+        "mean_return": 1.4094889998435973,
+        "std_return": 0.46166971802399315,
         "mean_reward_vector": [
           0.800000011920929,
           0.9711999893188477,
           0.8999999761581421,
-          -0.3529999852180481,
-          -0.009700000286102295,
+          -0.007400000002235174,
+          -0.012900000438094139,
           -1.0,
           0.0,
           0.0,
-          -6.1570000648498535,
+          -0.003100000089034438,
           -0.75,
           0.0
         ],
@@ -469,22 +469,22 @@
         "success_rate": 0.8,
         "first_success_episode": 1,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5286179979997542,
+        "mean_sec_per_episode": 0.5496472625010937,
         "pareto_non_dominated_count": 2
       },
       "backlog_priority": {
         "episodes": 20,
-        "mean_return": -0.2130135003477335,
-        "std_return": 0.07175346903811577,
+        "mean_return": 0.11159543097019195,
+        "std_return": 0.03267228657406103,
         "mean_reward_vector": [
           0.0,
           0.4738999903202057,
           0.006200000178068876,
-          -6.7758002281188965,
-          -0.2924000024795532,
+          -0.1412000060081482,
+          -0.38989999890327454,
           -1.0,
-          -0.01119999960064888,
-          -0.01600000075995922,
+          -0.00139999995008111,
+          -0.0020000000949949026,
           0.0,
           -0.1476999968290329,
           0.0
@@ -505,22 +505,22 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5348728667493561,
+        "mean_sec_per_episode": 0.5389931041518139,
         "pareto_non_dominated_count": 3
       },
       "earliest_deadline": {
         "episodes": 20,
-        "mean_return": -0.11163777969777584,
-        "std_return": 0.07742397733461143,
+        "mean_return": 0.15290562584996223,
+        "std_return": 0.0375751019119908,
         "mean_reward_vector": [
           0.0,
           0.5442000031471252,
           0.02500000037252903,
-          -5.521999835968018,
-          -0.2305999994277954,
+          -0.11500000208616257,
+          -0.3073999881744385,
           -0.9986000061035156,
-          -0.0034000000450760126,
-          -0.012799999676644802,
+          -0.00039999998989515007,
+          -0.0015999999595806003,
           0.0,
           -0.19840000569820404,
           0.00139999995008111
@@ -541,22 +541,22 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5396121375495568,
+        "mean_sec_per_episode": 0.5310458021005615,
         "pareto_non_dominated_count": 7
       },
       "maintenance_aware": {
         "episodes": 20,
-        "mean_return": -0.16596426032483577,
-        "std_return": 0.04862994624728372,
+        "mean_return": 0.163298749178648,
+        "std_return": 0.021522735880514874,
         "mean_reward_vector": [
           0.0,
           0.5067999958992004,
           0.006200000178068876,
-          -6.8618998527526855,
-          -0.2590999901294708,
+          -0.14300000667572021,
+          -0.34540000557899475,
           -0.5996999740600586,
           0.0,
-          -0.012900000438094139,
+          -0.0015999999595806003,
           0.0,
           -0.17219999432563782,
           0.38429999351501465
@@ -577,22 +577,22 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5387349166503554,
+        "mean_sec_per_episode": 0.5303069563502504,
         "pareto_non_dominated_count": 12
       },
       "setup_aware": {
         "episodes": 20,
-        "mean_return": -0.3415494687855244,
-        "std_return": 0.06848413304248269,
+        "mean_return": 0.05521075800061226,
+        "std_return": 0.03079723081883705,
         "mean_reward_vector": [
           0.0,
           0.36570000648498535,
           0.006200000178068876,
-          -8.239500045776367,
-          -0.39419999718666077,
+          -0.17170000076293945,
+          -0.525600016117096,
           -1.0,
-          -0.10260000079870224,
-          -0.016599999740719795,
+          -0.012799999676644802,
+          -0.002099999925121665,
           0.0,
           -0.17430000007152557,
           0.0
@@ -613,22 +613,22 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5453064271001494,
+        "mean_sec_per_episode": 0.5229427646499971,
         "pareto_non_dominated_count": 2
       },
       "short_horizon_rollout": {
         "episodes": 20,
-        "mean_return": -0.11071954607032239,
-        "std_return": 0.05307673089109039,
+        "mean_return": 0.15835608094930648,
+        "std_return": 0.029231450035168662,
         "mean_reward_vector": [
           0.0,
           0.5565000176429749,
           0.012500000186264515,
-          -5.610099792480469,
-          -0.21979999542236328,
+          -0.1168999969959259,
+          -0.2930000126361847,
           -0.9642000198364258,
-          -0.0005000000237487257,
-          -0.014600000344216824,
+          -9.999999747378752e-05,
+          -0.0017999999690800905,
           0.0,
           -0.09700000286102295,
           0.017000000923871994
@@ -649,7 +649,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.539900737550488,
+        "mean_sec_per_episode": 0.5264824000001681,
         "pareto_non_dominated_count": 6
       }
     },
@@ -683,7 +683,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.023412118851410924,
+        "mean_sec_per_episode": 0.023231704099453056,
         "pareto_non_dominated_count": 1
       },
       "random": {
@@ -715,7 +715,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.02571398340005544,
+        "mean_sec_per_episode": 0.025193029100773857,
         "pareto_non_dominated_count": 3
       },
       "random_constant": {
@@ -747,7 +747,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.023525206101112417,
+        "mean_sec_per_episode": 0.022569933299382682,
         "pareto_non_dominated_count": 6
       },
       "greedy_landmark": {
@@ -779,7 +779,7 @@
         "success_rate": 0.05,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.026138927050851635,
+        "mean_sec_per_episode": 0.023851391899370356,
         "pareto_non_dominated_count": 10
       },
       "fuel_aware_greedy": {
@@ -811,7 +811,7 @@
         "success_rate": 0.05,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.02424158540015924,
+        "mean_sec_per_episode": 0.02363750840049761,
         "pareto_non_dominated_count": 10
       },
       "efficient_actuator": {
@@ -843,7 +843,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.023625098000411526,
+        "mean_sec_per_episode": 0.023264974849735155,
         "pareto_non_dominated_count": 8
       },
       "short_horizon_lookahead": {
@@ -875,7 +875,7 @@
         "success_rate": 0.1,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.029090387550604647,
+        "mean_sec_per_episode": 0.028003758248814847,
         "pareto_non_dominated_count": 5
       }
     },
@@ -909,7 +909,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.15232713969999168,
+        "mean_sec_per_episode": 0.14559260205060126,
         "pareto_non_dominated_count": 1
       },
       "random": {
@@ -941,7 +941,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.15820076244890516,
+        "mean_sec_per_episode": 0.15446858549985337,
         "pareto_non_dominated_count": 5
       },
       "random_constant": {
@@ -973,7 +973,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.14478649390039208,
+        "mean_sec_per_episode": 0.14271867929928703,
         "pareto_non_dominated_count": 8
       },
       "greedy_landmark": {
@@ -1005,7 +1005,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.15249364170012997,
+        "mean_sec_per_episode": 0.14692636444997334,
         "pareto_non_dominated_count": 9
       },
       "fuel_aware_greedy": {
@@ -1037,7 +1037,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.1498660500994447,
+        "mean_sec_per_episode": 0.14632290819936317,
         "pareto_non_dominated_count": 9
       },
       "efficient_actuator": {
@@ -1069,7 +1069,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.14675264375000552,
+        "mean_sec_per_episode": 0.1455326081995736,
         "pareto_non_dominated_count": 4
       },
       "short_horizon_lookahead": {
@@ -1101,7 +1101,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.1668684355008736,
+        "mean_sec_per_episode": 0.1651745542501885,
         "pareto_non_dominated_count": 7
       }
     }
@@ -1137,7 +1137,7 @@
         "success_rate": 0.9,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.022533158351870954,
+        "mean_sec_per_episode": 0.02214487500132236,
         "pareto_non_dominated_count": 3
       }
     },
@@ -1171,7 +1171,7 @@
         "success_rate": 0.8,
         "first_success_episode": 1,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.13105908349934908,
+        "mean_sec_per_episode": 0.13397966439988523,
         "pareto_non_dominated_count": 7
       }
     }

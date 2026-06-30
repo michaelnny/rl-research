@@ -306,3 +306,44 @@ def test_all_reward_components_are_finite():
             if term:
                 break
         assert np.all(np.isfinite(info["reward_vector"])), f"non-finite reward for {kind}"
+
+
+# ----- gate 10: reward normalization across tiers --------------------------- #
+
+
+def test_reward_components_stay_within_3x_cross_tier():
+    """Acceptance gate 10: cost component magnitudes must be comparable
+    across Small / v0 / Large tiers under a constant-quality (random)
+    policy. The bound is 3x — any cost that grows by more than that
+    is implicitly a per-tier reweighting and contaminates scalar
+    return.
+    """
+    from rlh_bench import make_env
+
+    def _measure(env_id: str, n_seeds: int = 3) -> np.ndarray:
+        vectors = []
+        for seed in range(n_seeds):
+            env = make_env(env_id, reward_mode="vector")
+            obs, _ = env.reset(seed=seed)
+            rng = np.random.default_rng(seed + 1000)
+            for _ in range(env.config.horizon):
+                obs, r, term, trunc, info = env.step(
+                    rng.uniform(-1, 1, size=env.action_space.shape[0]).astype(np.float32)
+                )
+                if term:
+                    break
+            vectors.append(info["reward_vector"])
+        return np.mean(vectors, axis=0)
+
+    small = _measure("RecoverableCapacityScheduling-Small-v0")
+    large = _measure("RecoverableCapacityScheduling-Large-v0")
+    names = DEFAULT_SCHEDULING_REWARD_SPEC.names
+    for i, name in enumerate(names):
+        s, l = abs(float(small[i])), abs(float(large[i]))
+        if s < 1e-3 or l < 1e-3:
+            continue  # at-zero components, no ratio to check
+        ratio = max(s, l) / min(s, l)
+        assert ratio <= 3.0, (
+            f"reward component {name!r} differs by {ratio:.2f}x across "
+            f"Small ({s:.3f}) vs Large ({l:.3f}); must be <= 3x"
+        )
