@@ -105,7 +105,10 @@ while true; do
   before_entries="$(ls "$JOURNAL_DIR" 2>/dev/null | sort)"
 
   set +e
-  claude -p \
+  # NOTE: --add-dir is variadic (<directories...>), so any positional that
+  # follows it gets consumed as another directory. Pipe the prompt on stdin
+  # instead of passing it positionally to avoid losing it.
+  printf '%s' "$claude_prompt" | claude -p \
     --bare \
     --system-prompt-file "$LAB_DIR/prompts/claude_system.md" \
     --no-session-persistence \
@@ -117,7 +120,6 @@ while true; do
     --add-dir "$REPO_ROOT/lab" \
     --add-dir "$REPO_ROOT/src" \
     --add-dir "$REPO_ROOT/tests" \
-    "$claude_prompt" \
     > "$iter_dir/claude_stdout.txt" 2> "$iter_dir/claude_stderr.txt"
   claude_exit=$?
   set -e
