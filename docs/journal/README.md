@@ -3,6 +3,27 @@
 This is the journal of the lab. One file per session, named
 `sessionNNNN-<short-slug>.md`, in chronological order. Append-only.
 
+## Note on pre-v2-substrate entries
+
+Sessions 0000 and 0001 were written against the **pre-v2 substrate**
+(env families `RecoverablePointMaze` and `RecoverableResourceAllocation`)
+which has since been retired. Those env classes, their helper
+policies (`MazeWaypointPolicy`, `ResourceGreedyPolicy`,
+`make_heuristic_policy`), and any probe / result files those
+sessions produced have been deleted from the codebase.
+
+The journal entries themselves are kept verbatim per the
+append-only discipline. They are honest historical record of the
+work done at the time; file paths and class names cited inside
+them may no longer resolve. See
+`lab/notes/planning/PLAN_substrate_redesign_v2_2026-06-30.md` for
+the redesign rationale, and
+`lab/notes/strict_registry_outcome_2026-06-30.md` for the
+strict-validation pass that finished the cleanup.
+
+New sessions (0002+) operate on the current substrate (the
+registered Small-tier envs).
+
 ## Format
 
 Each entry is free-form markdown. A reasonable structure is:
