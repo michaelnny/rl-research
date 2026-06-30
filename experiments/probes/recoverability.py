@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from rlh_bench import make_env
+from rlh_bench import make_env, registered_envs
 
 
 def _action(env, intensity: float) -> np.ndarray:
@@ -82,12 +82,7 @@ def _probe_env(env_id: str, *, n_seeds: int = 3, burst_len_fraction: float = 0.0
 
 
 def main() -> None:
-    targets = [
-        "RecoverableCapacityScheduling-Small-v0",
-        "RecoverableCapacityScheduling-v0",
-        "RecoverableKeyFuelMaze-Small-v0",
-    ]
-    for env_id in targets:
+    for env_id in registered_envs():
         print(f"=== {env_id} ===")
         results = _probe_env(env_id)
         names = make_env(env_id).reward_spec.names

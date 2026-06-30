@@ -14,7 +14,7 @@ Status legend: ✓ PASS, ⚠ PARTIAL, n/a NOT APPLICABLE.
 | 1.  Determinism               | ✓              | ✓                 | Cross-family parametrized test |
 | 2.  Terminal-only             | ✓              | ✓                 | Cross-family parametrized test |
 | 3.  Feasibility               | ✓              | ✓                 | Multiple non-trivial policies succeed |
-| 4.  No-idle-tail              | ✓              | ✓                 | Tail-zero probe + 3 tests      |
+| 4.  No-idle-tail              | ✓              | ✓                 | Tail-zero probe + 2 tests      |
 | 5.  Lookahead-depth           | ⚠              | ⚠                 | Decomposition diagnostics present; varied-depth probe deferred |
 | 6.  Myopic-gap                | ✓              | ✓                 | Healthy spread across the portfolio |
 | 7.  Recoverability            | ✓              | ✓                 | Graded-curve tests + recoverability probe |
@@ -87,8 +87,8 @@ Status legend: ✓ PASS, ⚠ PARTIAL, n/a NOT APPLICABLE.
 - `experiments/run_baselines.py --use-held-out` evaluates the portfolio on both train and held-out seeds and reports the gap.
 
 ### Gate 11 — Baseline portfolio
-- `rlh_bench.baselines.scheduling.SCHEDULING_BASELINES` — 9 honest learner-facing policies plus 1 decomposition diagnostic.
-- `rlh_bench.baselines.maze.MAZE_BASELINES` — 6 honest baselines plus 1 decomposition diagnostic.
+- `rlh_bench.baselines.scheduling.SCHEDULING_BASELINES` — 9 learner-facing policies, including 1 decomposition diagnostic.
+- `rlh_bench.baselines.maze.MAZE_BASELINES` — 6 learner-facing policies, including 1 decomposition diagnostic.
 - `rlh_bench.baselines.maze.MAZE_ORACLE_DIAGNOSTICS` — privileged-info diagnostics kept strictly separate.
 
 ### Gate 12 — Runtime

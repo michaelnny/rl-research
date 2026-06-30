@@ -110,7 +110,7 @@ Then evaluate:
 ```python
 record = evaluate_algorithm(
     algorithm=MyAlgorithm(...),
-    env_id="RecoverableKeyFuelMaze-v0",
+    env_id="RecoverableKeyFuelMaze-Small-v0",
     train_seed=0,
     eval_seeds=range(20),
     reward_mode="scalar",          # or "vector" for true vector-reward learners

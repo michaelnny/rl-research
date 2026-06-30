@@ -96,8 +96,9 @@ Two cross-family invariants (determinism + terminal-only + info
 contract, parametrized over registered_envs()) still pass on the
 trimmed registry; they automatically follow registry changes.
 
-Test count: 94 → 77 (17 tests for deleted envs removed; no failures
-on the trimmed registry).
+Current test count after the later cleanup pass: 64 passing. The
+removed v0/Large checks are represented above; no failures on the
+trimmed registry.
 
 ## Re-registration policy
 

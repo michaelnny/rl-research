@@ -386,8 +386,8 @@ class RecoverableCapacitySchedulingEnv:
         self._cumulative_service = np.zeros(c.num_projects, dtype=np.float32)
         self._backlog = np.zeros(c.num_projects, dtype=np.float32)
         self._wear = np.zeros(c.num_modes, dtype=np.float32)
-        # Modes start at heat 0 but with a small randomized initial
-        # wear so worlds differ from the start.
+        # Modes start at heat/wear 0; seeded world variation comes from
+        # demand, compatibility, setup graph, bundles, and setup mixture.
         self._heat = np.zeros(c.num_modes, dtype=np.float32)
         self._maint_debt = np.zeros(c.num_modes, dtype=np.float32)
         self._utilization_ema = np.zeros(c.num_modes, dtype=np.float32)

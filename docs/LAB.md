@@ -82,8 +82,8 @@ Everything else is the agent's call. Speculate freely.
 - `docs/AGENT_GUIDE.md` — how a candidate algorithm plugs into the
   evaluation runner, when an agent decides to implement something.
 - `docs/baseline_report.md` — honest baseline portfolio numbers
-  on the Small + v0 tiers of both env families. Large baselines
-  are deferred per the v2 substrate redesign plan.
+  on the currently registered Small-tier envs. v0/Large tiers were
+  removed pending validation.
 - `docs/journal/` — every session's entry, append-only.
 - `lab/prompts/claude_system.md` — Claude's lab system prompt (the
   source of truth for how Claude should behave in a session).

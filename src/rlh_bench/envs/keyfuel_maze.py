@@ -181,15 +181,15 @@ class RecoverableKeyFuelMazeEnv:
 
         # Observation contains:
         #   position(2), velocity(2), fuel(1), heat(1), damage(1)         = 7
-        #   inventory[n_key_types]                                        = K_t
+        #   keys held[n_key_types]                                        = K_t
         #   seal status[n_seals]                                          = S
-        #   nearest-3 landmarks: dx, dy, kind_one_hot(3+n_key_types)      = 3 * (2 + 3 + K_t)
+        #   nearest-3 landmarks: dx, dy, kind_one_hot(4), key_one_hot     = 3 * (2 + 4 + K_t)
         #     where kind one-hot is over [key, seal, fuel, extraction]
         #   gate phases[n_gates]                                          = G
         #   time / horizon                                                = 1
         #   previous action summary (energy)                              = 1
         K_t = c.n_key_types
-        landmark_feat_dim = 3 * (2 + 4 + K_t)  # dx, dy + kind one-hot over [key, seal, fuel, extraction], then which key/seal index encoded as offset
+        landmark_feat_dim = 3 * (2 + 4 + K_t)  # dx, dy + kind one-hot + key index one-hot
         obs_dim = 7 + K_t + c.n_seals + landmark_feat_dim + c.n_gates + 1 + 1
         self.observation_space = Box(low=-10.0, high=10.0, shape=(obs_dim,), dtype=np.float32)
 

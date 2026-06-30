@@ -13,8 +13,8 @@ Quick usage::
     from experiments.algorithms.runner import evaluate_algorithm
     record = evaluate_algorithm(
         algorithm=MyAlgo(...),
-        env_id="RecoverableKeyFuelMaze-v0",
-        train_seeds=range(3),
+        env_id="RecoverableKeyFuelMaze-Small-v0",
+        train_seed=0,
         eval_seeds=range(20),
     )
 """

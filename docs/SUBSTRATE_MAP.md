@@ -84,7 +84,7 @@ setup inertia, heat, inventory perishability, contract bundles).
   - per-mode maintenance intensity (M)
   - per-mode setup-change intensity (M)
   - per-product inventory release (P)
-  - registered tiers set `D = K + 3M + P` exactly (32 / 80 / 192); no trailing no-op controls are advertised.
+  - registered tiers set `D = K + 3M + P` exactly (Small: 32); future v0/Large re-registrations should preserve the same no-trailing-control rule.
 - **Obs**: per-project (cumulative service, backlog, deadline slack, priority); per-mode (utilization EMA, wear, heat, maintenance debt); setup mixture (M×P); per-product (inventory, age); multi-scale future demand summaries (16/64/256-step windows); previous-action aggregates; `t/H`.
 - **Dynamics**: production per project = `mode_capacity × setup_alignment × compat × proj_alloc`. Capacity reduces with wear and heat. Setup retargeting costs same-step capacity. Inventory builds from unused capacity and can perish. Contract bundles require all-of-N projects above quality threshold.
 - **Terminal vector** (`DEFAULT_SCHEDULING_REWARD_SPEC`):
