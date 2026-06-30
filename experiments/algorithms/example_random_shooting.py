@@ -53,7 +53,7 @@ class RandomShootingAlgorithm:
 if __name__ == "__main__":
     record = evaluate_algorithm(
         algorithm=RandomShootingAlgorithm(samples=64),
-        env_id="RecoverablePointMaze-Small-v0",
+        env_id="RecoverableKeyFuelMaze-Small-v0",
         eval_seeds=range(10),
         notes="example algorithm, not a research contender",
         save_to="experiments/results/example_random_shooting.json",

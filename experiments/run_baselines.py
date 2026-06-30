@@ -1,9 +1,15 @@
-"""Phase 1 baseline sweep.
+"""Baseline sweep across the registered envs (v2 substrate redesign).
 
-Evaluate the three reference baselines (random, heuristic, CEM) across all
-registered RLH-Bench env IDs, in both scalar and vector reward modes. Writes a
-JSON record to ``experiments/results/baselines.json`` and a markdown summary to
-``docs/baseline_report.md``.
+Runs each family's baseline portfolio (from
+``rlh_bench.baselines.scheduling.SCHEDULING_BASELINES`` and
+``rlh_bench.baselines.maze.MAZE_BASELINES``) against the Small and
+v0 tiers. Large tier baselines are deferred per the v2 plan; this
+script supports them with ``--include-large`` if you want them.
+
+Writes:
+
+  experiments/results/baselines.json  -- per-env per-policy summary
+  docs/baseline_report.md              -- human-readable markdown
 
 Usage::
 
@@ -11,13 +17,9 @@ Usage::
 
 Optional CLI flags:
 
-    --random-episodes N        episodes per env for the random policy (default 200)
-    --heuristic-episodes N     episodes per env for heuristic policies   (default 20)
-    --cem-iterations N         CEM outer iterations                       (default 8)
-    --cem-population N         CEM population size                        (default 32)
-    --cem-eval-episodes N      eval episodes per CEM candidate            (default 1)
-    --skip-cem                 skip the CEM sweep (fast smoke run)
-    --seed N                   base seed                                  (default 0)
+    --episodes N         episodes per (env, policy) cell (default 20)
+    --include-large      also run on Large tiers
+    --seed N             base seed (default 0)
 """
 
 from __future__ import annotations
@@ -26,23 +28,22 @@ import argparse
 import json
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
 from rlh_bench import (
-    evaluate_policy,
     make_env,
     pareto_non_dominated,
     registered_envs,
     rollout,
 )
 from rlh_bench.baselines import (
-    LinearPolicy,
     RandomPolicy,
-    make_heuristic_policy,
-    train_cem,
+    ZeroPolicy,
 )
+from rlh_bench.baselines.maze import MAZE_BASELINES
+from rlh_bench.baselines.scheduling import SCHEDULING_BASELINES
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -50,12 +51,8 @@ RESULTS_PATH = REPO_ROOT / "experiments" / "results" / "baselines.json"
 REPORT_PATH = REPO_ROOT / "docs" / "baseline_report.md"
 
 
-# ----- one-shot helpers ----------------------------------------------------- #
-
-
-def _summarize_rollouts(env_id: str, policy_factory, episodes: int, seed: int) -> dict[str, Any]:
-    """Aggregate per-episode stats by calling ``rollout`` directly so we can
-    record first-success episode and per-episode runtimes."""
+def _summarize(env_id: str, policy_factory, episodes: int, seed: int) -> dict[str, Any]:
+    """Roll out `policy_factory(env)` for `episodes` seeds and aggregate."""
 
     returns: list[float] = []
     vectors: list[np.ndarray] = []
@@ -92,42 +89,33 @@ def _summarize_rollouts(env_id: str, policy_factory, episodes: int, seed: int) -
     }
 
 
-def _eval_cem(env_id: str, args: argparse.Namespace) -> dict[str, Any]:
-    """Train CEM on this env, then evaluate the best policy on fresh seeds."""
-
-    env_factory = lambda: make_env(env_id)  # noqa: E731 - small lambda is intentional
-    t_train_start = time.perf_counter()
-    cem = train_cem(
-        env_factory=env_factory,
-        iterations=args.cem_iterations,
-        population=args.cem_population,
-        eval_episodes=args.cem_eval_episodes,
-        seed=args.seed,
-    )
-    train_sec = time.perf_counter() - t_train_start
-
-    # Evaluate on held-out seeds disjoint from the training seeds.
-    probe = env_factory()
-    obs_dim = int(np.prod(probe.observation_space.shape))
-    eval_seed = args.seed + 999_983  # large prime offset
-    eval_factory = lambda env: LinearPolicy(  # noqa: E731
-        params=cem.best_params,
-        obs_dim=obs_dim,
-        action_space=env.action_space,
-    )
-    summary = _summarize_rollouts(env_id, eval_factory, episodes=args.heuristic_episodes, seed=eval_seed)
-    summary.update(
-        {
-            "cem_train_seconds": train_sec,
-            "cem_best_train_score": float(cem.best_score),
-            "cem_iterations": args.cem_iterations,
-            "cem_population": args.cem_population,
-        }
-    )
-    return summary
+def _select_envs(include_large: bool) -> list[str]:
+    """The Small + v0 cross-family set, optionally extended with Large."""
+    all_ids = list(registered_envs())
+    if include_large:
+        return all_ids
+    return [eid for eid in all_ids if "Large" not in eid]
 
 
-# ----- markdown rendering --------------------------------------------------- #
+def _baselines_for(env_id: str) -> list[tuple[str, Any]]:
+    """Return (name, policy_factory) pairs for the given env ID."""
+    base_factories: list[tuple[str, Any]] = [
+        ("zero", lambda env: ZeroPolicy(env.action_space)),
+        ("random", lambda env: RandomPolicy(env.action_space, seed=0)),
+    ]
+    if "Scheduling" in env_id:
+        portfolio = SCHEDULING_BASELINES
+    elif "KeyFuelMaze" in env_id:
+        portfolio = MAZE_BASELINES
+    else:
+        portfolio = []
+    factories = base_factories[:]
+    for PolicyCls in portfolio:
+        # Skip the trivial zero policy if already covered.
+        if "Zero" in PolicyCls.__name__:
+            continue
+        factories.append((PolicyCls.name, lambda env, cls=PolicyCls: cls(env)))
+    return factories
 
 
 def _fmt_vec(vec: list[float]) -> str:
@@ -136,32 +124,37 @@ def _fmt_vec(vec: list[float]) -> str:
 
 def _render_markdown(records: dict[str, Any]) -> str:
     lines: list[str] = [
-        "# Phase 1 baseline report",
+        "# Baseline report",
         "",
         f"Generated by `experiments/run_baselines.py`. Seed base = {records['seed']}.",
         "",
-        "Baselines run per env ID. `random` = uniform `action_space.sample()`; "
-        "`heuristic` = `make_heuristic_policy(env)`; `cem` = `LinearPolicy` fit "
-        "with `train_cem`. All values are in scalar-reward mode. Vector means are "
-        "reported component-wise in reward-spec order; all components are "
-        "larger-is-better.",
+        "Baseline portfolios per family, evaluated on Small and v0 tiers (Large "
+        "deferred per the v2 substrate redesign plan). All values use scalar "
+        "reward mode. Vector means are reported component-wise in reward-spec "
+        "order; every component is larger-is-better.",
+        "",
+        "Each row is one policy on one env. The policy portfolios are defined in "
+        "`rlh_bench.baselines.scheduling` and `rlh_bench.baselines.maze`. The "
+        "*decomposition diagnostic* (`short_horizon_*`) is the load-bearing test "
+        "for whether the long-horizon claim holds: if it solves an env, the env "
+        "is short-horizon in disguise.",
         "",
     ]
 
-    for env_id, by_algo in records["envs"].items():
+    for env_id, by_policy in records["envs"].items():
         lines.append(f"## {env_id}")
         lines.append("")
-        names = next(iter(by_algo.values()))["reward_names"]
+        names = next(iter(by_policy.values()))["reward_names"]
         lines.append(f"Reward names: `{names}`")
         lines.append("")
         lines.append(
-            "| algo | episodes | success | mean return | first success ep | mean length | sec/ep | mean reward vector |"
+            "| policy | episodes | success | mean return | first success ep | mean length | sec/ep | mean reward vector |"
         )
         lines.append("| --- | --- | --- | --- | --- | --- | --- | --- |")
-        for algo, row in by_algo.items():
+        for name, row in by_policy.items():
             lines.append(
-                "| {algo} | {episodes} | {success:.2f} | {ret:.3f} | {fs} | {length:.1f} | {sec:.4f} | {vec} |".format(
-                    algo=algo,
+                "| {name} | {episodes} | {success:.2f} | {ret:.3f} | {fs} | {length:.1f} | {sec:.4f} | {vec} |".format(
+                    name=name,
                     episodes=row["episodes"],
                     success=row["success_rate"],
                     ret=row["mean_return"],
@@ -176,78 +169,45 @@ def _render_markdown(records: dict[str, Any]) -> str:
     lines.append("## Notes")
     lines.append("")
     lines.append(
-        "- Random success rate is the headline for exploration difficulty. "
-        "If it is non-trivially > 0, the env is too easy; if it is 0 over hundreds of "
-        "episodes the env may need an easier configuration before algorithm work."
+        "- The portfolio shape is the difficulty signal, not any single policy's "
+        "success rate. A useful novel algorithm should beat multiple of these "
+        "along multiple terminal-vector components."
     )
     lines.append(
-        "- CEM is run as a Phase 1 reference, not a contender. It optimizes a "
-        "linear tanh policy; gains over the heuristic baseline indicate the env "
-        "rewards parameter search rather than hand-engineering."
+        "- The `short_horizon_*` policies are decomposition diagnostics. If they "
+        "match the strongest hand-coded policy on a tier, the env is solvable "
+        "without long-horizon credit assignment — flag it."
     )
     lines.append(
-        "- Beat-the-baseline target for a novel algorithm: comparable success "
-        "rate at lower wall-clock and/or strict Pareto improvement on the mean "
-        "reward vector."
+        "- Large-tier baselines are deferred. Run with `--include-large` once "
+        "the CapacityScheduling and KeyFuelMaze Large baselines have been "
+        "budgeted; expect ~10x the wall-clock of v0."
     )
     return "\n".join(lines) + "\n"
 
 
-# ----- main ----------------------------------------------------------------- #
-
-
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--random-episodes", type=int, default=200)
-    parser.add_argument("--heuristic-episodes", type=int, default=20)
-    parser.add_argument("--cem-iterations", type=int, default=8)
-    parser.add_argument("--cem-population", type=int, default=32)
-    parser.add_argument("--cem-eval-episodes", type=int, default=1)
-    parser.add_argument("--skip-cem", action="store_true")
+    parser.add_argument("--episodes", type=int, default=20)
+    parser.add_argument("--include-large", action="store_true")
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
     records: dict[str, Any] = {"seed": args.seed, "envs": {}}
+    env_ids = _select_envs(args.include_large)
 
-    for env_id in registered_envs():
+    for env_id in env_ids:
         print(f"\n=== {env_id} ===")
-        by_algo: dict[str, Any] = {}
-
-        # Random.
-        random_factory = lambda env: RandomPolicy(env.action_space, seed=args.seed)  # noqa: E731
-        print(f"  random ({args.random_episodes} eps) ... ", end="", flush=True)
-        by_algo["random"] = _summarize_rollouts(env_id, random_factory, args.random_episodes, args.seed)
-        print(
-            f"success={by_algo['random']['success_rate']:.2f} "
-            f"mean_return={by_algo['random']['mean_return']:.3f}"
-        )
-
-        # Heuristic.
-        heuristic_factory = lambda env: make_heuristic_policy(env)  # noqa: E731
-        print(f"  heuristic ({args.heuristic_episodes} eps) ... ", end="", flush=True)
-        by_algo["heuristic"] = _summarize_rollouts(
-            env_id, heuristic_factory, args.heuristic_episodes, args.seed + 1
-        )
-        print(
-            f"success={by_algo['heuristic']['success_rate']:.2f} "
-            f"mean_return={by_algo['heuristic']['mean_return']:.3f}"
-        )
-
-        # CEM.
-        if not args.skip_cem:
+        by_policy: dict[str, Any] = {}
+        for name, factory in _baselines_for(env_id):
+            print(f"  {name:30s} ... ", end="", flush=True)
+            summary = _summarize(env_id, factory, args.episodes, args.seed)
             print(
-                f"  cem (iters={args.cem_iterations}, pop={args.cem_population}) ... ",
-                end="",
-                flush=True,
+                f"succ={summary['success_rate']:.2f} return={summary['mean_return']:.3f} "
+                f"sec/ep={summary['mean_sec_per_episode']:.3f}"
             )
-            by_algo["cem"] = _eval_cem(env_id, args)
-            print(
-                f"success={by_algo['cem']['success_rate']:.2f} "
-                f"mean_return={by_algo['cem']['mean_return']:.3f} "
-                f"train={by_algo['cem']['cem_train_seconds']:.1f}s"
-            )
-
-        records["envs"][env_id] = by_algo
+            by_policy[name] = summary
+        records["envs"][env_id] = by_policy
 
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     RESULTS_PATH.write_text(json.dumps(records, indent=2, default=float))

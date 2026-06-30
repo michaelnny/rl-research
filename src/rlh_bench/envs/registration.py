@@ -1,10 +1,30 @@
-"""Lightweight environment registry."""
+"""Lightweight environment registry.
+
+After the v2 substrate redesign (2026-06-30), the two registered
+families are:
+
+  * ``RecoverableCapacityScheduling-{Small, v0, Large}-v0``
+  * ``RecoverableKeyFuelMaze-{Small, v0, Large}-v0``
+
+The previous families (``RecoverablePointMaze``,
+``RecoverableResourceAllocation``) are retired. Their classes remain
+importable for backward compatibility with any external code that
+references them, but they are not in the public registry.
+
+See ``lab/notes/PLAN_substrate_redesign_v2_2026-06-30.md`` for the
+rationale.
+"""
 
 from __future__ import annotations
 
 from typing import Any, Callable
 
+from rlh_bench.envs.capacity_scheduling import (
+    CapacitySchedulingConfig,
+    RecoverableCapacitySchedulingEnv,
+)
 from rlh_bench.envs.continuous_maze import RecoverableMazeConfig, RecoverablePointMazeEnv
+from rlh_bench.envs.keyfuel_maze import KeyFuelMazeConfig, RecoverableKeyFuelMazeEnv
 from rlh_bench.envs.resource_allocation import (
     RecoverableResourceAllocationEnv,
     ResourceAllocationConfig,
@@ -14,41 +34,74 @@ from rlh_bench.envs.resource_allocation import (
 RegistryFn = Callable[..., object]
 
 
-def _maze_small(**kwargs: Any) -> RecoverablePointMazeEnv:
-    return RecoverablePointMazeEnv(config=RecoverableMazeConfig(horizon=120), **kwargs)
+# ----- CapacityScheduling --------------------------------------------------- #
 
 
-def _maze_default(**kwargs: Any) -> RecoverablePointMazeEnv:
-    return RecoverablePointMazeEnv(config=RecoverableMazeConfig(), **kwargs)
-
-
-def _maze_hd(**kwargs: Any) -> RecoverablePointMazeEnv:
-    return RecoverablePointMazeEnv(config=RecoverableMazeConfig(action_dim=8, horizon=180), **kwargs)
-
-
-def _resource_small(**kwargs: Any) -> RecoverableResourceAllocationEnv:
-    return RecoverableResourceAllocationEnv(
-        config=ResourceAllocationConfig(horizon=60, num_projects=4), **kwargs
+def _scheduling_small(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
+    return RecoverableCapacitySchedulingEnv(
+        config=CapacitySchedulingConfig(
+            horizon=500, num_projects=16, num_modes=4, num_products=4,
+            action_dim=32, n_bundles=2,
+        ),
+        **kwargs,
     )
 
 
-def _resource_default(**kwargs: Any) -> RecoverableResourceAllocationEnv:
-    return RecoverableResourceAllocationEnv(config=ResourceAllocationConfig(), **kwargs)
+def _scheduling_default(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
+    return RecoverableCapacitySchedulingEnv(
+        config=CapacitySchedulingConfig(),  # v0 defaults: H=2000, K=48, M=8, P=8
+        **kwargs,
+    )
 
 
-def _resource_large(**kwargs: Any) -> RecoverableResourceAllocationEnv:
-    return RecoverableResourceAllocationEnv(
-        config=ResourceAllocationConfig(horizon=120, num_projects=8), **kwargs
+def _scheduling_large(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
+    return RecoverableCapacitySchedulingEnv(
+        config=CapacitySchedulingConfig(
+            horizon=10000, num_projects=128, num_modes=16, num_products=16,
+            action_dim=224, n_bundles=24, bundle_size_range=(3, 6),
+            demand_peak_width_range=(60, 200),
+        ),
+        **kwargs,
+    )
+
+
+# ----- KeyFuelMaze ----------------------------------------------------------- #
+
+
+def _keyfuel_small(**kwargs: Any) -> RecoverableKeyFuelMazeEnv:
+    return RecoverableKeyFuelMazeEnv(
+        config=KeyFuelMazeConfig(
+            horizon=500, action_dim=16, world_size=24.0,
+            n_key_types=2, n_seals=2, n_gates=1, n_fuel_stations=2,
+        ),
+        **kwargs,
+    )
+
+
+def _keyfuel_default(**kwargs: Any) -> RecoverableKeyFuelMazeEnv:
+    return RecoverableKeyFuelMazeEnv(
+        config=KeyFuelMazeConfig(),  # v0 defaults: H=2000, D=32, 48×48
+        **kwargs,
+    )
+
+
+def _keyfuel_large(**kwargs: Any) -> RecoverableKeyFuelMazeEnv:
+    return RecoverableKeyFuelMazeEnv(
+        config=KeyFuelMazeConfig(
+            horizon=10000, action_dim=64, world_size=96.0,
+            n_key_types=6, n_seals=12, n_gates=8, n_fuel_stations=8,
+        ),
+        **kwargs,
     )
 
 
 _REGISTRY: dict[str, RegistryFn] = {
-    "RecoverablePointMaze-Small-v0": _maze_small,
-    "RecoverablePointMaze-v0": _maze_default,
-    "RecoverablePointMaze-HD-v0": _maze_hd,
-    "RecoverableResourceAllocation-Small-v0": _resource_small,
-    "RecoverableResourceAllocation-v0": _resource_default,
-    "RecoverableResourceAllocation-Large-v0": _resource_large,
+    "RecoverableCapacityScheduling-Small-v0": _scheduling_small,
+    "RecoverableCapacityScheduling-v0": _scheduling_default,
+    "RecoverableCapacityScheduling-Large-v0": _scheduling_large,
+    "RecoverableKeyFuelMaze-Small-v0": _keyfuel_small,
+    "RecoverableKeyFuelMaze-v0": _keyfuel_default,
+    "RecoverableKeyFuelMaze-Large-v0": _keyfuel_large,
 }
 
 

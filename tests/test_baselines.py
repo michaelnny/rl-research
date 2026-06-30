@@ -30,7 +30,7 @@ def test_cem_smoke_runs_one_iteration():
 
 
 def test_random_rollout_smoke():
-    env = make_env("RecoverableResourceAllocation-Small-v0")
+    env = make_env("RecoverableCapacityScheduling-Small-v0")
     result = rollout(env, RandomPolicy(env.action_space, seed=0), seed=0)
     assert result.length == env.config.horizon
     assert result.reward_vector.shape == (env.reward_dim,)
