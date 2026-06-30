@@ -49,7 +49,13 @@ def _scheduling_small(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
 
 def _scheduling_default(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
     return RecoverableCapacitySchedulingEnv(
-        config=CapacitySchedulingConfig(),  # v0 defaults: H=2000, K=48, M=8, P=8
+        config=CapacitySchedulingConfig(
+            # v0 needs tighter thresholds than Small because the longer
+            # horizon means uniform allocation easily clears 0.55.
+            success_fill_threshold=0.85,
+            success_mandatory_threshold=0.85,
+            quality_required=0.75,
+        ),
         **kwargs,
     )
 

@@ -14,7 +14,7 @@ from rlh_bench.baselines.heuristics import (
     ResourceGreedyPolicy,
     make_heuristic_policy,
 )
-from rlh_bench.baselines.maze import MAZE_BASELINES
+from rlh_bench.baselines.maze import MAZE_BASELINES, MAZE_ORACLE_DIAGNOSTICS
 from rlh_bench.baselines.random import RandomPolicy, ZeroPolicy
 from rlh_bench.baselines.scheduling import SCHEDULING_BASELINES
 
@@ -22,6 +22,7 @@ __all__ = [
     "CEMResult",
     "LinearPolicy",
     "MAZE_BASELINES",
+    "MAZE_ORACLE_DIAGNOSTICS",
     "MazeWaypointPolicy",
     "RandomPolicy",
     "ResourceGreedyPolicy",

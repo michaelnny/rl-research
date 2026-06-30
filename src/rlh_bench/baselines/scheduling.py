@@ -122,6 +122,33 @@ class SchedulingUniformPolicy:
         )
 
 
+class SchedulingCapacityPushPolicy:
+    """Broad high-capacity production with maintenance disabled.
+
+    v0's longer horizon lets the plain uniform baseline solve too often even
+    while spending half of every mode on maintenance.  This keeps the broad
+    project coverage but actively commits capacity, providing a simple
+    non-random heuristic that should clear mandatory bundles without being a
+    sophisticated planner.
+    """
+
+    name = "capacity_push"
+
+    def __init__(self, env: RecoverableCapacitySchedulingEnv) -> None:
+        self.env = env
+
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
+        del obs
+        c = self.env.config
+        return _make_action(
+            c,
+            proj_logits=np.ones(c.num_projects, dtype=np.float32),
+            mode_logits=np.ones(c.num_modes, dtype=np.float32),
+            maint=-np.ones(c.num_modes, dtype=np.float32),
+            setup=-np.ones(c.num_modes, dtype=np.float32),
+        )
+
+
 class SchedulingBacklogPriorityPolicy:
     """Greedy: allocate to projects with the largest (backlog × priority).
 
@@ -287,6 +314,7 @@ class SchedulingShortHorizonRolloutPolicy:
 SCHEDULING_BASELINES = [
     SchedulingZeroPolicy,
     SchedulingUniformPolicy,
+    SchedulingCapacityPushPolicy,
     SchedulingBacklogPriorityPolicy,
     SchedulingEarliestDeadlinePolicy,
     SchedulingMaintenanceAwarePolicy,

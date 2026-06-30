@@ -42,7 +42,7 @@ from rlh_bench.baselines import (
     RandomPolicy,
     ZeroPolicy,
 )
-from rlh_bench.baselines.maze import MAZE_BASELINES
+from rlh_bench.baselines.maze import MAZE_BASELINES, MAZE_ORACLE_DIAGNOSTICS
 from rlh_bench.baselines.scheduling import SCHEDULING_BASELINES
 
 
@@ -98,7 +98,13 @@ def _select_envs(include_large: bool) -> list[str]:
 
 
 def _baselines_for(env_id: str) -> list[tuple[str, Any]]:
-    """Return (name, policy_factory) pairs for the given env ID."""
+    """Return (name, policy_factory) pairs for the given env ID.
+
+    Returns the honest learner-facing portfolio (observation-only,
+    no privileged env-internal access). Oracle diagnostics are
+    available via :func:`_oracle_diagnostics_for` and reported
+    separately.
+    """
     base_factories: list[tuple[str, Any]] = [
         ("zero", lambda env: ZeroPolicy(env.action_space)),
         ("random", lambda env: RandomPolicy(env.action_space, seed=0)),
@@ -116,6 +122,22 @@ def _baselines_for(env_id: str) -> list[tuple[str, Any]]:
             continue
         factories.append((PolicyCls.name, lambda env, cls=PolicyCls: cls(env)))
     return factories
+
+
+def _oracle_diagnostics_for(env_id: str) -> list[tuple[str, Any]]:
+    """Return (name, factory) pairs for oracle/planner diagnostics.
+
+    Oracle diagnostics read privileged env-internal state (waypoint
+    coordinates, gate phases, etc.) and are NOT comparable to the
+    learner-facing portfolio. They exist to verify feasibility:
+    if no oracle succeeds, the env is broken; if a learner matches
+    or beats the oracle, that's surprising and informative.
+    """
+    if "KeyFuelMaze" in env_id:
+        portfolio = MAZE_ORACLE_DIAGNOSTICS
+    else:
+        portfolio = []
+    return [(cls.name, lambda env, cls=cls: cls(env)) for cls in portfolio]
 
 
 def _fmt_vec(vec: list[float]) -> str:
@@ -179,10 +201,55 @@ def _render_markdown(records: dict[str, Any]) -> str:
         "without long-horizon credit assignment — flag it."
     )
     lines.append(
+        "- `capacity_push` on CapacityScheduling is a high-cost feasibility/stress "
+        "diagnostic, not a normal heuristic. It buys success/fill by running "
+        "all-out production with no maintenance or setup retargeting, paying "
+        "heavily in `neg_wear`, `neg_inventory_waste`, `neg_energy`, and "
+        "`resilience_margin`. Candidates should match its success while improving "
+        "those cost components."
+    )
+    lines.append(
         "- Large-tier baselines are deferred. Run with `--include-large` once "
         "the CapacityScheduling and KeyFuelMaze Large baselines have been "
         "budgeted; expect ~10x the wall-clock of v0."
     )
+
+    # Oracle diagnostics section
+    if records.get("oracle_diagnostics"):
+        lines.append("")
+        lines.append("## Oracle diagnostics (NOT comparable to baselines)")
+        lines.append("")
+        lines.append(
+            "These policies read privileged env-internal state "
+            "(waypoint coordinates, gate phases, etc.) that the public "
+            "observation does not expose. They exist to verify feasibility "
+            "— if no oracle succeeds, the env is broken. They are NOT "
+            "comparable to the learner-facing portfolio above and should "
+            "never be cited as 'baseline beaten'."
+        )
+        lines.append("")
+        for env_id, by_oracle in records["oracle_diagnostics"].items():
+            lines.append(f"### {env_id}")
+            lines.append("")
+            names = next(iter(by_oracle.values()))["reward_names"]
+            lines.append(f"Reward names: `{names}`")
+            lines.append("")
+            lines.append(
+                "| oracle | episodes | success | mean return | mean reward vector |"
+            )
+            lines.append("| --- | --- | --- | --- | --- |")
+            for name, row in by_oracle.items():
+                lines.append(
+                    "| {name} | {episodes} | {success:.2f} | {ret:.3f} | {vec} |".format(
+                        name=name,
+                        episodes=row["episodes"],
+                        success=row["success_rate"],
+                        ret=row["mean_return"],
+                        vec=_fmt_vec(row["mean_reward_vector"]),
+                    )
+                )
+            lines.append("")
+
     return "\n".join(lines) + "\n"
 
 
@@ -193,7 +260,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
-    records: dict[str, Any] = {"seed": args.seed, "envs": {}}
+    records: dict[str, Any] = {"seed": args.seed, "envs": {}, "oracle_diagnostics": {}}
     env_ids = _select_envs(args.include_large)
 
     for env_id in env_ids:
@@ -208,6 +275,19 @@ def main() -> None:
             )
             by_policy[name] = summary
         records["envs"][env_id] = by_policy
+
+        # Oracle diagnostics (reported separately; not comparable to baselines)
+        oracle_factories = _oracle_diagnostics_for(env_id)
+        if oracle_factories:
+            by_oracle: dict[str, Any] = {}
+            for name, factory in oracle_factories:
+                print(f"  [oracle] {name:22s} ... ", end="", flush=True)
+                summary = _summarize(env_id, factory, args.episodes, args.seed)
+                print(
+                    f"succ={summary['success_rate']:.2f} return={summary['mean_return']:.3f}"
+                )
+                by_oracle[name] = summary
+            records["oracle_diagnostics"][env_id] = by_oracle
 
     RESULTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     RESULTS_PATH.write_text(json.dumps(records, indent=2, default=float))

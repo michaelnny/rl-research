@@ -4,8 +4,10 @@ Same design as `scheduling.py`: a *portfolio* of cheap baselines
 plus a decomposition diagnostic. No single heuristic is the
 difficulty signal.
 
-These policies read the observation (no privileged access to env
-internals beyond what is exposed through the public env API).
+The baseline policies read the observation (no privileged access to
+env internals beyond what is exposed through the public env API).
+Oracle diagnostics, when present, are listed separately and are not
+part of ``MAZE_BASELINES``.
 """
 
 from __future__ import annotations
@@ -102,9 +104,9 @@ class MazeGreedyLandmarkPolicy:
     def _get_actuator_matrix(self) -> np.ndarray:
         # The env's actuator matrix is regenerated on each reset, so
         # we cache by env._seed. We rely on the public property.
-        if self._cached_A is None or self._cached_seed != self.env.seed if hasattr(self.env, "seed") else True:
+        if self._cached_A is None or self._cached_seed != self.env.seed:
             self._cached_A = self.env.actuator_matrix
-            self._cached_seed = getattr(self.env, "_seed", None)
+            self._cached_seed = self.env.seed
         return self._cached_A
 
     def __call__(self, obs: np.ndarray) -> np.ndarray:
@@ -122,6 +124,85 @@ class MazeGreedyLandmarkPolicy:
             if alignment[i] > 0:
                 a[i] = 1.0
         return a
+
+
+class MazeOracleRoutePlannerPolicy:
+    """Oracle waypoint diagnostic with a PD actuator controller.
+
+    This intentionally reads private generated-world descriptors
+    (key/seal/extraction positions and gate requirements).  It is useful as a
+    feasibility/control diagnostic, but it is *not* an honest learner-facing
+    baseline because those descriptors are not in the public observation.
+
+    The controller collects all keys, visits all seals (waiting through closed
+    gate phases when necessary), then extracts. It maps the desired 2-D force
+    through the redundant actuator matrix with a clipped least-norm inverse.
+    """
+
+    name = "oracle_route_planner"
+
+    def __init__(self, env: RecoverableKeyFuelMazeEnv) -> None:
+        self.env = env
+        self._cached_seed: int | None = None
+        self._pinv: np.ndarray | None = None
+
+    def _actuator_pinv(self) -> np.ndarray:
+        seed = self.env.seed
+        if self._pinv is None or self._cached_seed != seed:
+            A = self.env.actuator_matrix.astype(np.float32)
+            self._pinv = (A.T @ np.linalg.pinv(A @ A.T + 1e-4 * np.eye(2, dtype=np.float32))).astype(np.float32)
+            self._cached_seed = seed
+        return self._pinv
+
+    def _gate_open(self, gate_idx: int) -> bool:
+        if gate_idx < 0:
+            return True
+        c = self.env.config
+        period = int(self.env._gate_periods[gate_idx])
+        phase = int(self.env._gate_phases[gate_idx])
+        return ((self.env.t + phase) % period) < int(c.gate_duty_cycle * period)
+
+    def _target(self) -> np.ndarray:
+        c = self.env.config
+        pos = self.env.position
+        keys = self.env.keys_held
+        missing_keys = [i for i in range(c.n_key_types) if keys[i] < 1.0]
+        if missing_keys:
+            return self.env._key_positions[min(missing_keys, key=lambda i: float(np.linalg.norm(self.env._key_positions[i] - pos)))]
+
+        seals = self.env.seal_status
+        open_or_near: list[int] = []
+        unfinished = [i for i in range(c.n_seals) if seals[i] < 1.0]
+        for i in unfinished:
+            # Head to the closest unfinished seal; if its gate is closed, wait
+            # inside the region until the phase opens.
+            if self._gate_open(self.env._seal_gate_requirements[i]):
+                open_or_near.append(i)
+        candidates = open_or_near or unfinished
+        if candidates:
+            return self.env._seal_positions[min(candidates, key=lambda i: float(np.linalg.norm(self.env._seal_positions[i] - pos)))]
+        return self.env._extraction_position
+
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
+        del obs
+        c = self.env.config
+        target = self._target().astype(np.float32)
+        pos = self.env.position.astype(np.float32)
+        err = target - pos
+        dist = float(np.linalg.norm(err))
+        # Hold still in collection/completion radii to allow key dwell and gate waits.
+        if dist < 0.45 * min(c.key_radius, c.seal_radius, c.extraction_radius):
+            return np.zeros(c.action_dim, dtype=np.float32)
+        vel = getattr(self.env, "_vel", np.zeros(2, dtype=np.float32)).astype(np.float32)
+        desired_force = 1.4 * err - 1.8 * vel
+        norm = float(np.linalg.norm(desired_force))
+        if norm > c.max_force:
+            desired_force = desired_force / norm * c.max_force
+        a = self._actuator_pinv() @ desired_force
+        max_abs = float(np.max(np.abs(a)))
+        if max_abs > 1.0:
+            a = a / max_abs
+        return np.clip(a, -1.0, 1.0).astype(np.float32)
 
 
 class MazeFuelAwareGreedyPolicy:
@@ -149,7 +230,7 @@ class MazeFuelAwareGreedyPolicy:
         self._cached_seed: int | None = None
 
     def _get_A(self) -> np.ndarray:
-        seed = getattr(self.env, "_seed", None)
+        seed = self.env.seed
         if self._cached_A is None or self._cached_seed != seed:
             self._cached_A = self.env.actuator_matrix
             self._cached_seed = seed
@@ -208,7 +289,7 @@ class MazeEfficientActuatorPolicy:
         self._cached_seed: int | None = None
 
     def _get_A(self) -> np.ndarray:
-        seed = getattr(self.env, "_seed", None)
+        seed = self.env.seed
         if self._cached_A is None or self._cached_seed != seed:
             self._cached_A = self.env.actuator_matrix
             self._cached_seed = seed
@@ -255,7 +336,7 @@ class MazeShortHorizonRolloutPolicy:
         self._cached_seed: int | None = None
 
     def _get_A(self) -> np.ndarray:
-        seed = getattr(self.env, "_seed", None)
+        seed = self.env.seed
         if self._cached_A is None or self._cached_seed != seed:
             self._cached_A = self.env.actuator_matrix
             self._cached_seed = seed
@@ -314,7 +395,19 @@ MAZE_BASELINES = [
     MazeEfficientActuatorPolicy,
     MazeShortHorizonRolloutPolicy,
 ]
-"""All maze-family baselines. Ordered approximately by
-sophistication: zero/random_constant are sanity, the next three are
-heuristics with increasing structure, the last is a decomposition
-diagnostic."""
+"""All learner-facing maze-family baselines. Ordered approximately by
+sophistication: zero/random_constant are sanity checks, the middle
+entries are observation-only heuristics, and the last is an
+observation-only short-horizon diagnostic."""
+
+
+MAZE_ORACLE_DIAGNOSTICS = [
+    MazeOracleRoutePlannerPolicy,
+]
+"""Privileged maze diagnostics. These may read generated-world internals
+and must not be counted as learner-facing baselines."""
+
+# Backward-compatible alias for external notebooks that imported the old name.
+# The policy's public ``name`` and registry placement now make its oracle status
+# explicit.
+MazeRoutePlannerPolicy = MazeOracleRoutePlannerPolicy

@@ -134,12 +134,25 @@ rewards long-horizon credit assignment — if it solves the env, the
 long-horizon claim fails.
 
 **Scheduling** (`baselines.scheduling.SCHEDULING_BASELINES`):
-zero, uniform, backlog_priority, earliest_deadline, maintenance_aware,
-setup_aware, short_horizon_rollout (decomposition diagnostic).
+zero, uniform, capacity_push, backlog_priority, earliest_deadline,
+maintenance_aware, setup_aware, short_horizon_rollout (decomposition
+diagnostic). `capacity_push` is a high-cost stress diagnostic — it
+succeeds by running all-out production with no maintenance / setup
+retargeting, paying heavily in wear / inventory waste / energy /
+resilience. Treat its success as "feasibility floor", not as a
+target to merely match.
 
 **Maze** (`baselines.maze.MAZE_BASELINES`):
 zero, random_constant, greedy_landmark, fuel_aware_greedy,
 efficient_actuator, short_horizon_lookahead (decomposition diagnostic).
+
+**Maze oracle diagnostics** (`baselines.maze.MAZE_ORACLE_DIAGNOSTICS`):
+`MazeOracleRoutePlannerPolicy`. Reads privileged env-internal state
+(waypoint coordinates, gate phases). NOT comparable to the learner-
+facing portfolio. Exists to verify feasibility — if the oracle
+succeeds, the env admits a competent policy. Never cite "beat the
+oracle" — the oracle's whole point is that learners shouldn't beat it
+via observation-only policies.
 
 **Legacy** (`baselines.random`, `baselines.cem`, `baselines.reinforce`):
 `RandomPolicy`, `ZeroPolicy`, `train_cem`, `train_reinforce` — still

@@ -274,3 +274,40 @@ def test_fuel_only_decreases_when_moving():
     initial_fuel = env.fuel
     env.step(np.zeros(16, dtype=np.float32))
     assert env.fuel == initial_fuel, "zero action should not consume fuel"
+
+
+# ----- public seed property -------------------------------------------------- #
+
+
+def test_seed_property_tracks_reset():
+    """The public ``seed`` property returns the seed of the current world."""
+    cfg = _small_cfg()
+    env = RecoverableKeyFuelMazeEnv(cfg)
+    env.reset(seed=42)
+    assert env.seed == 42
+    env.reset(seed=7)
+    assert env.seed == 7
+
+
+# ----- baseline portfolio is honest (observation-only) ----------------------- #
+
+
+def test_oracle_route_planner_not_in_baseline_portfolio():
+    """``MazeOracleRoutePlannerPolicy`` reads privileged env-internal
+    state (waypoint coordinates, gate phases). It must NOT be in
+    ``MAZE_BASELINES`` — only in ``MAZE_ORACLE_DIAGNOSTICS``.
+    """
+    from rlh_bench.baselines import MAZE_BASELINES, MAZE_ORACLE_DIAGNOSTICS
+
+    baseline_names = {cls.__name__ for cls in MAZE_BASELINES}
+    oracle_names = {cls.__name__ for cls in MAZE_ORACLE_DIAGNOSTICS}
+    assert "MazeOracleRoutePlannerPolicy" not in baseline_names, (
+        "oracle policy must not appear as an honest baseline"
+    )
+    assert "MazeOracleRoutePlannerPolicy" in oracle_names, (
+        "oracle policy should be registered as a diagnostic"
+    )
+    # No overlap.
+    assert baseline_names.isdisjoint(oracle_names), (
+        "baseline portfolio and oracle diagnostics must be disjoint"
+    )

@@ -240,6 +240,11 @@ class RecoverableKeyFuelMazeEnv:
         return self._t
 
     @property
+    def seed(self) -> int | None:
+        """Seed of the current world (set by the last `reset()`)."""
+        return self._seed
+
+    @property
     def position(self) -> np.ndarray:
         return self._pos.copy()
 

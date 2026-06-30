@@ -215,35 +215,58 @@ All well under their gates.
 | ----------------------------- | ----- | ---- | ----- | ------------------------------ |
 | 1.  Determinism               | ✓     | ✓    | ✓     |                                |
 | 2.  Terminal-only             | ✓     | ✓    | ✓     |                                |
-| 3.  Feasibility               | ✓     | ⚠    | —     | Maze-v0 no policy >0%         |
+| 3.  Feasibility               | ✓     | ⚠    | —     | Maze-v0 oracle solves it; no honest baseline does |
 | 4.  No-idle-tail              | ⚠     | ⚠    | —     | By construction, not measured |
 | 5.  Lookahead-depth           | ⚠     | ⚠    | —     | Calibration-dependent          |
-| 6.  Myopic-gap                | ✓     | ✗    | —     | v0 calibration TODO            |
+| 6.  Myopic-gap                | ✓     | ⚠    | —     | Sched-v0 uniform brought down to 30%; capacity_push fills the void as stress diagnostic; structural myopia of original heuristics remains  |
 | 7.  Recoverability            | ✓     | —    | —     | Tested for Small               |
 | 8.  Action-complexity         | ✓     | ✓    | ✓     |                                |
 | 9.  Seed-generalization       | ⚠     | ⚠    | ⚠     | Infrastructure ready           |
 | 10. Reward-normalization      | ✓     | ⚠    | ⚠     | Partial normalization          |
-| 11. Baseline portfolio        | ✓     | ✓    | ✓     |                                |
+| 11. Baseline portfolio        | ✓     | ✓    | ✓     | + oracle diagnostics separated |
 | 12. Runtime                   | ✓     | ✓    | ✓     |                                |
 
-**Headline**: Small tier passes 11/12 gates (no formal idle-tail
-test). v0 tier passes 8/12 cleanly; gates 3, 6 are the load-bearing
-calibration TODO. Large tier is built and passes the structural
-gates (determinism, terminal-only, runtime, action-complexity) but
-its baselines are deferred so most gates are marked "—".
+**Headline (updated 2026-06-30 after v0 calibration + adversarial
+review)**:
+- Small tier passes 11/12 gates (no formal idle-tail test).
+- v0 tier: gates 1, 2, 8, 11, 12 pass cleanly. Gate 6 moved from
+  ✗ to ⚠ (uniform=100% issue fixed via threshold tightening; the
+  remaining issue is that original myopic heuristics still fail
+  due to structural bundle myopia, not a calibration problem).
+  Gate 3 moved from ⚠ to ⚠ (the oracle proves feasibility but
+  the honest portfolio still has no policy >0% — an honest
+  observation-only memory planner is needed).
+- Large tier passes structural gates; baselines deferred.
+
+## v0 calibration pass (2026-06-30 post-merge of 1bbd notes)
+
+Codex ran two passes:
+1. Calibration pass — tightened Sched-v0 thresholds, added
+   capacity_push (Sched) and route_planner (Maze).
+2. Adversarial self-review — caught that route_planner was reading
+   privileged env internals; separated `MAZE_ORACLE_DIAGNOSTICS`
+   from `MAZE_BASELINES`.
+
+Documents:
+- `lab/notes/codex_v0_calibration_oneshot.md` — brief used.
+- `lab/notes/codex_v0_calibration_2026-06-30.md` — proposer-written
+  calibration note (Codex's brief timed out before writing its own).
+- `lab/notes/codex_v0_calibration_review_oneshot.md` — review brief.
+- `lab/notes/codex_v0_calibration_review_2026-06-30.md` — Codex's
+  adversarial self-review (280 lines).
 
 ## Next pass
 
-The v0 calibration issue (gate 6) is the next thing to fix. See
-`lab/notes/codex_v0_calibration_oneshot.md` for a Codex brief.
-That call was started during this redesign but timed out before
-producing fixes; a follow-up session should run it again with
-more time budget.
+The substrate is in a *defensible* state at Small + v0. The
+remaining gates that warrant pre-merge attention:
 
-When v0 calibration is fixed:
-- Re-run `experiments/run_baselines.py --episodes 20` and update
-  `docs/baseline_report.md`.
-- Optionally add a `experiments/run_baselines.py --include-large`
-  pass once Large is calibrated.
-- Then the substrate redesign is complete and the branch can be
-  merged to master.
+- **Gate 10 (reward normalization)**: some `neg_*` components scale
+  with horizon at Large; would benefit from an audit pass.
+- **Gate 9 (held-out seed protocol)**: `run_baselines.py` should
+  optionally evaluate on held-out seeds and report train→held-out
+  gap.
+- **Maze-v0 honest baseline (gate 3)**: 200-500 LOC memory planner;
+  best done during real algorithm work rather than as another
+  baseline.
+- **Bundle-aware Scheduling heuristic (gate 6 cleanup)**: would let
+  original myopic policies succeed at v0 without brute force.

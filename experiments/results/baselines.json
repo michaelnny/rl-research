@@ -35,7 +35,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.07838774799965904,
+        "mean_sec_per_episode": 0.07512857490073657,
         "pareto_non_dominated_count": 1
       },
       "random": {
@@ -71,7 +71,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.0847810978495545,
+        "mean_sec_per_episode": 0.08238302280042262,
         "pareto_non_dominated_count": 11
       },
       "uniform": {
@@ -107,8 +107,44 @@
         "success_rate": 0.75,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08515330010050093,
+        "mean_sec_per_episode": 0.08374456679885042,
         "pareto_non_dominated_count": 7
+      },
+      "capacity_push": {
+        "episodes": 20,
+        "mean_return": 1.546660876274109,
+        "std_return": 0.056810005638421236,
+        "mean_reward_vector": [
+          1.0,
+          0.9679999947547913,
+          0.9750000238418579,
+          -0.11829999834299088,
+          -0.0010999999940395355,
+          -1.0,
+          0.0,
+          0.0,
+          -2.610100030899048,
+          -0.875,
+          0.0
+        ],
+        "reward_names": [
+          "success",
+          "weighted_fill_rate",
+          "mandatory_fill_rate",
+          "neg_lateness",
+          "neg_shortfall_tail",
+          "neg_wear",
+          "neg_heat_violation",
+          "neg_setup_churn",
+          "neg_inventory_waste",
+          "neg_energy",
+          "resilience_margin"
+        ],
+        "success_rate": 1.0,
+        "first_success_episode": 1,
+        "mean_length": 500.0,
+        "mean_sec_per_episode": 0.08320973525005684,
+        "pareto_non_dominated_count": 6
       },
       "backlog_priority": {
         "episodes": 20,
@@ -143,7 +179,7 @@
         "success_rate": 0.4,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08712766879907577,
+        "mean_sec_per_episode": 0.08402297490029013,
         "pareto_non_dominated_count": 3
       },
       "earliest_deadline": {
@@ -179,7 +215,7 @@
         "success_rate": 0.4,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08793177910010855,
+        "mean_sec_per_episode": 0.08464317500001925,
         "pareto_non_dominated_count": 4
       },
       "maintenance_aware": {
@@ -215,7 +251,7 @@
         "success_rate": 0.05,
         "first_success_episode": 19,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.0884969499998988,
+        "mean_sec_per_episode": 0.0870520499513077,
         "pareto_non_dominated_count": 12
       },
       "setup_aware": {
@@ -251,7 +287,7 @@
         "success_rate": 0.15,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08707034590115655,
+        "mean_sec_per_episode": 0.08561652079952183,
         "pareto_non_dominated_count": 7
       },
       "short_horizon_rollout": {
@@ -287,21 +323,21 @@
         "success_rate": 0.35,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.08817075830011163,
+        "mean_sec_per_episode": 0.08554545405095268,
         "pareto_non_dominated_count": 4
       }
     },
     "RecoverableCapacityScheduling-v0": {
       "zero": {
         "episodes": 20,
-        "mean_return": -0.6603224635124206,
-        "std_return": 0.02196743502280722,
+        "mean_return": -0.6763224691152573,
+        "std_return": 0.02196743964062748,
         "mean_reward_vector": [
           0.0,
           0.0,
           0.0,
           -13.326399803161621,
-          -0.550000011920929,
+          -0.75,
           0.0,
           0.0,
           0.0,
@@ -325,19 +361,19 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5035168333008186,
+        "mean_sec_per_episode": 0.4882340375494095,
         "pareto_non_dominated_count": 1
       },
       "random": {
         "episodes": 20,
-        "mean_return": -0.3629020184278488,
-        "std_return": 0.025258635398019043,
+        "mean_return": -0.3777328357100487,
+        "std_return": 0.025293045688574066,
         "mean_reward_vector": [
           0.0,
           0.3495999872684479,
           0.006200000178068876,
           -8.348899841308594,
-          -0.21819999814033508,
+          -0.4036000072956085,
           -1.0,
           -0.6309000253677368,
           -0.05660000070929527,
@@ -361,19 +397,19 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5363313688507333,
+        "mean_sec_per_episode": 0.5286125041504419,
         "pareto_non_dominated_count": 4
       },
       "uniform": {
         "episodes": 20,
-        "mean_return": 1.570802003145218,
-        "std_return": 0.06274604135340166,
+        "mean_return": 0.8171996921300888,
+        "std_return": 0.5134210999025252,
         "mean_reward_vector": [
-          1.0,
+          0.30000001192092896,
           0.9190000295639038,
-          0.887499988079071,
+          0.7124999761581421,
           -1.2621999979019165,
-          -0.0027000000700354576,
+          -0.016499999910593033,
           -0.5231000185012817,
           0.0,
           -0.0034000000450760126,
@@ -394,22 +430,58 @@
           "neg_energy",
           "resilience_margin"
         ],
-        "success_rate": 1.0,
+        "success_rate": 0.3,
         "first_success_episode": 1,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5319053854989761,
+        "mean_sec_per_episode": 0.5273050582003634,
+        "pareto_non_dominated_count": 5
+      },
+      "capacity_push": {
+        "episodes": 20,
+        "mean_return": 1.207847683876753,
+        "std_return": 0.4878164740668933,
+        "mean_reward_vector": [
+          0.800000011920929,
+          0.9711999893188477,
+          0.8999999761581421,
+          -0.3529999852180481,
+          -0.009700000286102295,
+          -1.0,
+          0.0,
+          0.0,
+          -6.1570000648498535,
+          -0.75,
+          0.0
+        ],
+        "reward_names": [
+          "success",
+          "weighted_fill_rate",
+          "mandatory_fill_rate",
+          "neg_lateness",
+          "neg_shortfall_tail",
+          "neg_wear",
+          "neg_heat_violation",
+          "neg_setup_churn",
+          "neg_inventory_waste",
+          "neg_energy",
+          "resilience_margin"
+        ],
+        "success_rate": 0.8,
+        "first_success_episode": 1,
+        "mean_length": 2000.0,
+        "mean_sec_per_episode": 0.5286179979997542,
         "pareto_non_dominated_count": 2
       },
       "backlog_priority": {
         "episodes": 20,
-        "mean_return": -0.1906806007027626,
-        "std_return": 0.0797734223184808,
+        "mean_return": -0.2130135003477335,
+        "std_return": 0.07175346903811577,
         "mean_reward_vector": [
           0.0,
           0.4738999903202057,
-          0.03750000149011612,
+          0.006200000178068876,
           -6.7758002281188965,
-          -0.13040000200271606,
+          -0.2924000024795532,
           -1.0,
           -0.01119999960064888,
           -0.01600000075995922,
@@ -433,19 +505,19 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5323516374992323,
+        "mean_sec_per_episode": 0.5348728667493561,
         "pareto_non_dominated_count": 3
       },
       "earliest_deadline": {
         "episodes": 20,
-        "mean_return": -0.0115870650857687,
-        "std_return": 0.29333985489171527,
+        "mean_return": -0.11163777969777584,
+        "std_return": 0.07742397733461143,
         "mean_reward_vector": [
-          0.05000000074505806,
+          0.0,
           0.5442000031471252,
-          0.15620000660419464,
+          0.02500000037252903,
           -5.521999835968018,
-          -0.09709999710321426,
+          -0.2305999994277954,
           -0.9986000061035156,
           -0.0034000000450760126,
           -0.012799999676644802,
@@ -466,22 +538,22 @@
           "neg_energy",
           "resilience_margin"
         ],
-        "success_rate": 0.05,
-        "first_success_episode": 6,
+        "success_rate": 0.0,
+        "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5516196480002691,
+        "mean_sec_per_episode": 0.5396121375495568,
         "pareto_non_dominated_count": 7
       },
       "maintenance_aware": {
         "episodes": 20,
-        "mean_return": -0.13268153443932534,
-        "std_return": 0.05259088491168125,
+        "mean_return": -0.16596426032483577,
+        "std_return": 0.04862994624728372,
         "mean_reward_vector": [
           0.0,
           0.5067999958992004,
-          0.07500000298023224,
+          0.006200000178068876,
           -6.8618998527526855,
-          -0.10090000182390213,
+          -0.2590999901294708,
           -0.5996999740600586,
           0.0,
           -0.012900000438094139,
@@ -505,19 +577,19 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5482871729498584,
-        "pareto_non_dominated_count": 13
+        "mean_sec_per_episode": 0.5387349166503554,
+        "pareto_non_dominated_count": 12
       },
       "setup_aware": {
         "episodes": 20,
-        "mean_return": -0.3267823949456215,
-        "std_return": 0.06793995813170091,
+        "mean_return": -0.3415494687855244,
+        "std_return": 0.06848413304248269,
         "mean_reward_vector": [
           0.0,
           0.36570000648498535,
           0.006200000178068876,
           -8.239500045776367,
-          -0.20960000157356262,
+          -0.39419999718666077,
           -1.0,
           -0.10260000079870224,
           -0.016599999740719795,
@@ -541,19 +613,19 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5562759395990724,
+        "mean_sec_per_episode": 0.5453064271001494,
         "pareto_non_dominated_count": 2
       },
       "short_horizon_rollout": {
         "episodes": 20,
-        "mean_return": -0.06794626154005527,
-        "std_return": 0.06972667211255552,
+        "mean_return": -0.11071954607032239,
+        "std_return": 0.05307673089109039,
         "mean_reward_vector": [
           0.0,
           0.5565000176429749,
-          0.11879999935626984,
+          0.012500000186264515,
           -5.610099792480469,
-          -0.08349999785423279,
+          -0.21979999542236328,
           -0.9642000198364258,
           -0.0005000000237487257,
           -0.014600000344216824,
@@ -577,8 +649,8 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.5369203520502197,
-        "pareto_non_dominated_count": 5
+        "mean_sec_per_episode": 0.539900737550488,
+        "pareto_non_dominated_count": 6
       }
     },
     "RecoverableKeyFuelMaze-Small-v0": {
@@ -611,7 +683,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.023489906399481696,
+        "mean_sec_per_episode": 0.023412118851410924,
         "pareto_non_dominated_count": 1
       },
       "random": {
@@ -643,7 +715,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.02548589579964755,
+        "mean_sec_per_episode": 0.02571398340005544,
         "pareto_non_dominated_count": 3
       },
       "random_constant": {
@@ -675,7 +747,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.022978085249633295,
+        "mean_sec_per_episode": 0.023525206101112417,
         "pareto_non_dominated_count": 6
       },
       "greedy_landmark": {
@@ -707,7 +779,7 @@
         "success_rate": 0.05,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.024981908350309823,
+        "mean_sec_per_episode": 0.026138927050851635,
         "pareto_non_dominated_count": 10
       },
       "fuel_aware_greedy": {
@@ -739,7 +811,7 @@
         "success_rate": 0.05,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.02415205205033999,
+        "mean_sec_per_episode": 0.02424158540015924,
         "pareto_non_dominated_count": 10
       },
       "efficient_actuator": {
@@ -771,7 +843,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.02356208105084079,
+        "mean_sec_per_episode": 0.023625098000411526,
         "pareto_non_dominated_count": 8
       },
       "short_horizon_lookahead": {
@@ -803,7 +875,7 @@
         "success_rate": 0.1,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.028586651850127966,
+        "mean_sec_per_episode": 0.029090387550604647,
         "pareto_non_dominated_count": 5
       }
     },
@@ -837,7 +909,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.1491289373501786,
+        "mean_sec_per_episode": 0.15232713969999168,
         "pareto_non_dominated_count": 1
       },
       "random": {
@@ -869,7 +941,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.15773992899994482,
+        "mean_sec_per_episode": 0.15820076244890516,
         "pareto_non_dominated_count": 5
       },
       "random_constant": {
@@ -901,7 +973,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.1450698956999986,
+        "mean_sec_per_episode": 0.14478649390039208,
         "pareto_non_dominated_count": 8
       },
       "greedy_landmark": {
@@ -933,7 +1005,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.1512050230499881,
+        "mean_sec_per_episode": 0.15249364170012997,
         "pareto_non_dominated_count": 9
       },
       "fuel_aware_greedy": {
@@ -965,7 +1037,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.15274034580070292,
+        "mean_sec_per_episode": 0.1498660500994447,
         "pareto_non_dominated_count": 9
       },
       "efficient_actuator": {
@@ -997,7 +1069,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.1489762042510847,
+        "mean_sec_per_episode": 0.14675264375000552,
         "pareto_non_dominated_count": 4
       },
       "short_horizon_lookahead": {
@@ -1029,7 +1101,77 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 2000.0,
-        "mean_sec_per_episode": 0.167731845950766,
+        "mean_sec_per_episode": 0.1668684355008736,
+        "pareto_non_dominated_count": 7
+      }
+    }
+  },
+  "oracle_diagnostics": {
+    "RecoverableKeyFuelMaze-Small-v0": {
+      "oracle_route_planner": {
+        "episodes": 20,
+        "mean_return": 1.5406410634517669,
+        "std_return": 0.33144983133984557,
+        "mean_reward_vector": [
+          0.8999999761581421,
+          0.9750000238418579,
+          1.0,
+          1.128600001335144,
+          0.0,
+          -0.10000000149011612,
+          -0.0203000009059906,
+          0.0,
+          0.9162999987602234
+        ],
+        "reward_names": [
+          "success",
+          "seal_completion",
+          "key_coverage",
+          "fuel_margin",
+          "neg_damage",
+          "neg_lateness",
+          "neg_energy",
+          "neg_collision",
+          "route_efficiency"
+        ],
+        "success_rate": 0.9,
+        "first_success_episode": 1,
+        "mean_length": 500.0,
+        "mean_sec_per_episode": 0.022533158351870954,
+        "pareto_non_dominated_count": 3
+      }
+    },
+    "RecoverableKeyFuelMaze-v0": {
+      "oracle_route_planner": {
+        "episodes": 20,
+        "mean_return": 1.4208583578467369,
+        "std_return": 0.43384786069714876,
+        "mean_reward_vector": [
+          0.800000011920929,
+          0.96670001745224,
+          1.0,
+          1.2522000074386597,
+          0.0,
+          -0.09109999984502792,
+          -0.007000000216066837,
+          0.0,
+          0.6189000010490417
+        ],
+        "reward_names": [
+          "success",
+          "seal_completion",
+          "key_coverage",
+          "fuel_margin",
+          "neg_damage",
+          "neg_lateness",
+          "neg_energy",
+          "neg_collision",
+          "route_efficiency"
+        ],
+        "success_rate": 0.8,
+        "first_success_episode": 1,
+        "mean_length": 2000.0,
+        "mean_sec_per_episode": 0.13105908349934908,
         "pareto_non_dominated_count": 7
       }
     }
