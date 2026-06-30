@@ -562,10 +562,28 @@ class RecoverableCapacitySchedulingEnv:
         # Movement scaled by setup_intensity AND a per-mode decay rate.
         movement_rate = c.setup_decay_rate * setup_intensity
         new_mixture = self._setup_mixture + (target_distribution - self._setup_mixture) * movement_rate[:, None]
-        # Setup churn cost: per-mode L1 movement.  Terminal cost remains
-        # normalized, while setup_pressure above makes churn operationally
-        # visible through capacity/wear/heat.
-        churn = float(np.sum(np.abs(new_mixture - self._setup_mixture)))
+        # Setup churn cost: per-mode mass-weighted transition cost.
+        # For each mode m, mass leaving family i toward family j is
+        # max(0, old_mixture[m,i] - new_mixture[m,i]) routed (in
+        # proportion) to the families where mass increased. The cost
+        # weight is the asymmetric setup_graph[i, j].
+        # This makes _setup_graph (sampled at reset, one of the
+        # promised long-horizon coupling mechanisms) actually visible
+        # in the terminal vector. Without this wiring it was dead code
+        # (caught by Codex's final review).
+        delta = new_mixture - self._setup_mixture                # (M, P)
+        outgoing = np.maximum(-delta, 0.0)                       # (M, P)
+        incoming = np.maximum(delta, 0.0)                        # (M, P)
+        incoming_sum = incoming.sum(axis=1, keepdims=True) + 1e-8
+        # Per-mode mass routed: outgoing[m, i] flows to families j
+        # in proportion to incoming[m, j] / sum_incoming[m].
+        # Cost contribution per mode = sum_{i,j} outgoing[m,i] *
+        # incoming[m,j]/sum * setup_graph[i,j].
+        flow_destination = incoming / incoming_sum               # (M, P)
+        # Per-mode cost = sum_i outgoing[m,i] * sum_j flow_destination[m,j] * graph[i,j]
+        #                = sum_i outgoing[m,i] * (flow_destination[m] @ graph[i])
+        per_mode_cost = (outgoing[:, :, None] * flow_destination[:, None, :] * self._setup_graph[None, :, :]).sum(axis=(1, 2))
+        churn = float(per_mode_cost.sum())
         self._total_setup_churn += churn * c.setup_change_cost_scale
         self._setup_mixture = new_mixture.astype(np.float32)
 
