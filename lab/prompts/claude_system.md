@@ -180,11 +180,18 @@ this session.
 Read `docs/SUBSTRATE_MAP.md` for the one-page version. Highlights:
 
 - Two environment families, six registered IDs total:
-  - `RecoverablePointMaze-{Small,,HD}-v0` — continuous-control maze,
-    horizon 120/160/180, action dim 2 or 8.
-  - `RecoverableResourceAllocation-{Small,,Large}-v0` — continuous
-    allocation across K projects with soft dependencies, horizon
-    60/100/120, action dim 4/5/8.
+  - `RecoverableCapacityScheduling-{Small,,Large}-v0` — continuous
+    allocation across K projects × M production modes × P product
+    families, with wear / setup inertia / heat / inventory
+    perishability / contract bundle dynamics. Horizons 500/2000/10000;
+    action dims 32/80/192.
+  - `RecoverableKeyFuelMaze-{Small,,Large}-v0` — continuous-control
+    2-D point mass with a per-world actuator matrix, fuel budget +
+    recharge stations, keys / seals / timed gates / extraction. The
+    higher action_dim gives redundant actuators (different action
+    vectors that produce the same force at different fuel/heat cost),
+    NOT more force dimensions. Horizons 500/2000/10000; action dims
+    16/32/64.
 - Non-terminal reward is **zero**. The only non-zero reward arrives
   at the terminal step `t == horizon`.
 - The terminal reward is a vector of larger-is-better components. In
@@ -195,8 +202,15 @@ Read `docs/SUBSTRATE_MAP.md` for the one-page version. Highlights:
   scalarization**. If a learner takes the vector and immediately
   collapses it to a scalar, that is scalarization, not vector RL.
   Call it what it is in the journal.
-- Baselines (random, heuristic, CEM, optional REINFORCE) are in
-  `docs/baseline_report.md` and `experiments/results/baselines.json`.
+- Baseline portfolios live in `rlh_bench.baselines.scheduling` and
+  `rlh_bench.baselines.maze`. Oracle diagnostics (privileged) are
+  separate from learner-facing baselines (`MAZE_ORACLE_DIAGNOSTICS`).
+  Numbers in `docs/baseline_report.md`,
+  `experiments/results/baselines.json`.
+- Seed → world contract is deterministic. Train / validation /
+  held-out / debug seed bands are published by
+  `rlh_bench.seed_bands.seed_band_for(env_id)`. Headline results
+  should be on held-out seeds.
 
 ## The hard rules (about the substrate, not about ideas)
 

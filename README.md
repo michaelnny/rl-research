@@ -189,9 +189,11 @@ PYTHONPATH=src .venv/bin/python -m pytest -q
 
 The substrate test suite checks deterministic resets, terminal-only
 reward behavior, vector reward mode, recoverability after bad
-actions, registry construction, CEM and optional REINFORCE smoke
-tests, and Pareto utility behavior. It should be 25 passed on a
-working install.
+actions, registry construction, baseline portfolio honesty
+(observation-only vs oracle separation), reward normalization
+across tiers, held-out seed contract, idle-tail measurement,
+acceptance gates, CEM / optional REINFORCE smoke tests, and Pareto
+utility behavior. It should be 70+ passed on a working install.
 
 ## License
 

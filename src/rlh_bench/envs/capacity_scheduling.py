@@ -108,13 +108,13 @@ class CapacitySchedulingConfig:
     num_projects: int = 48
     num_modes: int = 8
     num_products: int = 8
-    # Action layout is K + 3M + P = 48 + 24 + 8 = 80. The v0 default
-    # action_dim of 96 leaves 16 trailing "free" dims that aren't
-    # used by the env semantics; they exist so the registry can
-    # advertise larger action spaces at higher tiers without changing
-    # semantics. (Small / Large set their own action_dim that exactly
-    # matches the layout for those tiers.)
-    action_dim: int = 96
+    # Action layout: K + 3M + P. With the v0 defaults (K=48, M=8, P=8)
+    # the layout is exactly 80 dims; the dataclass default matches.
+    # The registry's _scheduling_default explicitly sets 80 to match.
+    # Trailing dims past the layout would only contribute to
+    # neg_energy without affecting production / wear / setup; they
+    # are forbidden by acceptance gate 8.
+    action_dim: int = 80
     n_bundles: int = 8
     bundle_size_range: tuple[int, int] = (2, 4)
 

@@ -181,6 +181,57 @@ def test_recoverability_is_graded():
     assert min(early, mid, late) >= 0.0, "burst should not break the env"
 
 
+def test_recoverability_v0_no_catastrophic_collapse():
+    """Gate 7 extension at v0 scale. A single 100-step bad-action
+    burst in the middle of a 2000-step episode must NOT collapse the
+    weighted_fill_rate to zero.
+
+    We use a small number of seeds for speed; the assertion is loose
+    (no full collapse) rather than tight (specific graded ordering).
+    """
+    # v0 config; we use the registry to ensure consistency
+    from rlh_bench import make_env
+
+    burst_steps = 100
+    fills_with_burst = []
+    fills_baseline = []
+    for seed in range(2):
+        baseline_env = make_env("RecoverableCapacityScheduling-v0", reward_mode="vector")
+        obs, _ = baseline_env.reset(seed=seed)
+        good = 0.5 * np.ones(baseline_env.action_space.shape[0], dtype=np.float32)
+        for _ in range(baseline_env.config.horizon):
+            obs, r, term, trunc, info = baseline_env.step(good)
+            if term:
+                break
+        fills_baseline.append(float(info["reward_vector"][1]))
+
+        # With burst at the midpoint
+        env = make_env("RecoverableCapacityScheduling-v0", reward_mode="vector")
+        obs, _ = env.reset(seed=seed)
+        burst_start = env.config.horizon // 2
+        good = 0.5 * np.ones(env.action_space.shape[0], dtype=np.float32)
+        bad = -np.ones(env.action_space.shape[0], dtype=np.float32)
+        for t in range(env.config.horizon):
+            a = bad if burst_start <= t < burst_start + burst_steps else good
+            obs, r, term, trunc, info = env.step(a)
+            if term:
+                break
+        fills_with_burst.append(float(info["reward_vector"][1]))
+
+    # The fill rate with burst should be below baseline (some damage)
+    # but above 0.1 (not collapsed).
+    mean_baseline = float(np.mean(fills_baseline))
+    mean_burst = float(np.mean(fills_with_burst))
+    assert mean_burst >= 0.1, (
+        f"v0 recoverability: burst collapsed fill to {mean_burst:.3f} "
+        f"(baseline {mean_baseline:.3f}); should leave > 0.1"
+    )
+    assert mean_burst < mean_baseline + 0.05, (
+        f"v0 recoverability: burst had no effect "
+        f"(burst {mean_burst:.3f} vs baseline {mean_baseline:.3f})"
+    )
+
+
 # ----- gate 8: action-complexity --------------------------------------------- #
 
 
@@ -346,4 +397,31 @@ def test_reward_components_stay_within_3x_cross_tier():
         assert ratio <= 3.0, (
             f"reward component {name!r} differs by {ratio:.2f}x across "
             f"Small ({s:.3f}) vs Large ({l:.3f}); must be <= 3x"
+        )
+
+
+# ----- gate 8: no trailing no-op action dims --------------------------------- #
+
+
+def test_registered_tiers_have_no_trailing_action_dims():
+    """Gate 8: action_dim must equal the layout K + 3M + P for every
+    registered Scheduling tier. Trailing dims would contribute only
+    to neg_energy without affecting production / wear / setup, which
+    is forbidden per Codex's red-team.
+    """
+    from rlh_bench import make_env
+
+    tier_ids = [
+        "RecoverableCapacityScheduling-Small-v0",
+        "RecoverableCapacityScheduling-v0",
+        "RecoverableCapacityScheduling-Large-v0",
+    ]
+    for env_id in tier_ids:
+        env = make_env(env_id)
+        c = env.config
+        expected = c.num_projects + 3 * c.num_modes + c.num_products
+        assert c.action_dim == expected, (
+            f"{env_id}: action_dim {c.action_dim} != layout K+3M+P "
+            f"= {c.num_projects} + 3*{c.num_modes} + {c.num_products} = {expected}. "
+            f"Trailing dims violate gate 8."
         )

@@ -13,7 +13,7 @@ Quick usage::
     from experiments.algorithms.runner import evaluate_algorithm
     record = evaluate_algorithm(
         algorithm=MyAlgo(...),
-        env_id="RecoverablePointMaze-v0",
+        env_id="RecoverableKeyFuelMaze-v0",
         train_seeds=range(3),
         eval_seeds=range(20),
     )

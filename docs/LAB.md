@@ -81,8 +81,9 @@ Everything else is the agent's call. Speculate freely.
 - `docs/SUBSTRATE_MAP.md` — what the substrate offers, in one page.
 - `docs/AGENT_GUIDE.md` — how a candidate algorithm plugs into the
   evaluation runner, when an agent decides to implement something.
-- `docs/baseline_report.md` — honest baseline numbers (random,
-  heuristic, CEM) across all six env IDs.
+- `docs/baseline_report.md` — honest baseline portfolio numbers
+  on the Small + v0 tiers of both env families. Large baselines
+  are deferred per the v2 substrate redesign plan.
 - `docs/journal/` — every session's entry, append-only.
 - `lab/prompts/claude_system.md` — Claude's lab system prompt (the
   source of truth for how Claude should behave in a session).

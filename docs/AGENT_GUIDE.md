@@ -109,11 +109,11 @@ Then evaluate:
 ```python
 record = evaluate_algorithm(
     algorithm=MyAlgorithm(...),
-    env_id="RecoverablePointMaze-v0",
+    env_id="RecoverableKeyFuelMaze-v0",
     train_seed=0,
     eval_seeds=range(20),
     reward_mode="scalar",          # or "vector" for true vector-reward learners
-    save_to="experiments/results/my_algorithm__pointmaze.json",
+    save_to="experiments/results/my_algorithm__keyfuel.json",
 )
 print(record.success_rate, record.mean_return, record.mean_reward_vector)
 ```

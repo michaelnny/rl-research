@@ -48,8 +48,13 @@ def _scheduling_small(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
 
 
 def _scheduling_default(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
+    # action_dim=80 exactly matches the layout K+3M+P at v0 (48 + 24 + 8).
+    # The dataclass default of 96 left 16 trailing dims that contributed
+    # only to neg_energy without affecting production — Codex's final
+    # review flagged this as a gate-8 violation.
     return RecoverableCapacitySchedulingEnv(
         config=CapacitySchedulingConfig(
+            action_dim=80,
             # v0 needs tighter thresholds than Small because the longer
             # horizon means uniform allocation easily clears 0.55.
             success_fill_threshold=0.85,
@@ -61,10 +66,13 @@ def _scheduling_default(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
 
 
 def _scheduling_large(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
+    # action_dim=192 = K+3M+P at Large (128+48+16). The previous 224
+    # had 32 trailing no-op dims (gate-8 violation per Codex's final
+    # review).
     return RecoverableCapacitySchedulingEnv(
         config=CapacitySchedulingConfig(
             horizon=10000, num_projects=128, num_modes=16, num_products=16,
-            action_dim=224, n_bundles=24, bundle_size_range=(3, 6),
+            action_dim=192, n_bundles=24, bundle_size_range=(3, 6),
             demand_peak_width_range=(60, 200),
         ),
         **kwargs,

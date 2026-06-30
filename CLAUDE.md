@@ -62,7 +62,7 @@ commits. Do not let the loop write to `master`.
 
 - `src/rlh_bench/` — the substrate (frozen). Environments, registry,
   metrics, wrappers, reference baselines.
-- `tests/` — substrate regression tests. Should be 25 passed.
+- `tests/` — substrate regression tests. Should be 70+ passed.
 - `examples/` — bare-bones substrate demos.
 - `experiments/` — non-substrate research scaffold:
   - `run_baselines.py` — the Phase 1 baseline sweep.

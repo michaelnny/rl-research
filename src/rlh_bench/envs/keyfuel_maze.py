@@ -614,9 +614,21 @@ class RecoverableKeyFuelMazeEnv:
         normalized_energy = self._total_energy / max(c.horizon * c.action_dim, 1)
         normalized_collision = self._total_collision / max(c.horizon, 1)
 
-        # Route efficiency: oracle / actual; capped to [0, 1]
+        # Route efficiency: oracle / actual, weighted by task progress.
+        # Without the progress weighting, an idle / zero policy gets
+        # actual=0 → route_efficiency=1.0 (perfect score for doing
+        # nothing). Gate 8 / honesty: this component should reward
+        # *efficient completion*, not non-attempt.
+        # Progress = (seals + extraction-bit) / (n_seals + 1). A
+        # zero-progress trajectory gets 0 regardless of distance;
+        # only a partially-completed trajectory earns partial credit
+        # scaled by oracle/actual.
+        progress_frac = (
+            seal_completion + (1.0 if self._extraction_reached else 0.0)
+        ) / (1.0 + 1.0)
         actual = max(self._total_distance, 1.0)
-        route_efficiency = float(min(self._oracle_route_length / actual, 1.0))
+        raw_efficiency = float(min(self._oracle_route_length / actual, 1.0))
+        route_efficiency = float(progress_frac * raw_efficiency)
 
         return np.asarray(
             [

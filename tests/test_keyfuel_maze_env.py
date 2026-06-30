@@ -311,3 +311,34 @@ def test_oracle_route_planner_not_in_baseline_portfolio():
     assert baseline_names.isdisjoint(oracle_names), (
         "baseline portfolio and oracle diagnostics must be disjoint"
     )
+
+
+# ----- terminal vector honesty ----------------------------------------------- #
+
+
+def test_zero_policy_does_not_get_max_route_efficiency():
+    """Gate-8 / terminal-vector honesty: the zero policy gets no progress
+    (no keys, no seals, no extraction). It must NOT receive maximal
+    ``route_efficiency`` credit just because total_distance is zero.
+
+    This was a real bug caught by Codex's final review.
+    """
+    cfg = _small_cfg()
+    env = RecoverableKeyFuelMazeEnv(cfg, reward_mode="vector")
+    obs, _ = env.reset(seed=0)
+    for _ in range(cfg.horizon):
+        obs, r, term, trunc, info = env.step(np.zeros(16, dtype=np.float32))
+        if term:
+            break
+    rv = info["reward_vector"]
+    names = info["reward_names"]
+    route_idx = names.index("route_efficiency")
+    seal_idx = names.index("seal_completion")
+    extracted = bool(env._extraction_reached)
+    # No seals + no extraction = progress = 0, so route_efficiency = 0.
+    assert rv[seal_idx] == 0.0
+    assert not extracted
+    assert rv[route_idx] < 0.05, (
+        f"zero policy got route_efficiency={rv[route_idx]:.3f}; "
+        f"should be ~0 because no seals/extraction completed"
+    )
