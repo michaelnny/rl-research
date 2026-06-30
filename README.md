@@ -1,168 +1,198 @@
-# RLH Bench
+# rl-research
 
-**RLH Bench** is a small research package for studying **recoverable long-horizon sparse-feedback reinforcement learning**.
+An autonomous reinforcement-learning research lab. Two AI agents
+(Claude and Codex) take turns working against a fixed problem
+substrate, keeping a research journal that — over many sessions — is
+intended to make a novel RL algorithm likely.
 
-It contains two deterministic benchmark families designed for the Phase 1 / Phase 2 research goal:
+The product is the journal at `docs/journal/`. If a novel algorithm
+emerges, it will be a downstream consequence of the journal being
+honest and varied.
 
-1. **RecoverablePointMaze** — continuous-control navigation with soft collisions, long horizons, terminal-only feedback, and optional terminal vector rewards.
-2. **RecoverableResourceAllocation** — structured continuous allocation with soft dependencies, large action dimension, long horizons, terminal-only feedback, and natural vector outcomes.
+## What the lab is trying to find
 
-The environments are intentionally lightweight: they use NumPy only, run on CPU, and do not require robot simulators, large models, transformers, or GPUs.
+A novel **continuous-action** RL algorithm in the same class as PPO,
+SAC, CEM, mirror descent, GAE-style credit assignment, or trajectory-
+level vector-reward methods. Not a tweak on an existing algorithm; an
+idea that wasn't there before. The mission, hard rules, and substrate
+boundary are in [`CLAUDE.md`](CLAUDE.md). The lab's spirit — no
+verdicts, journal-as-product, bad ideas welcome — is in
+[`docs/LAB.md`](docs/LAB.md). The substrate is continuous-action only
+by design; AlphaZero / MCTS-class algorithms need a different action
+substrate that this lab does not currently provide.
 
----
+## What "substrate" means here
 
-## Target problem class
+The substrate is `rlh_bench` (vendored at `src/rlh_bench/`): two
+deterministic, recoverable, long-horizon continuous-control
+environments with terminal-only sparse vector rewards. Current
+environments and reward semantics are summarized in
+[`docs/SUBSTRATE_MAP.md`](docs/SUBSTRATE_MAP.md); baseline numbers
+that any candidate algorithm has to beat are in
+[`docs/baseline_report.md`](docs/baseline_report.md). The substrate
+is frozen — the lab works around it, not on it.
 
-The package focuses on deterministic episodic tasks with these properties:
+## Repository layout
 
-- long adjustable horizon;
-- sparse or terminal-only environmental feedback;
-- hard but recoverable exploration;
-- difficult credit assignment;
-- continuous or large structured action spaces;
-- cheap deterministic simulation;
-- optional terminal vector-valued environmental reward.
-
-The vector rewards are **environment outcomes**, not intrinsic rewards and not auxiliary shaping. During an episode, reward is zero. At the terminal step, the environment reports a vector such as:
-
-```text
-[success, negative final distance, negative energy, negative collisions, negative path length]
+```
+src/rlh_bench/                # the substrate (frozen)
+tests/                        # substrate regression tests
+examples/                     # bare-bones substrate demos
+experiments/
+  run_baselines.py            # baseline portfolio sweep
+  algorithms/runner.py        # Algorithm protocol + evaluate_algorithm
+  algorithms/<name>.py        # candidate algorithms (when implemented)
+  probes/<name>.py            # one-off probes and ablations
+  results/                    # JSON records emitted by the runner
+docs/
+  LAB.md                      # lab spirit (no verdicts, journal-as-product)
+  SUBSTRATE_MAP.md            # one-page substrate API
+  AGENT_GUIDE.md              # how to plug a candidate into the runner
+  baseline_report.md          # honest baseline portfolio numbers
+  journal/                    # the lab's research journal — append-only
+lab/
+  README.md                   # operator's manual
+  run_lab.sh                  # the dumb loop
+  prompts/                    # system + per-session prompts (production)
+  notes/                      # lab-meta artifacts (planning, reviews, briefs)
+CLAUDE.md                     # project-level rules of engagement
 ```
 
-or:
+## Setting it up on a new machine
 
-```text
-[success, service level, negative cost, negative delay, negative safety violation]
-```
+Tested on macOS 14+ (Apple Silicon) with Python 3.12. Linux should
+work but isn't covered by the smoke tests.
 
----
+### Prerequisites
 
-## Installation
+- [`uv`](https://github.com/astral-sh/uv) ≥ 0.11 — the Python project
+  manager used here. Install with
+  `curl -LsSf https://astral.sh/uv/install.sh | sh` if you don't have
+  it yet.
+- Python 3.12 (any patch). `uv` can install one if you don't have it:
+  `uv python install 3.12`.
+- `git`.
+- [Claude Code](https://docs.claude.com/en/docs/claude-code/) CLI
+  v2.1+ — needed by the loop. Authenticated with whatever method your
+  Anthropic account uses.
+- [Codex CLI](https://developers.openai.com/codex/) v0.142+ — needed
+  by the loop. A custom profile named `jelly` is expected at
+  `~/.codex/jelly.config.toml` pointing at whichever provider you
+  use. The provider's API key must be exported in the environment
+  variable the profile names (e.g. `JELLY_OPENAI_API_KEY`).
 
-From the package directory:
+### Bootstrap
 
 ```bash
-pip install -e .
+git clone <this-repo> rl-research
+cd rl-research
+
+# Create the project-local venv with editable install + extras
+uv venv --python 3.12 .venv
+VIRTUAL_ENV=$(pwd)/.venv uv pip install -e ".[dev,torch,gymnasium]"
+
+# Verify the substrate works
+PYTHONPATH=src .venv/bin/python -m pytest -q
+
+# Optional: re-run the baseline sweep on this machine
+PYTHONPATH=src .venv/bin/python experiments/run_baselines.py
 ```
 
-For optional PyTorch REINFORCE baseline:
+### Verify your CLI overrides work
+
+The lab relies on two CLI-level overrides that aren't well-documented
+upstream. Confirm both before starting the loop.
+
+Claude (replaces the ~37k-token default system prompt; auto-memory
+also disabled by `--bare`):
 
 ```bash
-pip install -e .[torch]
+claude -p --bare --system-prompt-file lab/prompts/claude_system.md \
+  --no-session-persistence --model haiku \
+  "Reply with exactly OK_CLAUDE." < /dev/null
 ```
 
-For optional Gymnasium interop:
+Codex (replaces `base_instructions` for this run only):
 
 ```bash
-pip install -e .[gymnasium]
+codex exec -p jelly \
+  -c "model_instructions_file=\"$(pwd)/lab/prompts/codex_system.md\"" \
+  --sandbox read-only --skip-git-repo-check --ephemeral \
+  'In one sentence, what kind of lab are you in?' < /dev/null
 ```
 
-The core environments and tests require only NumPy and pytest.
+Codex should answer something like *"I'm in a small autonomous
+reinforcement-learning research lab."* If it says it's a coding
+agent, the override didn't load — check that the path in
+`-c model_instructions_file=...` is absolute and the file exists.
 
----
-
-## Quick start
-
-```python
-from rlh_bench.envs import make_env
-from rlh_bench.baselines import make_heuristic_policy
-from rlh_bench.metrics import rollout
-
-# Scalar reward mode: returned reward is weighted scalar, vector is still in info.
-env = make_env("RecoverablePointMaze-v0")
-policy = make_heuristic_policy(env)
-result = rollout(env, policy, seed=0)
-
-print(result.scalar_return)
-print(result.reward_vector)
-print(result.info["reward_names"])
-```
-
-Vector reward mode:
-
-```python
-env = make_env("RecoverableResourceAllocation-v0", reward_mode="vector")
-obs, info = env.reset(seed=0)
-
-terminated = truncated = False
-while not (terminated or truncated):
-    action = env.action_space.sample()
-    obs, reward, terminated, truncated, info = env.step(action)
-
-print(reward)                 # terminal vector reward
-print(info["reward_vector"])  # same vector
-```
-
----
-
-## Available environment IDs
-
-```python
-from rlh_bench.envs import registered_envs
-print(registered_envs())
-```
-
-Current IDs:
-
-```text
-RecoverablePointMaze-Small-v0
-RecoverablePointMaze-v0
-RecoverablePointMaze-HD-v0
-RecoverableResourceAllocation-Small-v0
-RecoverableResourceAllocation-v0
-RecoverableResourceAllocation-Large-v0
-```
-
----
-
-## Baselines
-
-The package includes lightweight baselines:
-
-- `RandomPolicy`
-- `ZeroPolicy`
-- `MazeWaypointPolicy`
-- `ResourceGreedyPolicy`
-- `train_cem` — CPU-friendly Cross-Entropy Method policy search
-- `train_reinforce` — optional PyTorch REINFORCE baseline
-
-Example:
+### Launch the loop
 
 ```bash
-PYTHONPATH=src python examples/run_heuristics.py
-PYTHONPATH=src python examples/train_cem.py
+# Forever, detached:
+nohup bash lab/run_lab.sh > lab/logs/run.log 2>&1 &
+echo $! > lab/logs/run.pid
+
+# Or in tmux (easier to detach/reattach):
+tmux new -s rl-lab 'bash lab/run_lab.sh'
 ```
 
----
+The loop auto-branches off `master` to `lab/auto`, so the main branch
+is never auto-committed to. Each iteration is one session, recorded
+as one journal entry in `docs/journal/`, committed once Claude writes
+it and Codex appends a `## Peer note`.
+
+### Watching it
+
+```bash
+tail -f lab/logs/run.log
+ls -lat docs/journal/ | head        # newest entries first
+git log --oneline lab/auto | head   # commits the loop has made
+```
+
+### Stopping it
+
+```bash
+kill $(cat lab/logs/run.pid)        # nohup
+# or Ctrl-C inside the tmux session
+```
+
+The loop catches `SIGINT`/`SIGTERM` and exits cleanly between
+iterations.
+
+## How sessions work
+
+Per iteration (≈ 5-20 minutes wall-clock on Opus max-effort):
+
+1. Loop reads the next session number from `docs/journal/`.
+2. Loop invokes `claude -p --bare --system-prompt-file lab/prompts/claude_system.md ...` with a tiny user prompt that names the session number. Claude reads the recent journal, picks a session kind (read/play/propose/implement/synthesize/tool-build), does the work, and writes `docs/journal/sessionNNNN-<slug>.md` ending in an empty `## Peer note` section.
+3. Loop invokes `codex exec -p jelly -c model_instructions_file=... ...` pointing at the new entry. Codex reads the entry (and any artifacts it depends on) and appends a peer note.
+4. Loop commits with a descriptive non-verdictive message and starts the next iteration.
+
+Full operator's manual is in [`lab/README.md`](lab/README.md).
+
+## When to intervene
+
+Read `lab/README.md` → "What 'good' looks like" for the early-warning
+signs (session-kind monoculture, peer notes turning into verdicts,
+files under `src/rlh_bench/` changing). The loop is dumb on purpose;
+the human's job is to watch the journal and intervene by hand when
+the disposition slips.
 
 ## Tests
 
-Run from the package root:
-
 ```bash
-PYTHONPATH=src pytest -q
+PYTHONPATH=src .venv/bin/python -m pytest -q
 ```
 
-The test suite checks:
+The substrate test suite checks deterministic resets, terminal-only
+reward behavior, vector reward mode, recoverability after bad
+actions, registry construction, baseline portfolio honesty
+(public-model baselines vs oracle separation), held-out seed
+contract, idle-tail measurement, acceptance gates, CEM / optional
+REINFORCE smoke tests, and Pareto utility behavior. It should be
+60+ passed on a working install.
 
-- deterministic reset and rollout behavior;
-- terminal-only reward behavior;
-- vector reward mode;
-- recoverability after bad actions;
-- heuristic feasibility;
-- registry construction;
-- CEM and optional REINFORCE smoke tests;
-- Pareto utility behavior.
+## License
 
----
-
-## Research use
-
-The package is meant to support the next research phase by giving you a controlled benchmark scaffold, not a final benchmark claim. Recommended next steps:
-
-1. Run the included diagnostics across horizon, action dimension, and recoverability settings.
-2. Decide which environment family best isolates the phenomenon you care about.
-3. Add benchmark reports for random-policy success, first-success episodes, terminal vector trade-offs, and recovery after injected early mistakes.
-4. Only then use these environments to compare new algorithms.
-
-See `DESIGN.md` and `docs/PHASE_PLAN.md` for details.
+MIT — see [`LICENSE`](LICENSE).

@@ -7,8 +7,15 @@ from rlh_bench.metrics import evaluate_policy, first_success_episode, pareto_non
 
 def test_registry_constructs_all_envs():
     ids = registered_envs()
-    assert "RecoverablePointMaze-v0" in ids
-    assert "RecoverableResourceAllocation-v0" in ids
+    # Strict-validation registry: only Small-tier envs are validated.
+    assert "RecoverableKeyFuelMaze-Small-v0" in ids
+    assert "RecoverableCapacityScheduling-Small-v0" in ids
+    # v0 / Large tiers were removed pending validation; this test
+    # locks the registry surface so they don't sneak back in.
+    assert "RecoverableKeyFuelMaze-v0" not in ids
+    assert "RecoverableCapacityScheduling-v0" not in ids
+    assert "RecoverableKeyFuelMaze-Large-v0" not in ids
+    assert "RecoverableCapacityScheduling-Large-v0" not in ids
     for env_id in ids:
         env = make_env(env_id)
         obs, info = env.reset(seed=0)
@@ -23,7 +30,7 @@ def test_registry_rejects_unknown_env():
 
 def test_evaluate_policy_summary():
     def env_factory():
-        return make_env("RecoverableResourceAllocation-Small-v0")
+        return make_env("RecoverableCapacityScheduling-Small-v0")
 
     def policy_factory(env):
         return lambda obs: np.zeros(env.action_space.shape, dtype=np.float32)

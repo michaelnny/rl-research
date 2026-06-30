@@ -10,3 +10,4 @@ dist/
 venv/
 *.so
 .DS_Store
+lab/logs/
