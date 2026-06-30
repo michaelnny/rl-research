@@ -181,55 +181,9 @@ def test_recoverability_is_graded():
     assert min(early, mid, late) >= 0.0, "burst should not break the env"
 
 
-def test_recoverability_v0_no_catastrophic_collapse():
-    """Gate 7 extension at v0 scale. A single 100-step bad-action
-    burst in the middle of a 2000-step episode must NOT collapse the
-    weighted_fill_rate to zero.
-
-    We use a small number of seeds for speed; the assertion is loose
-    (no full collapse) rather than tight (specific graded ordering).
-    """
-    # v0 config; we use the registry to ensure consistency
-    from rlh_bench import make_env
-
-    burst_steps = 100
-    fills_with_burst = []
-    fills_baseline = []
-    for seed in range(2):
-        baseline_env = make_env("RecoverableCapacityScheduling-v0", reward_mode="vector")
-        obs, _ = baseline_env.reset(seed=seed)
-        good = 0.5 * np.ones(baseline_env.action_space.shape[0], dtype=np.float32)
-        for _ in range(baseline_env.config.horizon):
-            obs, r, term, trunc, info = baseline_env.step(good)
-            if term:
-                break
-        fills_baseline.append(float(info["reward_vector"][1]))
-
-        # With burst at the midpoint
-        env = make_env("RecoverableCapacityScheduling-v0", reward_mode="vector")
-        obs, _ = env.reset(seed=seed)
-        burst_start = env.config.horizon // 2
-        good = 0.5 * np.ones(env.action_space.shape[0], dtype=np.float32)
-        bad = -np.ones(env.action_space.shape[0], dtype=np.float32)
-        for t in range(env.config.horizon):
-            a = bad if burst_start <= t < burst_start + burst_steps else good
-            obs, r, term, trunc, info = env.step(a)
-            if term:
-                break
-        fills_with_burst.append(float(info["reward_vector"][1]))
-
-    # The fill rate with burst should be below baseline (some damage)
-    # but above 0.1 (not collapsed).
-    mean_baseline = float(np.mean(fills_baseline))
-    mean_burst = float(np.mean(fills_with_burst))
-    assert mean_burst >= 0.1, (
-        f"v0 recoverability: burst collapsed fill to {mean_burst:.3f} "
-        f"(baseline {mean_baseline:.3f}); should leave > 0.1"
-    )
-    assert mean_burst < mean_baseline + 0.05, (
-        f"v0 recoverability: burst had no effect "
-        f"(burst {mean_burst:.3f} vs baseline {mean_baseline:.3f})"
-    )
+# The v0 recoverability test was removed when Sched-v0 was deleted
+# from the registry pending re-validation. The Small-tier recoverability
+# test above is the canonical gate-7 evidence for the env.
 
 
 # ----- gate 8: action-complexity --------------------------------------------- #
@@ -362,42 +316,11 @@ def test_all_reward_components_are_finite():
 # ----- gate 10: reward normalization across tiers --------------------------- #
 
 
-def test_reward_components_stay_within_3x_cross_tier():
-    """Acceptance gate 10: cost component magnitudes must be comparable
-    across Small / v0 / Large tiers under a constant-quality (random)
-    policy. The bound is 3x — any cost that grows by more than that
-    is implicitly a per-tier reweighting and contaminates scalar
-    return.
-    """
-    from rlh_bench import make_env
-
-    def _measure(env_id: str, n_seeds: int = 3) -> np.ndarray:
-        vectors = []
-        for seed in range(n_seeds):
-            env = make_env(env_id, reward_mode="vector")
-            obs, _ = env.reset(seed=seed)
-            rng = np.random.default_rng(seed + 1000)
-            for _ in range(env.config.horizon):
-                obs, r, term, trunc, info = env.step(
-                    rng.uniform(-1, 1, size=env.action_space.shape[0]).astype(np.float32)
-                )
-                if term:
-                    break
-            vectors.append(info["reward_vector"])
-        return np.mean(vectors, axis=0)
-
-    small = _measure("RecoverableCapacityScheduling-Small-v0")
-    large = _measure("RecoverableCapacityScheduling-Large-v0")
-    names = DEFAULT_SCHEDULING_REWARD_SPEC.names
-    for i, name in enumerate(names):
-        s, l = abs(float(small[i])), abs(float(large[i]))
-        if s < 1e-3 or l < 1e-3:
-            continue  # at-zero components, no ratio to check
-        ratio = max(s, l) / min(s, l)
-        assert ratio <= 3.0, (
-            f"reward component {name!r} differs by {ratio:.2f}x across "
-            f"Small ({s:.3f}) vs Large ({l:.3f}); must be <= 3x"
-        )
+# The cross-tier reward-normalization test was removed when v0/Large
+# were deleted from the registry pending re-validation. Gate 10
+# applies only when multiple tiers are registered; with Small alone
+# there is nothing to compare against. The test will return when
+# v0 / Large are re-registered after validation.
 
 
 # ----- gate 8: no trailing no-op action dims --------------------------------- #
@@ -411,10 +334,9 @@ def test_registered_tiers_have_no_trailing_action_dims():
     """
     from rlh_bench import make_env
 
+    # Only Small is registered after the v0/Large deletion.
     tier_ids = [
         "RecoverableCapacityScheduling-Small-v0",
-        "RecoverableCapacityScheduling-v0",
-        "RecoverableCapacityScheduling-Large-v0",
     ]
     for env_id in tier_ids:
         env = make_env(env_id)

@@ -336,7 +336,8 @@ class RecoverableCapacitySchedulingEnv:
 
     @property
     def bundles(self) -> list[tuple[int, ...]]:
-        return list(self._bundles)
+        """Read-only copy of the contract bundles for this world."""
+        return [tuple(b) for b in self._bundles]
 
     # ------------------------------------------------------------------
     # Gym-like API

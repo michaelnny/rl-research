@@ -58,14 +58,16 @@ block.
 
 ## Registry (`rlh_bench.envs.registration`)
 
+After the strict-validation pass (2026-06-30), the registry
+contains only env tiers that have been calibrated, peer-reviewed,
+and pass the acceptance gates. v0 and Large tiers for both
+families were removed pending honest validation — see
+`lab/notes/strict_registry_outcome_2026-06-30.md`.
+
 | Env ID                                       | Family    | H      | Action dim | Notes                              |
 | -------------------------------------------- | --------- | ------ | ---------- | ---------------------------------- |
-| `RecoverableCapacityScheduling-Small-v0`     | Scheduling| 500    | 32         | K=16 M=4 P=4; smoke tier           |
-| `RecoverableCapacityScheduling-v0`           | Scheduling| 2000   | 80         | K=48 M=8 P=8; canonical            |
-| `RecoverableCapacityScheduling-Large-v0`     | Scheduling| 10000  | 192        | K=128 M=16 P=16; stretch           |
+| `RecoverableCapacityScheduling-Small-v0`     | Scheduling| 500    | 32         | K=16 M=4 P=4                       |
 | `RecoverableKeyFuelMaze-Small-v0`            | Maze      | 500    | 16         | 24×24 world; 2 keys / 2 seals      |
-| `RecoverableKeyFuelMaze-v0`                  | Maze      | 2000   | 32         | 48×48 world; 4 keys / 6 seals      |
-| `RecoverableKeyFuelMaze-Large-v0`            | Maze      | 10000  | 64         | 96×96 world; 6 keys / 12 seals     |
 
 `make_env(env_id, reward_mode="scalar"|"vector", ...)` forwards extra
 kwargs to the env constructor. `registered_envs()` returns the sorted

@@ -211,32 +211,50 @@ All well under their gates.
 
 ## Summary
 
-| Gate                          | Small | v0   | Large | Notes                          |
-| ----------------------------- | ----- | ---- | ----- | ------------------------------ |
-| 1.  Determinism               | ✓     | ✓    | ✓     |                                |
-| 2.  Terminal-only             | ✓     | ✓    | ✓     |                                |
-| 3.  Feasibility               | ✓     | ⚠    | —     | Maze-v0 oracle solves it; no honest baseline does |
-| 4.  No-idle-tail              | ✓     | ✓    | ✓     | Tail-zero probe + 4 tests       |
-| 5.  Lookahead-depth           | ⚠     | ⚠    | —     | Decomposition-diagnostic policies present; varied-depth probe deferred |
-| 6.  Myopic-gap                | ✓     | ⚠    | —     | Sched-v0 uniform brought down to 30%; capacity_push fills the void as stress diagnostic; structural myopia of original heuristics remains  |
-| 7.  Recoverability            | ✓     | ✓    | —     | Small + v0 + graded-curve tests |
-| 8.  Action-complexity         | ✓     | ✓    | ✓     | No trailing no-op dims (post-final-review fix) |
-| 9.  Seed-generalization       | ✓     | ✓    | ✓     | `--use-held-out` flag + tests   |
-| 10. Reward-normalization      | ✓     | ✓    | ✓     | Cross-tier ≤ 3× for both families |
-| 11. Baseline portfolio        | ✓     | ✓    | ✓     | + oracle diagnostics separated |
-| 12. Runtime                   | ✓     | ✓    | ✓     |                                |
+After the strict-validation pass (`lab/notes/strict_registry_outcome_2026-06-30.md`),
+the registry contains only the two Small-tier envs. v0 and Large
+tiers were removed because they couldn't be honestly validated as
+testbeds. The audit below covers only the registered envs.
 
-**Headline (updated 2026-06-30 after v0 calibration + adversarial
-review)**:
-- Small tier passes 11/12 gates (no formal idle-tail test).
-- v0 tier: gates 1, 2, 8, 11, 12 pass cleanly. Gate 6 moved from
-  ✗ to ⚠ (uniform=100% issue fixed via threshold tightening; the
-  remaining issue is that original myopic heuristics still fail
-  due to structural bundle myopia, not a calibration problem).
-  Gate 3 moved from ⚠ to ⚠ (the oracle proves feasibility but
-  the honest portfolio still has no policy >0% — an honest
-  observation-only memory planner is needed).
-- Large tier passes structural gates; baselines deferred.
+| Gate                          | CapSched-Small | KeyFuelMaze-Small | Notes                          |
+| ----------------------------- | -------------- | ----------------- | ------------------------------ |
+| 1.  Determinism               | ✓              | ✓                 | Cross-family parametrized test |
+| 2.  Terminal-only             | ✓              | ✓                 | Cross-family parametrized test |
+| 3.  Feasibility               | ✓              | ✓                 | Healthy portfolio spread       |
+| 4.  No-idle-tail              | ✓              | ✓                 | Tail-zero probe + tests        |
+| 5.  Lookahead-depth           | ⚠              | ⚠                 | Decomposition diagnostics present; varied-depth probe deferred |
+| 6.  Myopic-gap                | ✓              | ✓                 | Multiple non-brute baselines succeed at varying rates |
+| 7.  Recoverability            | ✓              | ✓                 | Graded-curve tests + probe     |
+| 8.  Action-complexity         | ✓              | ✓                 | No trailing no-op dims         |
+| 9.  Seed-generalization       | ✓              | ✓                 | `--use-held-out` flag + tests  |
+| 10. Reward-normalization      | n/a            | n/a               | Cross-tier check requires ≥2 tiers; deferred until v0/Large re-validated |
+| 11. Baseline portfolio        | ✓              | ✓                 | Oracle / portfolio cleanly separated |
+| 12. Runtime                   | ✓              | ✓                 | <0.2s/ep                       |
+
+**Headline**: 10/12 gates ✓ on both registered envs. Gate 5
+(lookahead-depth) is partial — the `short_horizon_*` decomposition
+diagnostics are present in the portfolio but no varied-depth probe
+formally compares short vs long lookahead horizons. Gate 10
+(reward normalization) is moot with a single tier per family;
+it returns when v0/Large are re-validated.
+
+## What changed in this strict-validation pass
+
+- `RecoverableCapacityScheduling-v0` removed — no calibration
+  setting passes gate 6 cleanly.
+- `RecoverableCapacityScheduling-Large-v0` removed — never had
+  a baseline sweep.
+- `RecoverableKeyFuelMaze-v0` removed — only oracle succeeds; no
+  honest baseline reaches success.
+- `RecoverableKeyFuelMaze-Large-v0` removed — never had a baseline
+  sweep.
+
+See `lab/notes/strict_registry_outcome_2026-06-30.md` for the
+per-env reasoning and re-registration policy.
+
+The two Small-tier envs are the validated testbed. Algorithm work
+should target them; results on the deleted tiers cannot be cited
+without first re-registering through validation.
 
 ## v0 calibration pass (2026-06-30 post-merge of 1bbd notes)
 

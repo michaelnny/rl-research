@@ -179,19 +179,22 @@ this session.
 
 Read `docs/SUBSTRATE_MAP.md` for the one-page version. Highlights:
 
-- Two environment families, six registered IDs total:
-  - `RecoverableCapacityScheduling-{Small,,Large}-v0` — continuous
-    allocation across K projects × M production modes × P product
-    families, with wear / setup inertia / heat / inventory
-    perishability / contract bundle dynamics. Horizons 500/2000/10000;
-    action dims 32/80/192.
-  - `RecoverableKeyFuelMaze-{Small,,Large}-v0` — continuous-control
-    2-D point mass with a per-world actuator matrix, fuel budget +
-    recharge stations, keys / seals / timed gates / extraction. The
-    higher action_dim gives redundant actuators (different action
-    vectors that produce the same force at different fuel/heat cost),
-    NOT more force dimensions. Horizons 500/2000/10000; action dims
-    16/32/64.
+- Two environment families, two registered IDs (only validated
+  tiers are in the registry; v0/Large tiers were removed pending
+  honest validation — see
+  `lab/notes/strict_registry_outcome_2026-06-30.md`):
+  - `RecoverableCapacityScheduling-Small-v0` — continuous
+    allocation across K=16 projects × M=4 production modes × P=4
+    product families, with wear / setup inertia / heat / inventory
+    perishability / contract bundle dynamics. Horizon 500, action
+    dim 32.
+  - `RecoverableKeyFuelMaze-Small-v0` — continuous-control 2-D
+    point mass with a per-world actuator matrix, fuel budget +
+    recharge stations, keys / seals / timed gates / extraction.
+    The higher action_dim gives redundant actuators (different
+    action vectors that produce the same force at different
+    fuel/heat cost), NOT more force dimensions. Horizon 500,
+    action dim 16, 24x24 world.
 - Non-terminal reward is **zero**. The only non-zero reward arrives
   at the terminal step `t == horizon`.
 - The terminal reward is a vector of larger-is-better components. In

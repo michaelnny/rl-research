@@ -1,18 +1,43 @@
 """Lightweight environment registry.
 
-After the v2 substrate redesign (2026-06-30), the two registered
-families are:
+Strict-validation policy
+------------------------
 
-  * ``RecoverableCapacityScheduling-{Small, v0, Large}-v0``
-  * ``RecoverableKeyFuelMaze-{Small, v0, Large}-v0``
+``registered_envs()`` returns only env IDs that have been
+calibrated, peer-reviewed by Codex, and pass the acceptance gates
+in the v2 substrate redesign plan
+(`lab/notes/PLAN_substrate_redesign_v2_2026-06-30.md`) to a tight
+bar. An env that we couldn't validate honestly is removed from
+the codebase — not registered with a warning, not kept as
+"experimental." If it can't carry the weight of being a testbed,
+it doesn't belong here.
+
+Currently registered (validated):
+  * ``RecoverableCapacityScheduling-Small-v0``
+  * ``RecoverableKeyFuelMaze-Small-v0``
+
+History: the v2 redesign initially shipped three tiers per family
+(Small / v0 / Large). Subsequent validation found:
+
+  * Sched-v0: no calibration setting made trivial policies fail
+    while smart policies succeed — uniform vs bundle_aware sit on
+    opposite sides of every threshold curve. Removed.
+  * Sched-Large: dynamics inherit from v0 but never had a baseline
+    sweep complete; could harbor latent bugs at K=128 / M=16 /
+    H=10000 scale. Removed pending validation.
+  * Maze-v0: feasible under oracle (priviledged info), no honest
+    observation-only baseline reached success. Could be feasible
+    but unreached, could be subtly impossible. Removed pending an
+    honest baseline that demonstrates learnability.
+  * Maze-Large: same as Sched-Large.
+
+The non-trivial baselines for those tiers (e.g.
+``SchedulingBundleAwarePolicy``) remain in the codebase because
+they're useful on the Small tier and on future re-validations.
 
 The previous families (``RecoverablePointMaze``,
-``RecoverableResourceAllocation``) are retired. Their classes remain
-importable for backward compatibility with any external code that
-references them, but they are not in the public registry.
-
-See ``lab/notes/PLAN_substrate_redesign_v2_2026-06-30.md`` for the
-rationale.
+``RecoverableResourceAllocation``) are retired entirely. Their
+classes remain importable for backward compatibility.
 """
 
 from __future__ import annotations
@@ -47,38 +72,6 @@ def _scheduling_small(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
     )
 
 
-def _scheduling_default(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
-    # action_dim=80 exactly matches the layout K+3M+P at v0 (48 + 24 + 8).
-    # The dataclass default of 96 left 16 trailing dims that contributed
-    # only to neg_energy without affecting production — Codex's final
-    # review flagged this as a gate-8 violation.
-    return RecoverableCapacitySchedulingEnv(
-        config=CapacitySchedulingConfig(
-            action_dim=80,
-            # v0 needs tighter thresholds than Small because the longer
-            # horizon means uniform allocation easily clears 0.55.
-            success_fill_threshold=0.85,
-            success_mandatory_threshold=0.85,
-            quality_required=0.75,
-        ),
-        **kwargs,
-    )
-
-
-def _scheduling_large(**kwargs: Any) -> RecoverableCapacitySchedulingEnv:
-    # action_dim=192 = K+3M+P at Large (128+48+16). The previous 224
-    # had 32 trailing no-op dims (gate-8 violation per Codex's final
-    # review).
-    return RecoverableCapacitySchedulingEnv(
-        config=CapacitySchedulingConfig(
-            horizon=10000, num_projects=128, num_modes=16, num_products=16,
-            action_dim=192, n_bundles=24, bundle_size_range=(3, 6),
-            demand_peak_width_range=(60, 200),
-        ),
-        **kwargs,
-    )
-
-
 # ----- KeyFuelMaze ----------------------------------------------------------- #
 
 
@@ -92,35 +85,20 @@ def _keyfuel_small(**kwargs: Any) -> RecoverableKeyFuelMazeEnv:
     )
 
 
-def _keyfuel_default(**kwargs: Any) -> RecoverableKeyFuelMazeEnv:
-    return RecoverableKeyFuelMazeEnv(
-        config=KeyFuelMazeConfig(),  # v0 defaults: H=2000, D=32, 48×48
-        **kwargs,
-    )
-
-
-def _keyfuel_large(**kwargs: Any) -> RecoverableKeyFuelMazeEnv:
-    return RecoverableKeyFuelMazeEnv(
-        config=KeyFuelMazeConfig(
-            horizon=10000, action_dim=64, world_size=96.0,
-            n_key_types=6, n_seals=12, n_gates=8, n_fuel_stations=8,
-        ),
-        **kwargs,
-    )
-
-
 _REGISTRY: dict[str, RegistryFn] = {
     "RecoverableCapacityScheduling-Small-v0": _scheduling_small,
-    "RecoverableCapacityScheduling-v0": _scheduling_default,
-    "RecoverableCapacityScheduling-Large-v0": _scheduling_large,
     "RecoverableKeyFuelMaze-Small-v0": _keyfuel_small,
-    "RecoverableKeyFuelMaze-v0": _keyfuel_default,
-    "RecoverableKeyFuelMaze-Large-v0": _keyfuel_large,
 }
 
 
 def registered_envs() -> tuple[str, ...]:
-    """Return available environment IDs."""
+    """Return available environment IDs.
+
+    Only envs that pass strict validation are returned. To add a
+    new env: land a commit that satisfies the acceptance gates,
+    has a Codex review, and explicitly re-adds it to ``_REGISTRY``
+    below.
+    """
 
     return tuple(sorted(_REGISTRY))
 

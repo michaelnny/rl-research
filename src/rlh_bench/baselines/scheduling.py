@@ -308,6 +308,88 @@ class SchedulingShortHorizonRolloutPolicy:
         )
 
 
+class SchedulingBundleAwarePolicy:
+    """Bundle-aware allocation: prioritize projects in unfilled bundles.
+
+    A project is most urgent when it's a member of a mandatory
+    bundle whose OTHER members haven't yet reached
+    quality_required. Allocate aggressively to those projects;
+    allocate moderately to other projects with high backlog;
+    use light maintenance to avoid wear collapse.
+    """
+
+    name = "bundle_aware"
+
+    def __init__(self, env: RecoverableCapacitySchedulingEnv) -> None:
+        self.env = env
+        self.slices = _observation_slices(env.config)
+        # Cache bundle membership per world.
+        self._cached_seed: int | None = None
+        self._bundle_membership: np.ndarray | None = None
+
+    def _membership(self) -> np.ndarray:
+        """Return shape (n_bundles, K) bundle-membership matrix."""
+        seed = self.env.seed
+        if self._cached_seed != seed:
+            c = self.env.config
+            bundles = self.env.bundles
+            m = np.zeros((len(bundles), c.num_projects), dtype=np.float32)
+            for b_idx, members in enumerate(bundles):
+                for k in members:
+                    m[b_idx, k] = 1.0
+            self._bundle_membership = m
+            self._cached_seed = seed
+        return self._bundle_membership
+
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
+        c = self.env.config
+        service = obs[self.slices["service_ratio"]]
+        backlog = obs[self.slices["backlog"]]
+        priority = obs[self.slices["priority"]]
+        wear = obs[self.slices["wear"]]
+        membership = self._membership()           # (B, K)
+        q = c.quality_required
+
+        # For each bundle, find the per-member shortfall:
+        # member_shortfall[b, k] = max(0, q - service[k]) if k in bundle b else 0.
+        per_member_shortfall = membership * np.maximum(q - service, 0.0)[None, :]
+        # A bundle is "open" if any member's service < q.
+        bundle_open = (per_member_shortfall.max(axis=1) > 0).astype(np.float32)
+        # Bundle urgency: how much TOTAL shortfall remains, summed across members
+        # (heavier bundles = more total shortfall = pull harder on their members).
+        # Per project: sum across all bundles it's in, of bundle-urgency * is-shortfall.
+        bundle_urgency = per_member_shortfall.sum(axis=1)              # (B,)
+        project_bundle_pull = (
+            membership * bundle_urgency[:, None] * (per_member_shortfall > 0).astype(np.float32)
+        ).sum(axis=0)                                                  # (K,)
+
+        # Combined score: bundle pull dominates, raw backlog is a secondary signal.
+        score = 3.0 * project_bundle_pull + 0.5 * backlog * priority
+        # Logits in [-1, 1] roughly — normalize so max ≈ 1.
+        s_max = max(float(score.max()), 1e-6)
+        proj_logits = np.where(score > 0, np.clip(score / s_max, 0.0, 1.0), -1.0).astype(np.float32)
+
+        # Mode allocation: use all modes, weighted slightly toward the modes
+        # that the active project set is most compatible with. Without
+        # privileged access to compat[k,m], we just use a mild positive mode
+        # logit and let the env's softmax do the work.
+        mode_logits = 0.6 * np.ones(c.num_modes, dtype=np.float32)
+
+        # Light maintenance when wear is moderate.
+        maint = np.where(wear > 0.5, 0.6, 0.0).astype(np.float32)
+
+        # Moderate setup retargeting.
+        setup = 0.4 * np.ones(c.num_modes, dtype=np.float32)
+
+        return _make_action(
+            c,
+            proj_logits=proj_logits,
+            mode_logits=mode_logits,
+            maint=maint,
+            setup=setup,
+        )
+
+
 # ----- registry -------------------------------------------------------------- #
 
 
@@ -320,6 +402,7 @@ SCHEDULING_BASELINES = [
     SchedulingMaintenanceAwarePolicy,
     SchedulingSetupAwarePolicy,
     SchedulingShortHorizonRolloutPolicy,
+    SchedulingBundleAwarePolicy,
 ]
 """All scheduling-family baselines. Ordered approximately by
 sophistication: zero/uniform are sanity, the next four are myopic

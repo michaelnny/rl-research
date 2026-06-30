@@ -39,7 +39,6 @@ def _run(env_id: str, seed: int, *, zero_after_fraction: float | None = None):
     "env_id",
     [
         "RecoverableCapacityScheduling-Small-v0",
-        "RecoverableCapacityScheduling-v0",
     ],
 )
 def test_tail_affects_terminal_for_scheduling(env_id: str) -> None:

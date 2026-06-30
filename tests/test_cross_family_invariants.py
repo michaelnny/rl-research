@@ -80,71 +80,7 @@ def test_info_contract_all_envs(env_id: str) -> None:
         assert key in info, f"{env_id}: info missing {key!r} after step"
 
 
-def test_keyfuel_reward_components_stay_within_3x_cross_tier() -> None:
-    """Gate 10 for KeyFuelMaze (Scheduling is covered separately in
-    test_capacity_scheduling_env.py).
-
-    Cost components should be comparable across Small / v0 / Large
-    under a random policy.
-    """
-    def _measure(env_id: str, n_seeds: int = 3) -> np.ndarray:
-        vectors = []
-        for seed in range(n_seeds):
-            env = make_env(env_id, reward_mode="vector")
-            obs, _ = env.reset(seed=seed)
-            rng = np.random.default_rng(seed + 1000)
-            for _ in range(env.config.horizon):
-                obs, r, term, trunc, info = env.step(
-                    rng.uniform(-1, 1, size=env.action_space.shape[0]).astype(np.float32)
-                )
-                if term:
-                    break
-            vectors.append(info["reward_vector"])
-        return np.mean(vectors, axis=0)
-
-    small = _measure("RecoverableKeyFuelMaze-Small-v0")
-    large = _measure("RecoverableKeyFuelMaze-Large-v0")
-    names = make_env("RecoverableKeyFuelMaze-Small-v0").reward_spec.names
-    for i, name in enumerate(names):
-        s, l = abs(float(small[i])), abs(float(large[i]))
-        if s < 1e-3 or l < 1e-3:
-            continue
-        ratio = max(s, l) / min(s, l)
-        assert ratio <= 3.0, (
-            f"KeyFuelMaze reward component {name!r} differs by "
-            f"{ratio:.2f}x across Small ({s:.3f}) vs Large "
-            f"({l:.3f}); must be <= 3x"
-        )
-
-
-def test_idle_tail_maze_v0() -> None:
-    """Gate 4 for KeyFuelMaze v0: zeroing the last 25% of trajectory
-    should shift terminal vector by at least 0.01 on some component.
-
-    Maze-Small has its own gate 4 test; this fills the v0 gap.
-    """
-    env_id = "RecoverableKeyFuelMaze-v0"
-    def _run(zero_after: float | None) -> np.ndarray:
-        env = make_env(env_id, reward_mode="vector")
-        obs, _ = env.reset(seed=0)
-        horizon = env.config.horizon
-        cutoff = int(zero_after * horizon) if zero_after is not None else horizon + 1
-        a = 0.5 * np.ones(env.action_space.shape, dtype=np.float32)
-        a = np.clip(a, env.action_space.low, env.action_space.high)
-        z = np.zeros_like(a)
-        last_info = None
-        for t in range(horizon):
-            obs, r, term, trunc, last_info = env.step(a if t < cutoff else z)
-            if term:
-                break
-        return last_info["reward_vector"]
-
-    normal = _run(None)
-    tail_zero = _run(0.75)
-    deltas = np.abs(tail_zero - normal)
-    n_shifted = int(np.sum(deltas > 0.01))
-    assert n_shifted >= 1, (
-        f"Maze v0: zeroing the last 25% shifted no components by "
-        f">0.01. Deltas: {deltas.tolist()}. Gate 4 says the tail "
-        f"must affect terminal vector."
-    )
+# The KeyFuelMaze cross-tier reward-normalization test and the
+# Maze-v0 idle-tail test were removed when Maze-v0 / Maze-Large
+# were deleted from the registry pending re-validation. They'll
+# come back when those tiers re-pass validation gates.
