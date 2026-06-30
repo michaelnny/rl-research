@@ -216,7 +216,7 @@ All well under their gates.
 | 1.  Determinism               | ✓     | ✓    | ✓     |                                |
 | 2.  Terminal-only             | ✓     | ✓    | ✓     |                                |
 | 3.  Feasibility               | ✓     | ⚠    | —     | Maze-v0 oracle solves it; no honest baseline does |
-| 4.  No-idle-tail              | ⚠     | ⚠    | —     | By construction, not measured |
+| 4.  No-idle-tail              | ✓     | ✓    | ✓     | Tail-zero probe + 3 tests       |
 | 5.  Lookahead-depth           | ⚠     | ⚠    | —     | Calibration-dependent          |
 | 6.  Myopic-gap                | ✓     | ⚠    | —     | Sched-v0 uniform brought down to 30%; capacity_push fills the void as stress diagnostic; structural myopia of original heuristics remains  |
 | 7.  Recoverability            | ✓     | —    | —     | Tested for Small               |
