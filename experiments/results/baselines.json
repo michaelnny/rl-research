@@ -57,7 +57,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.1058596728471457,
+        "mean_sec_per_episode": 0.10657483745089849,
         "pareto_non_dominated_count": 1
       },
       "random": {
@@ -115,7 +115,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.1149801125509839,
+        "mean_sec_per_episode": 0.1148849416000303,
         "pareto_non_dominated_count": 13
       },
       "uniform": {
@@ -173,7 +173,7 @@
         "success_rate": 0.75,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.11528758949862095,
+        "mean_sec_per_episode": 0.11489065409841714,
         "pareto_non_dominated_count": 8
       },
       "capacity_push": {
@@ -231,7 +231,7 @@
         "success_rate": 1.0,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.11547875405085506,
+        "mean_sec_per_episode": 0.11601566679892131,
         "pareto_non_dominated_count": 6
       },
       "backlog_priority": {
@@ -289,7 +289,7 @@
         "success_rate": 0.4,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.11679882084863494,
+        "mean_sec_per_episode": 0.11734872914894368,
         "pareto_non_dominated_count": 3
       },
       "earliest_deadline": {
@@ -347,7 +347,7 @@
         "success_rate": 0.4,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.11781444374792045,
+        "mean_sec_per_episode": 0.11888831250034855,
         "pareto_non_dominated_count": 4
       },
       "maintenance_aware": {
@@ -405,7 +405,7 @@
         "success_rate": 0.05,
         "first_success_episode": 19,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.11937900219854783,
+        "mean_sec_per_episode": 0.1202552750990435,
         "pareto_non_dominated_count": 13
       },
       "setup_aware": {
@@ -463,7 +463,7 @@
         "success_rate": 0.15,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.1169654770019406,
+        "mean_sec_per_episode": 0.11714336880177142,
         "pareto_non_dominated_count": 7
       },
       "short_horizon_rollout": {
@@ -521,7 +521,7 @@
         "success_rate": 0.35,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.11926581239895313,
+        "mean_sec_per_episode": 0.11839461879790178,
         "pareto_non_dominated_count": 4
       },
       "bundle_aware": {
@@ -579,7 +579,7 @@
         "success_rate": 0.7,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.12534860825035138,
+        "mean_sec_per_episode": 0.1275368376496772,
         "pareto_non_dominated_count": 8
       }
     },
@@ -635,7 +635,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.03127798745190376,
+        "mean_sec_per_episode": 0.0314393584485515,
         "pareto_non_dominated_count": 2
       },
       "random": {
@@ -689,7 +689,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.034189639598480426,
+        "mean_sec_per_episode": 0.03424105415033409,
         "pareto_non_dominated_count": 4
       },
       "random_constant": {
@@ -743,7 +743,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.030513391549902735,
+        "mean_sec_per_episode": 0.030562295900017487,
         "pareto_non_dominated_count": 7
       },
       "greedy_landmark": {
@@ -797,7 +797,7 @@
         "success_rate": 0.05,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.032197972850553924,
+        "mean_sec_per_episode": 0.03224016050371574,
         "pareto_non_dominated_count": 7
       },
       "fuel_aware_greedy": {
@@ -851,7 +851,7 @@
         "success_rate": 0.05,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.03205641249951441,
+        "mean_sec_per_episode": 0.032148764500016115,
         "pareto_non_dominated_count": 7
       },
       "efficient_actuator": {
@@ -905,7 +905,7 @@
         "success_rate": 0.0,
         "first_success_episode": null,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.031490524952096165,
+        "mean_sec_per_episode": 0.031604564651206604,
         "pareto_non_dominated_count": 8
       },
       "short_horizon_lookahead": {
@@ -959,7 +959,7 @@
         "success_rate": 0.1,
         "first_success_episode": 2,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.03804183135143831,
+        "mean_sec_per_episode": 0.038195352198818,
         "pareto_non_dominated_count": 6
       }
     }
@@ -1017,7 +1017,7 @@
         "success_rate": 0.9,
         "first_success_episode": 1,
         "mean_length": 500.0,
-        "mean_sec_per_episode": 0.029785214699950303,
+        "mean_sec_per_episode": 0.029995412401331124,
         "pareto_non_dominated_count": 3
       }
     }

@@ -189,11 +189,10 @@ May not:
 - Use a scalarization step inside the learner and call it "vector RL" (see `CLAUDE.md`).
 - Pull in baseline RL libraries (stable-baselines3, RLlib, cleanrl, etc.). NumPy and the optional PyTorch dep are the bar.
 
-## Legacy env classes
+## Legacy
 
-The pre-redesign families remain importable from
-`rlh_bench.envs.continuous_maze.RecoverablePointMazeEnv` and
-`rlh_bench.envs.resource_allocation.RecoverableResourceAllocationEnv`,
-but are **not** in `registered_envs()`. They are kept for backward
-compatibility with code that referenced them; new work targets the
-two new families above.
+The pre-v2 env families (`RecoverablePointMaze`,
+`RecoverableResourceAllocation`) and their built-in heuristic
+policies have been **deleted** from the codebase as part of the
+strict-validation cleanup. Code that previously imported them
+should target the two registered families above instead.

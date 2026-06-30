@@ -168,27 +168,6 @@ def evaluate_algorithm(
 
 
 @dataclass
-class HeuristicAlgorithm:
-    """Wrap the built-in heuristic policy as an ``Algorithm``. No training."""
-
-    name: str = "heuristic"
-
-    def train(self, env_factory: Callable[[], Any], *, seed: int) -> Policy:
-        del seed
-        from rlh_bench.baselines import make_heuristic_policy
-
-        # The heuristic is stateful per env (waypoint index). Rebuild for each
-        # rollout via a thin closure so seeding the env still works.
-        def policy(obs: np.ndarray) -> np.ndarray:
-            raise RuntimeError(
-                "HeuristicAlgorithm.policy must be retrieved per-env; use the per-env factory"
-            )
-
-        env = env_factory()
-        return make_heuristic_policy(env)
-
-
-@dataclass
 class CemAlgorithm:
     """Wrap the bundled CEM trainer as an ``Algorithm`` reference baseline."""
 

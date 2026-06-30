@@ -14,7 +14,7 @@ terminal-only sparse feedback, with an optional terminal vector reward,
 and continuous action spaces throughout. AlphaZero / MCTS-class
 algorithms need a discrete/structured-search action substrate that
 this lab does not currently provide; see
-`lab/notes/PLAN_substrate_redesign_v2_2026-06-30.md` for the
+`lab/notes/planning/PLAN_substrate_redesign_v2_2026-06-30.md` for the
 rationale.
 
 The lab has two members:

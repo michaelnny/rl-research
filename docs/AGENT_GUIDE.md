@@ -36,10 +36,11 @@ write code should produce probes, not candidates.
    `experiments/algorithms/runner.py` — `name` + `train(env_factory, *, seed) -> policy`.
 4. Run it through `evaluate_algorithm(...)`. Drop the JSON record into
    `experiments/results/`.
-5. Compare against `docs/baseline_report.md` (random / heuristic /
-   CEM). "Beats baselines" means same-or-better success rate **and**
-   a Pareto-competitive mean reward vector — not just higher scalar
-   return.
+5. Compare against `docs/baseline_report.md` (the family-specific
+   portfolio of ~7-10 cheap policies plus optional oracle
+   diagnostics). "Beats baselines" means same-or-better success rate
+   **and** a Pareto-competitive mean reward vector — not just higher
+   scalar return.
 
 ## What counts as novelty
 
@@ -131,7 +132,8 @@ contender, just the right shape.
 ## Evaluation protocol
 
 For each candidate algorithm, report on every env ID returned by
-`rlh_bench.registered_envs()` (currently 6, across two families), with:
+`rlh_bench.registered_envs()` (currently 2 — the two Small-tier
+envs; v0/Large were removed pending validation), with:
 
 - `eval_seeds` taken from the **held-out** band of
   `rlh_bench.seed_bands.seed_band_for(env_id)` (training seeds go
@@ -146,34 +148,32 @@ Aim for a markdown report in `docs/` that puts your numbers next to
 
 - success rate ≥ best policy in the family's portfolio **and** mean
   reward vector is not dominated by that policy, OR
-- the candidate solves an env that the entire portfolio leaves at
-  success = 0 (currently the v0 / Large tiers of both families have
-  baselines below 50% success), OR
 - the candidate consumes `info["reward_vector"]` natively without
   scalarization and improves the Pareto frontier across multiple
   components.
 
 ## Recommended first targets
 
-In order of cost:
+Both registered envs are short-horizon (H=500) and run in <0.2s per
+episode. Pick whichever fits your idea:
 
-1. `RecoverableCapacityScheduling-Small-v0` — small action dim,
-   short horizon. Heuristic portfolio is currently competitive
-   here; a small win on the Pareto vector would be informative.
-2. `RecoverableKeyFuelMaze-Small-v0` — short-horizon spatial
-   control with the redundant actuator basis. Greedy proxies leave
-   visible headroom in seal_completion and fuel_margin.
-3. `RecoverableCapacityScheduling-v0` — canonical scheduling
-   problem. Acceptance gate calibration is still being tuned at
-   this tier (see `lab/notes/codex_v0_calibration_oneshot.md`);
-   results here should be treated as provisional until calibration
-   stabilizes.
-4. `RecoverableKeyFuelMaze-v0` — canonical maze. The 6 seals + 3
-   gates + 4 key types puzzle is challenging at this tier; expect
-   to need genuinely long-horizon credit assignment.
-5. `RecoverableCapacityScheduling-Large-v0` /
-   `RecoverableKeyFuelMaze-Large-v0` — stretch tier (H=10000).
-   Baselines deferred per the v2 plan; use sparingly.
+1. `RecoverableCapacityScheduling-Small-v0` — continuous allocation
+   across K=16 projects × M=4 modes × P=4 product families. The
+   baseline portfolio has clean spread (zero=0%, uniform=75%,
+   bundle_aware=70%, capacity_push=100% with worst cost components).
+   A new row is interesting when it ties bundle_aware on success
+   while improving cost components.
+2. `RecoverableKeyFuelMaze-Small-v0` — continuous 2-D control with
+   actuator-redundancy basis, fuel budget, keys+seals+gates+extraction.
+   Greedy reaches 5%, lookahead 10%, oracle 90%. Lots of headroom
+   for a real learner.
+
+The v0 / Large tiers are not currently registered. If you want to
+target a larger problem, first re-register the env via the policy
+in `src/rlh_bench/envs/registration.py` (validation gates +
+Codex review) — see
+`lab/notes/strict_registry_outcome_2026-06-30.md` for the
+re-registration policy.
 
 ## File layout
 

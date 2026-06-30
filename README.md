@@ -23,12 +23,11 @@ substrate that this lab does not currently provide.
 
 ## What "substrate" means here
 
-The substrate is `rlh_bench` (vendored at `src/rlh_bench/`): six
-deterministic, recoverable, long-horizon environments with terminal-
-only sparse feedback and an optional terminal vector reward.
-Current environments and reward semantics are summarized in
-[`docs/SUBSTRATE_MAP.md`](docs/SUBSTRATE_MAP.md); legacy design context
-lives in [`DESIGN.md`](DESIGN.md); baseline numbers
+The substrate is `rlh_bench` (vendored at `src/rlh_bench/`): two
+deterministic, recoverable, long-horizon continuous-control
+environments with terminal-only sparse vector rewards. Current
+environments and reward semantics are summarized in
+[`docs/SUBSTRATE_MAP.md`](docs/SUBSTRATE_MAP.md); baseline numbers
 that any candidate algorithm has to beat are in
 [`docs/baseline_report.md`](docs/baseline_report.md). The substrate
 is frozen — the lab works around it, not on it.
@@ -40,7 +39,7 @@ src/rlh_bench/                # the substrate (frozen)
 tests/                        # substrate regression tests
 examples/                     # bare-bones substrate demos
 experiments/
-  run_baselines.py            # Phase-1 baseline sweep
+  run_baselines.py            # baseline portfolio sweep
   algorithms/runner.py        # Algorithm protocol + evaluate_algorithm
   algorithms/<name>.py        # candidate algorithms (when implemented)
   probes/<name>.py            # one-off probes and ablations
@@ -49,15 +48,14 @@ docs/
   LAB.md                      # lab spirit (no verdicts, journal-as-product)
   SUBSTRATE_MAP.md            # one-page substrate API
   AGENT_GUIDE.md              # how to plug a candidate into the runner
-  baseline_report.md          # honest random/heuristic/CEM numbers
+  baseline_report.md          # honest baseline portfolio numbers
   journal/                    # the lab's research journal — append-only
 lab/
   README.md                   # operator's manual
   run_lab.sh                  # the dumb loop
   prompts/                    # system + per-session prompts (production)
-  notes/                      # lab-meta artifacts (prompt reviews, design notes)
+  notes/                      # lab-meta artifacts (planning, reviews, briefs)
 CLAUDE.md                     # project-level rules of engagement
-DESIGN.md                     # environment contract and reward-vector convention
 ```
 
 ## Setting it up on a new machine
@@ -190,10 +188,10 @@ PYTHONPATH=src .venv/bin/python -m pytest -q
 The substrate test suite checks deterministic resets, terminal-only
 reward behavior, vector reward mode, recoverability after bad
 actions, registry construction, baseline portfolio honesty
-(public-model baselines vs oracle separation), reward normalization
-across tiers, held-out seed contract, idle-tail measurement,
-acceptance gates, CEM / optional REINFORCE smoke tests, and Pareto
-utility behavior. It should be 70+ passed on a working install.
+(public-model baselines vs oracle separation), held-out seed
+contract, idle-tail measurement, acceptance gates, CEM / optional
+REINFORCE smoke tests, and Pareto utility behavior. It should be
+60+ passed on a working install.
 
 ## License
 

@@ -1,9 +1,9 @@
 # Substrate redesign — consolidated plan (v2, 2026-06-30)
 
-This supersedes `lab/notes/PLAN_substrate_redesign_2026-06-30.md`. It
+This supersedes `lab/notes/planning/PLAN_substrate_redesign_2026-06-30.md`. It
 incorporates Codex's red-team
-(`lab/notes/codex_redteam_substrate_redesign_2026-06-30.md`) and
-counter-design (`lab/notes/codex_counterdesign_substrate_2026-06-30.md`),
+(`lab/notes/planning/codex_redteam_substrate_redesign_2026-06-30.md`) and
+counter-design (`lab/notes/planning/codex_counterdesign_substrate_2026-06-30.md`),
 and the user's three follow-up decisions:
 
 1. Adopt Codex's counter-design as the new plan.
@@ -167,7 +167,7 @@ diagnostic. *No single heuristic is the difficulty signal.*
   one-line note that AlphaZero/MCTS-class algorithms need a
   discrete-action substrate the lab does not currently provide.
 - `docs/LAB.md`: same change in the "What this lab is" section, plus
-  a pointer to `lab/notes/codex_counterdesign_substrate_2026-06-30.md`
+  a pointer to `lab/notes/planning/codex_counterdesign_substrate_2026-06-30.md`
   for the rationale.
 - `lab/prompts/claude_system.md`, `lab/prompts/codex_system.md`:
   same change wherever the algorithm class is named.

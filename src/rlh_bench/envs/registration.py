@@ -6,7 +6,7 @@ Strict-validation policy
 ``registered_envs()`` returns only env IDs that have been
 calibrated, peer-reviewed by Codex, and pass the acceptance gates
 in the v2 substrate redesign plan
-(`lab/notes/PLAN_substrate_redesign_v2_2026-06-30.md`) to a tight
+(`lab/notes/planning/PLAN_substrate_redesign_v2_2026-06-30.md`) to a tight
 bar. An env that we couldn't validate honestly is removed from
 the codebase — not registered with a warning, not kept as
 "experimental." If it can't carry the weight of being a testbed,
@@ -25,7 +25,7 @@ History: the v2 redesign initially shipped three tiers per family
   * Sched-Large: dynamics inherit from v0 but never had a baseline
     sweep complete; could harbor latent bugs at K=128 / M=16 /
     H=10000 scale. Removed pending validation.
-  * Maze-v0: feasible under oracle (priviledged info), no honest
+  * Maze-v0: feasible under oracle (privileged info), no honest
     observation-only baseline reached success. Could be feasible
     but unreached, could be subtly impossible. Removed pending an
     honest baseline that demonstrates learnability.
@@ -35,9 +35,9 @@ The non-trivial baselines for those tiers (e.g.
 ``SchedulingBundleAwarePolicy``) remain in the codebase because
 they're useful on the Small tier and on future re-validations.
 
-The previous families (``RecoverablePointMaze``,
-``RecoverableResourceAllocation``) are retired entirely. Their
-classes remain importable for backward compatibility.
+The pre-v2 families (``RecoverablePointMaze``,
+``RecoverableResourceAllocation``) have been deleted entirely as
+part of the strict-validation cleanup.
 """
 
 from __future__ import annotations
@@ -48,12 +48,7 @@ from rlh_bench.envs.capacity_scheduling import (
     CapacitySchedulingConfig,
     RecoverableCapacitySchedulingEnv,
 )
-from rlh_bench.envs.continuous_maze import RecoverableMazeConfig, RecoverablePointMazeEnv
 from rlh_bench.envs.keyfuel_maze import KeyFuelMazeConfig, RecoverableKeyFuelMazeEnv
-from rlh_bench.envs.resource_allocation import (
-    RecoverableResourceAllocationEnv,
-    ResourceAllocationConfig,
-)
 
 
 RegistryFn = Callable[..., object]

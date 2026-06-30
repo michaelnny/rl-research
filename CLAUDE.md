@@ -12,16 +12,16 @@ trajectory-level vector-reward methods. Baseline modifications do not
 count as novelty.
 
 The substrate is continuous-action only by design (see
-`lab/notes/PLAN_substrate_redesign_v2_2026-06-30.md` for the
+`lab/notes/planning/PLAN_substrate_redesign_v2_2026-06-30.md` for the
 rationale). AlphaZero / MCTS-class algorithms have a different action-
 space substrate requirement (discrete / structured-search) that this
 lab does not currently provide.
 
 The substrate is `rlh_bench` (vendored under `src/rlh_bench/`):
 deterministic, recoverable, long-horizon, sparse / terminal-only
-feedback, optional terminal vector reward. See [`DESIGN.md`](DESIGN.md)
-for the environment contract and
-[`docs/SUBSTRATE_MAP.md`](docs/SUBSTRATE_MAP.md) for the one-page API.
+feedback, optional terminal vector reward, continuous action spaces
+throughout. See [`docs/SUBSTRATE_MAP.md`](docs/SUBSTRATE_MAP.md) for
+the one-page API.
 
 ## Substrate boundary (the only hard rules)
 
@@ -62,10 +62,11 @@ commits. Do not let the loop write to `master`.
 
 - `src/rlh_bench/` — the substrate (frozen). Environments, registry,
   metrics, wrappers, reference baselines.
-- `tests/` — substrate regression tests. Should be 70+ passed.
+- `tests/` — substrate regression tests. Should be 60+ passed.
 - `examples/` — bare-bones substrate demos.
 - `experiments/` — non-substrate research scaffold:
-  - `run_baselines.py` — the Phase 1 baseline sweep.
+  - `run_baselines.py` — the baseline sweep over the registered
+    envs.
   - `algorithms/runner.py` — the `Algorithm` protocol and
     `evaluate_algorithm`.
   - `algorithms/<name>.py` — candidate algorithms (when an agent
@@ -74,23 +75,24 @@ commits. Do not let the loop write to `master`.
   - `results/` — JSON records produced by the runner.
 - `docs/` — orientation and lab artifacts:
   - [`LAB.md`](docs/LAB.md) — lab spirit.
-  - [`SUBSTRATE_MAP.md`](docs/SUBSTRATE_MAP.md) — one-page substrate API.
+  - [`SUBSTRATE_MAP.md`](docs/SUBSTRATE_MAP.md) — one-page substrate
+    API, the single source of truth for env semantics.
   - [`AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) — how to plug a candidate
     into the runner.
   - [`baseline_report.md`](docs/baseline_report.md) — honest baseline
-    numbers on Small + v0 tiers; Large baselines are deferred.
+    portfolio numbers on the registered envs.
   - [`journal/`](docs/journal/) — append-only research journal.
 - `lab/` — the loop itself:
   - [`run_lab.sh`](lab/run_lab.sh) — the loop.
   - [`prompts/`](lab/prompts/) — the four production prompts
     (`claude_system.md`, `claude_session.md`, `codex_system.md`,
     `codex_peer.md`).
-  - [`notes/`](lab/notes/) — lab-meta artifacts (prompt reviews,
-    design notes), not research findings.
+  - [`notes/`](lab/notes/) — lab-meta artifacts (substrate design,
+    peer reviews, audit). Subfolders: `planning/`, `reviews/`,
+    `briefs/`. See [`lab/notes/README.md`](lab/notes/README.md) for
+    the index.
 - [`README.md`](README.md) — top-level orientation and new-machine
   setup walkthrough.
-- [`DESIGN.md`](DESIGN.md) — environment contract and reward-vector
-  convention.
 
 ## Local environment
 

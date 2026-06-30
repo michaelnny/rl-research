@@ -22,8 +22,15 @@ is the dry operator's manual.
   commits.
 - `logs/` — per-iteration logs (`iter-NNNN/{claude,codex}_{stdout,stderr,prompt}.txt`)
   plus a `run.log` heartbeat. Gitignored.
-- `notes/` — lab-meta artifacts (prompt reviews, design notes). Not
-  research findings; those go in `docs/journal/`.
+- `notes/` — lab-meta artifacts. Organized into:
+  - `notes/planning/` — substrate redesign artifacts.
+  - `notes/reviews/` — Codex review/audit outputs.
+  - `notes/briefs/` — one-shot prompts used to launch each
+    review pass (kept for reproducibility).
+  - Top-level: `acceptance_gates_audit_*.md` and
+    `strict_registry_outcome_*.md` document the current testbed
+    state.
+  Not research findings; those go in `docs/journal/`.
 
 ## Running
 
