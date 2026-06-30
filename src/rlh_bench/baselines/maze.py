@@ -113,7 +113,7 @@ class MazeGreedyLandmarkPolicy:
 
     def _get_actuator_matrix(self) -> np.ndarray:
         # The env's actuator matrix is regenerated on each reset, so
-        # we cache by env._seed. We rely on the public property.
+        # we cache by the public env.seed property.
         if self._cached_A is None or self._cached_seed != self.env.seed:
             self._cached_A = self.env.actuator_matrix
             self._cached_seed = self.env.seed

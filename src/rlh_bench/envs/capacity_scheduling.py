@@ -108,12 +108,11 @@ class CapacitySchedulingConfig:
     num_projects: int = 48
     num_modes: int = 8
     num_products: int = 8
-    # Action layout: K + 3M + P. With the v0 defaults (K=48, M=8, P=8)
-    # the layout is exactly 80 dims; the dataclass default matches.
-    # The registry's _scheduling_default explicitly sets 80 to match.
-    # Trailing dims past the layout would only contribute to
-    # neg_energy without affecting production / wear / setup; they
-    # are forbidden by acceptance gate 8.
+    # Action layout: K + 3M + P. Registered tiers set action_dim
+    # exactly to this semantic layout (Small=32, v0=80, Large=192).
+    # Custom configs may choose a larger value for experiments, but any
+    # trailing coordinates are ignored by production / wear / setup and
+    # still count in neg_energy; they are not used to satisfy gate 8.
     action_dim: int = 80
     n_bundles: int = 8
     bundle_size_range: tuple[int, int] = (2, 4)
@@ -224,11 +223,10 @@ class RecoverableCapacitySchedulingEnv:
         a[K + 2M : K + 3M]       -- per-mode setup-change intensity
         a[K + 3M : K + 3M + P]   -- per-product inventory release rate
 
-    Any trailing dimensions beyond this layout are ignored (they exist
-    only to support tier-specific action_dim values without changing
-    semantics; an honest algorithm should still be able to use them
-    via the actuator-cost weighting in maze, or zero them in
-    scheduling without penalty).
+    Registered tiers expose exactly this layout. If a custom config
+    chooses a larger ``action_dim``, trailing coordinates are ignored by
+    production/setup semantics and still count in energy; such padding is
+    not part of the registered action-complexity claim.
 
     Each logit block is softmax-projected to a simplex of intensities;
     maintenance / setup-change / inventory blocks are bounded to

@@ -289,7 +289,7 @@ def test_seed_property_tracks_reset():
     assert env.seed == 7
 
 
-# ----- baseline portfolio is honest (observation-only) ----------------------- #
+# ----- baseline portfolio is honest (public-model vs oracle) ----------------- #
 
 
 def test_oracle_route_planner_not_in_baseline_portfolio():

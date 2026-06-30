@@ -78,7 +78,7 @@ commits. Do not let the loop write to `master`.
   - [`AGENT_GUIDE.md`](docs/AGENT_GUIDE.md) — how to plug a candidate
     into the runner.
   - [`baseline_report.md`](docs/baseline_report.md) — honest baseline
-    numbers across all six env IDs.
+    numbers on Small + v0 tiers; Large baselines are deferred.
   - [`journal/`](docs/journal/) — append-only research journal.
 - `lab/` — the loop itself:
   - [`run_lab.sh`](lab/run_lab.sh) — the loop.

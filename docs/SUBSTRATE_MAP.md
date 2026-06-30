@@ -61,8 +61,8 @@ block.
 | Env ID                                       | Family    | H      | Action dim | Notes                              |
 | -------------------------------------------- | --------- | ------ | ---------- | ---------------------------------- |
 | `RecoverableCapacityScheduling-Small-v0`     | Scheduling| 500    | 32         | K=16 M=4 P=4; smoke tier           |
-| `RecoverableCapacityScheduling-v0`           | Scheduling| 2000   | 96         | K=48 M=8 P=8; canonical            |
-| `RecoverableCapacityScheduling-Large-v0`     | Scheduling| 10000  | 224        | K=128 M=16 P=16; stretch           |
+| `RecoverableCapacityScheduling-v0`           | Scheduling| 2000   | 80         | K=48 M=8 P=8; canonical            |
+| `RecoverableCapacityScheduling-Large-v0`     | Scheduling| 10000  | 192        | K=128 M=16 P=16; stretch           |
 | `RecoverableKeyFuelMaze-Small-v0`            | Maze      | 500    | 16         | 24×24 world; 2 keys / 2 seals      |
 | `RecoverableKeyFuelMaze-v0`                  | Maze      | 2000   | 32         | 48×48 world; 4 keys / 6 seals      |
 | `RecoverableKeyFuelMaze-Large-v0`            | Maze      | 10000  | 64         | 96×96 world; 6 keys / 12 seals     |
@@ -82,7 +82,7 @@ setup inertia, heat, inventory perishability, contract bundles).
   - per-mode maintenance intensity (M)
   - per-mode setup-change intensity (M)
   - per-product inventory release (P)
-  - trailing dims beyond `K + 3M + P` are unused (allows the registry to advertise larger action spaces at higher tiers without changing semantics).
+  - registered tiers set `D = K + 3M + P` exactly (32 / 80 / 192); no trailing no-op controls are advertised.
 - **Obs**: per-project (cumulative service, backlog, deadline slack, priority); per-mode (utilization EMA, wear, heat, maintenance debt); setup mixture (M×P); per-product (inventory, age); multi-scale future demand summaries (16/64/256-step windows); previous-action aggregates; `t/H`.
 - **Dynamics**: production per project = `mode_capacity × setup_alignment × compat × proj_alloc`. Capacity reduces with wear and heat. Setup retargeting costs same-step capacity. Inventory builds from unused capacity and can perish. Contract bundles require all-of-N projects above quality threshold.
 - **Terminal vector** (`DEFAULT_SCHEDULING_REWARD_SPEC`):

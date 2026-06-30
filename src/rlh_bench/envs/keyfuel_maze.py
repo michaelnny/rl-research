@@ -619,8 +619,8 @@ class RecoverableKeyFuelMazeEnv:
         # actual=0 → route_efficiency=1.0 (perfect score for doing
         # nothing). Gate 8 / honesty: this component should reward
         # *efficient completion*, not non-attempt.
-        # Progress = (seals + extraction-bit) / (n_seals + 1). A
-        # zero-progress trajectory gets 0 regardless of distance;
+        # Progress averages aggregate seal completion and the extraction
+        # bit. A zero-progress trajectory gets 0 regardless of distance;
         # only a partially-completed trajectory earns partial credit
         # scaled by oracle/actual.
         progress_frac = (

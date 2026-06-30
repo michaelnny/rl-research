@@ -26,9 +26,9 @@ substrate that this lab does not currently provide.
 The substrate is `rlh_bench` (vendored at `src/rlh_bench/`): six
 deterministic, recoverable, long-horizon environments with terminal-
 only sparse feedback and an optional terminal vector reward.
-Environments and reward semantics are described in
-[`DESIGN.md`](DESIGN.md); the API in one page is in
-[`docs/SUBSTRATE_MAP.md`](docs/SUBSTRATE_MAP.md); baseline numbers
+Current environments and reward semantics are summarized in
+[`docs/SUBSTRATE_MAP.md`](docs/SUBSTRATE_MAP.md); legacy design context
+lives in [`DESIGN.md`](DESIGN.md); baseline numbers
 that any candidate algorithm has to beat are in
 [`docs/baseline_report.md`](docs/baseline_report.md). The substrate
 is frozen — the lab works around it, not on it.
@@ -190,7 +190,7 @@ PYTHONPATH=src .venv/bin/python -m pytest -q
 The substrate test suite checks deterministic resets, terminal-only
 reward behavior, vector reward mode, recoverability after bad
 actions, registry construction, baseline portfolio honesty
-(observation-only vs oracle separation), reward normalization
+(public-model baselines vs oracle separation), reward normalization
 across tiers, held-out seed contract, idle-tail measurement,
 acceptance gates, CEM / optional REINFORCE smoke tests, and Pareto
 utility behavior. It should be 70+ passed on a working install.
