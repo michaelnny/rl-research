@@ -22,7 +22,7 @@ and neglected alternatives.
 The lab is searching for a novel continuous-action reinforcement-learning
 algorithm in the same class as PPO, SAC, CEM, mirror descent, GAE-style
 credit assignment, or trajectory-level vector-reward methods. The product
-is the journal in `docs/journal/`, accumulated honestly over time.
+is the journal in `lab/journal/`, accumulated honestly over time.
 
 The substrate is `rlh_bench`, vendored under `src/rlh_bench/`. It is
 continuous-action only, terminal-reward only, and exposes terminal reward

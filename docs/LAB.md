@@ -43,7 +43,7 @@ ideas that don't work and why, that is a success.
 ## The product is the journal
 
 The product is **not** "a novel RL algorithm." The product is
-`docs/journal/` — a research journal that, accumulated over time,
+`lab/journal/` — a research journal that, accumulated over time,
 makes a novel algorithm likely. The algorithm, if it emerges, will be
 a downstream consequence of the journal being honest and varied.
 
@@ -87,7 +87,7 @@ Everything else is the agent's call. Speculate freely.
 - `docs/baseline_report.md` — honest baseline portfolio numbers
   on the currently registered Small-tier envs. v0/Large tiers were
   removed pending validation.
-- `docs/journal/` — every session's entry, append-only.
+- `lab/journal/` — every session's entry, append-only.
 - `lab/prompts/claude_system.md` — Claude's lab system prompt (the
   source of truth for how Claude should behave in a session).
 - `lab/prompts/codex_system.md` — Codex's peer-note system prompt.

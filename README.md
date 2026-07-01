@@ -5,7 +5,7 @@ An autonomous reinforcement-learning research lab. Two AI agents
 substrate, keeping a research journal that — over many sessions — is
 intended to make a novel RL algorithm likely.
 
-The product is the journal at `docs/journal/`. If a novel algorithm
+The product is the journal at `lab/journal/`. If a novel algorithm
 emerges, it will be a downstream consequence of the journal being
 honest and varied.
 
@@ -49,12 +49,14 @@ docs/
   SUBSTRATE_MAP.md            # one-page substrate API
   AGENT_GUIDE.md              # how to plug a candidate into the runner
   baseline_report.md          # honest baseline portfolio numbers
-  journal/                    # the lab's research journal — append-only
 lab/
   README.md                   # operator's manual
   run_lab.sh                  # the dumb loop
+  journal/                    # the lab's research journal — append-only
   prompts/                    # system + per-session prompts (production)
   notes/                      # lab-meta artifacts (planning, reviews, briefs)
+  logs/                       # ignored process logs and pid file
+  runs/                       # ignored per-session stdout/stderr/prompts
 CLAUDE.md                     # project-level rules of engagement
 ```
 
@@ -154,7 +156,8 @@ to break local-search drift.
 ```bash
 tail -f lab/logs/run.log
 tail -f lab/logs/console.log   # only needed for shell-level stderr/stdout
-ls -lat docs/journal/ | head        # newest entries first
+ls -lat lab/runs/ | head       # newest raw run artifacts first
+ls -lat lab/journal/ | head        # newest entries first
 git log --oneline lab/auto | head   # commits the loop has made
 ```
 
@@ -172,14 +175,14 @@ tree if one is running, and removes `lab/logs/run.pid`.
 
 Per regular iteration (≈ 5-20 minutes wall-clock on Opus max-effort):
 
-1. Loop reads the next session number from `docs/journal/`.
-2. Loop invokes `claude -p --bare --system-prompt-file lab/prompts/claude_system.md ...` with a tiny user prompt that names the session number. Claude reads the recent journal, picks a session kind (read/play/propose/implement/synthesize/tool-build), does the work, and writes `docs/journal/sessionNNNN-<slug>.md` ending in an empty `## Peer note` section.
+1. Loop reads the next session number from `lab/journal/`.
+2. Loop invokes `claude -p --bare --system-prompt-file lab/prompts/claude_system.md ...` with a tiny user prompt that names the session number. Claude reads the recent journal, picks a session kind (read/play/propose/implement/synthesize/tool-build), does the work, and writes `lab/journal/sessionNNNN-<slug>.md` ending in an empty `## Peer note` section.
 3. Loop invokes `codex -a never exec -p hai -c model_instructions_file=... ...` pointing at the new entry. Codex reads the entry (and any artifacts it depends on) and appends a peer note. If Codex exits nonzero, leaves the placeholder unchanged, or edits the wrong journal file, the loop stops instead of committing.
 4. Loop commits with a descriptive non-verdictive message and starts the next iteration.
 
 Every `STEERING_INTERVAL` regular Claude sessions (default: 5), the
 next session number is used for a Codex-authored steering memo instead:
-`docs/journal/sessionNNNN-codex-steering.md`. Claude's following
+`lab/journal/sessionNNNN-codex-steering.md`. Claude's following
 session is explicitly prompted to pick up one of the memo's leads.
 Set `STEERING_INTERVAL=0` is not supported; use a larger positive
 integer if you want steering less often.

@@ -26,7 +26,7 @@ continuous-action only by design. Read `docs/LAB.md` for the lab's
 disposition (it is short) and `docs/SUBSTRATE_MAP.md` for the substrate
 (one page).
 
-The product of the lab is the journal in `docs/journal/`, not "an
+The product of the lab is the journal in `lab/journal/`, not "an
 algorithm". Over many sessions, an honest journal accumulates into
 something a novel algorithm becomes downstream of.
 

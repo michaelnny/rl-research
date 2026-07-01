@@ -48,7 +48,7 @@ is information about the algorithm. Then do not break it.
 
 The repository runs an autonomous research loop. Two AI agents
 (Claude and Codex/hai) take turns each iteration: Claude writes a
-journal entry to `docs/journal/`, Codex appends a `## Peer note` to
+journal entry to `lab/journal/`, Codex appends a `## Peer note` to
 the same entry. The loop is [`lab/run_lab.sh`](lab/run_lab.sh); the
 operator's manual is [`lab/README.md`](lab/README.md); the lab's
 spirit is [`docs/LAB.md`](docs/LAB.md).
@@ -81,11 +81,13 @@ commits. Do not let the loop write to `master`.
     into the runner.
   - [`baseline_report.md`](docs/baseline_report.md) — honest baseline
     portfolio numbers on the registered envs.
-  - [`journal/`](docs/journal/) — append-only research journal.
 - `lab/` — the loop itself:
   - [`run_lab.sh`](lab/run_lab.sh) — the loop.
+  - [`journal/`](lab/journal/) — append-only research journal.
   - [`prompts/`](lab/prompts/) — production prompts for Claude
     sessions, Codex peer notes, and Codex steering memos.
+  - `logs/` — ignored process logs and PID file.
+  - `runs/` — ignored per-session stdout/stderr/prompt artifacts.
   - [`notes/`](lab/notes/) — lab-meta artifacts (substrate design,
     peer reviews, audit). Subfolders: `planning/`, `reviews/`,
     `briefs/`. See [`lab/notes/README.md`](lab/notes/README.md) for

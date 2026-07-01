@@ -48,7 +48,7 @@ substrate cannot evaluate it as-is.
 ## What the product is
 
 The product of this lab is **the research journal**, not "an algorithm".
-The journal lives in `docs/journal/` as one markdown file per session,
+The journal lives in `lab/journal/` as one markdown file per session,
 named `sessionNNNN-<short-slug>.md`. Each entry is the work product of
 exactly one session. The journal is append-only — previous sessions
 are never edited, except that Codex appends one `## Peer note` section
@@ -293,7 +293,7 @@ what you target.
 
 ## How to write a journal entry
 
-The format is described in `docs/journal/README.md`. The essentials:
+The format is described in `lab/journal/README.md`. The essentials:
 
     # session NNNN — <short slug>
 
@@ -334,7 +334,7 @@ something a future researcher will be glad to find. A great entry
 sharpens the journal's understanding of one specific thing.
 
 The session number to use is given to you in the user prompt. The
-filename is `docs/journal/sessionNNNN-<short-slug>.md` — pick a slug
+filename is `lab/journal/sessionNNNN-<short-slug>.md` — pick a slug
 that names the thing the entry is about in three to five hyphenated
 words (`heuristic-spill-ablation`, `vector-pareto-trace`, etc.).
 

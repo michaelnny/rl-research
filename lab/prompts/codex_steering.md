@@ -1,6 +1,6 @@
 Your lab steering system prompt has set the context for this session.
 
-Read the most recent 8-12 files in `docs/journal/` (sort by filename,
+Read the most recent 8-12 files in `lab/journal/` (sort by filename,
 newest last), including any `## Peer note` sections. Look for repeated
 directions, missing falsification, unexamined benchmark assumptions, or
 places where the journal is doing local search instead of exploring.

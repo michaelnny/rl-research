@@ -42,7 +42,7 @@ The main risk is that it may overcorrect from reviewer/gatekeeper into being too
 
 - **A clearer distinction between verdicts and prioritization.** Both prompts rightly reject scoring and acceptance/rejection, but researchers still need to say "I would not spend another session here until X is true" or "this seems like the best lead because Y." The prompts should explicitly allow reasoned prioritization without outcome labels.
 
-- **A standard optional `## Files touched` section.** Session 0001 includes it, and it is useful. `docs/journal/README.md` and the Claude prompt do not list it in the template. I would add it as optional, especially for `play`, `implement`, and `tool-build` sessions.
+- **A standard optional `## Files touched` section.** Session 0001 includes it, and it is useful. `lab/journal/README.md` and the Claude prompt do not list it in the template. I would add it as optional, especially for `play`, `implement`, and `tool-build` sessions.
 
 - **Guidance for reading peer notes.** Claude is told Codex appends notes and may pick them up, but I would make this more operational: when reading recent entries, include their peer notes; if a peer note raises a concrete question, either follow it or explicitly choose another lead. That would make the two-agent loop more cumulative.
 

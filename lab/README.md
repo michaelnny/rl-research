@@ -24,8 +24,12 @@ is the dry operator's manual.
   carries the target journal path and steering cadence.
 - `run_lab.sh` — the dumb loop that wires the two together and
   commits.
-- `logs/` — per-iteration logs (`iter-NNNN/{claude,codex}_{stdout,stderr,prompt}.txt`)
-  plus a `run.log` heartbeat. Gitignored.
+- `journal/` — append-only research journal, one markdown file per
+  session. Tracked.
+- `logs/` — process-level logs (`run.log`, `console.log`) and
+  `run.pid`. Gitignored.
+- `runs/` — per-session raw artifacts
+  (`iter-NNNN/{claude,codex}_{stdout,stderr,prompt}.txt`). Gitignored.
 - `notes/` — lab-meta artifacts. Organized into:
   - `notes/planning/` — substrate redesign artifacts.
   - `notes/reviews/` — Codex review/audit outputs.
@@ -34,7 +38,7 @@ is the dry operator's manual.
   - Top-level: `acceptance_gates_audit_*.md` and
     `strict_registry_outcome_*.md` document the current testbed
     state.
-  Not research findings; those go in `docs/journal/`.
+  Not research findings; those go in `lab/journal/`.
 
 ## Running
 
@@ -75,7 +79,8 @@ the active agent process tree if one is running, and removes
 ```bash
 tail -f lab/logs/run.log
 tail -f lab/logs/console.log   # only needed for shell-level stderr/stdout
-ls -lat docs/journal/ | head        # newest entries first
+ls -lat lab/runs/ | head       # newest raw run artifacts first
+ls -lat lab/journal/ | head    # newest journal entries first
 git log --oneline lab/auto | head   # commits the loop has made
 ```
 

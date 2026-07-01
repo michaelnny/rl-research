@@ -2,7 +2,7 @@
 
 Working notes and historical artifacts about the lab itself — design
 decisions, peer reviews, calibration outcomes. Distinct from
-`docs/journal/`, which is the research journal the loop produces;
+`lab/journal/`, which is the research journal the loop produces;
 `lab/notes/` is meta about the lab.
 
 ## Top-level
@@ -75,4 +75,4 @@ Put notes here when:
   out-of-band of the journal.
 
 Do not put per-session research findings here — those go in
-`docs/journal/`.
+`lab/journal/`.

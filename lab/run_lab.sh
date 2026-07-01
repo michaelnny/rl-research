@@ -2,12 +2,12 @@
 # Lab loop runner. Runs forever (until SIGINT/SIGTERM or `pkill`).
 #
 # Per iteration:
-#   1. Pick the next session number from docs/journal/.
+#   1. Pick the next session number from lab/journal/.
 #   2. If enough Claude sessions have accumulated since the last Codex
 #      steering memo, run `codex -a never exec -p hai` to write
-#      docs/journal/sessionNNNN-codex-steering.md, commit it, and move on.
+#      lab/journal/sessionNNNN-codex-steering.md, commit it, and move on.
 #   3. Otherwise render the Claude prompt with that number; run `claude -p`.
-#      Claude writes docs/journal/sessionNNNN-<slug>.md.
+#      Claude writes lab/journal/sessionNNNN-<slug>.md.
 #   4. Find the journal entry Claude just created.
 #   5. Render the Codex peer prompt with that path; run
 #      `codex -a never exec -p hai`
@@ -27,8 +27,9 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 LAB_DIR="$REPO_ROOT/lab"
-JOURNAL_DIR="$REPO_ROOT/docs/journal"
+JOURNAL_DIR="$REPO_ROOT/lab/journal"
 LOG_DIR="$LAB_DIR/logs"
+RUN_DIR="$LAB_DIR/runs"
 CLAUDE_PROMPT_TEMPLATE="$LAB_DIR/prompts/claude_session.md"
 CODEX_PROMPT_TEMPLATE="$LAB_DIR/prompts/codex_peer.md"
 CODEX_STEERING_PROMPT_TEMPLATE="$LAB_DIR/prompts/codex_steering.md"
@@ -45,7 +46,7 @@ STEERING_INTERVAL="${STEERING_INTERVAL:-5}"
 AGENT_WATCHDOG_SECS=1800
 ACTIVE_CHILD=""
 
-mkdir -p "$LOG_DIR" "$JOURNAL_DIR"
+mkdir -p "$LOG_DIR" "$RUN_DIR" "$JOURNAL_DIR"
 
 log_run="$LOG_DIR/run.log"
 
@@ -111,7 +112,7 @@ assert_only_changed_path() {
 assert_no_other_journal_changes() {
   local allowed paths
   allowed="$1"
-  paths="$(changed_paths | grep -E '^docs/journal/' | grep -vxF "$allowed" || true)"
+  paths="$(changed_paths | grep -E '^lab/journal/' | grep -vxF "$allowed" || true)"
   if [ -n "$paths" ]; then
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] refusing to commit edits to journal files other than $allowed:" | tee -a "$log_run" >&2
     printf '%s\n' "$paths" | tee -a "$log_run" >&2
@@ -398,13 +399,13 @@ while true; do
   abort_if_dirty "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] lab loop aborting: working tree became dirty before starting a new session. Resolve these changes first."
 
   session_num="$(next_session_number)"
-  iter_dir="$LOG_DIR/iter-$session_num"
+  iter_dir="$RUN_DIR/iter-$session_num"
   mkdir -p "$iter_dir"
 
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] === session $session_num starting ===" | tee -a "$log_run"
 
   if should_run_steering; then
-    steering_entry_path="docs/journal/session${session_num}-codex-steering.md"
+    steering_entry_path="lab/journal/session${session_num}-codex-steering.md"
     echo "session $session_num steering: $steering_entry_path" | tee -a "$log_run"
     steering_prompt="$(render_template "$CODEX_STEERING_PROMPT_TEMPLATE" SESSION_NUMBER "$session_num" JOURNAL_ENTRY_PATH "$steering_entry_path" STEERING_INTERVAL "$STEERING_INTERVAL")"
     printf '%s' "$steering_prompt" > "$iter_dir/codex_steering_prompt.txt"
@@ -505,7 +506,7 @@ while true; do
       ;;
   esac
 
-  entry_path="docs/journal/$new_entry"
+  entry_path="lab/journal/$new_entry"
   echo "session $session_num entry: $entry_path" | tee -a "$log_run"
 
   # 2) Codex peer note.
