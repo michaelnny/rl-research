@@ -326,9 +326,18 @@ kill_tree() {
 run_with_watchdog() {
   local secs=$1
   shift
-  local child watchdog rc sentinel
+  local child watchdog rc sentinel stdin_copy
   sentinel=$(mktemp -t rlh_wd_XXXXXX) || return 2
-  "$@" &
+  stdin_copy=$(mktemp -t rlh_stdin_XXXXXX) || {
+    rm -f "$sentinel"
+    return 2
+  }
+  # Bash redirects stdin for background jobs to /dev/null in the non-job-control
+  # mode used by scripts. Buffer the caller's stdin first so `claude -p` and
+  # `codex exec` still receive their prompt while we keep a concrete child PID
+  # for watchdog/signal cleanup.
+  cat > "$stdin_copy"
+  "$@" < "$stdin_copy" &
   child=$!
   ACTIVE_CHILD="$child"
   (
@@ -351,7 +360,7 @@ run_with_watchdog() {
   if [ -e "$sentinel.killed" ]; then
     rc=124
   fi
-  rm -f "$sentinel" "$sentinel.killed"
+  rm -f "$sentinel" "$sentinel.killed" "$stdin_copy"
   return "$rc"
 }
 
