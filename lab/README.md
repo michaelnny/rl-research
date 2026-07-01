@@ -37,8 +37,8 @@ is the dry operator's manual.
 Forever, detached:
 
 ```bash
-nohup bash lab/run_lab.sh > lab/logs/run.log 2>&1 &
-echo $! > lab/logs/run.pid
+mkdir -p lab/logs
+nohup bash lab/run_lab.sh > lab/logs/console.log 2>&1 &
 ```
 
 In a tmux session (easier to detach/reattach):
@@ -64,6 +64,7 @@ cleanly between iterations.
 
 ```bash
 tail -f lab/logs/run.log
+tail -f lab/logs/console.log   # only needed for shell-level stderr/stdout
 ls -lat docs/journal/ | head        # newest entries first
 git log --oneline lab/auto | head   # commits the loop has made
 ```

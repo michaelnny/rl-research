@@ -59,7 +59,7 @@ obstacle is">
 <!-- Codex appends here -->
 ```
 
-Both members of the lab (Claude and Codex, profile `jelly`) read
+Both members of the lab (Claude and Codex, profile `hai`) read
 recent entries before working. Entries are never edited after the
 session that wrote them, except that Codex appends one `## Peer note`
 section to the entry Claude just wrote.

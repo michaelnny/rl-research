@@ -7,7 +7,7 @@
 #      max-effort Opus inside the repo. Claude writes
 #      docs/journal/sessionNNNN-<slug>.md.
 #   3. Find the journal entry Claude just created.
-#   4. Render the Codex prompt with that path; run `codex exec -p jelly`
+#   4. Render the Codex prompt with that path; run `codex exec -p hai`
 #      to append a `## Peer note`.
 #   5. Commit whatever changed under a non-verdictive descriptive
 #      message.
@@ -40,17 +40,59 @@ log_run="$LOG_DIR/run.log"
 
 # Single-instance lock: refuse to start if another loop is already running.
 # Two concurrent loops race on the journal + the working tree; never desired.
+#
+# The lock is process-name-aware: we only treat the PID file as live if the
+# recorded PID belongs to a `run_lab.sh` process. `kill -0 $pid` alone is not
+# enough — after a SIGKILL or crash the PID file is left behind and PIDs get
+# recycled by the kernel, so a fresh unrelated process can falsely satisfy
+# `kill -0`. Verifying the process command guards against that.
 PID_FILE="$LOG_DIR/run.pid"
+pid_belongs_to_this_loop() {
+  local pid="$1"
+  [ -n "$pid" ] || return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+  # On macOS+Linux `ps -o command=` returns the command line; we match against
+  # the script's basename so any path / interpreter variations still match.
+  ps -p "$pid" -o command= 2>/dev/null | grep -q "run_lab\.sh" || return 1
+  return 0
+}
+
+# Support an explicit unlock for the operator: `bash lab/run_lab.sh --unlock`
+# removes a stale (or wrong-process) PID file and exits without launching.
+if [ "${1:-}" = "--unlock" ]; then
+  if [ -f "$PID_FILE" ]; then
+    rm -f "$PID_FILE"
+    echo "removed $PID_FILE"
+  else
+    echo "no PID file at $PID_FILE"
+  fi
+  exit 0
+fi
+
 if [ -f "$PID_FILE" ]; then
   existing_pid=$(cat "$PID_FILE" 2>/dev/null || echo "")
-  if [ -n "$existing_pid" ] && kill -0 "$existing_pid" 2>/dev/null; then
+  if [ "$existing_pid" = "$$" ]; then
+    # Backward compatibility with the old README launch snippet, which wrote
+    # `$!` to run.pid outside the script. If that race happens, the file names
+    # this process, not a competing loop.
+    :
+  elif pid_belongs_to_this_loop "$existing_pid"; then
     echo "lab loop already running as PID $existing_pid (see $PID_FILE). Exiting." >&2
+    echo "if you're sure it isn't, run: bash lab/run_lab.sh --unlock" >&2
     exit 1
+  else
+    # Stale PID file (process died without cleanup, or PID was recycled to an
+    # unrelated process) — remove and continue.
+    rm -f "$PID_FILE"
   fi
-  # Stale PID file (process died without cleanup) — remove and continue.
-  rm -f "$PID_FILE"
 fi
 echo $$ > "$PID_FILE"
+
+# Register the cleanup trap *immediately after* claiming the lock so any
+# subsequent failure (set -u, branch check, etc.) still releases it. We catch
+# EXIT in addition to INT/TERM so even normal exits clean up.
+cleanup_pid_file() { rm -f "$PID_FILE"; }
+trap cleanup_pid_file EXIT
 
 # Branch sanity: we don't want the loop committing to master by accident.
 # If we're on master, branch to `lab/auto` once.
@@ -69,7 +111,6 @@ expected_branch="lab/auto"
 actual_branch=$(git rev-parse --abbrev-ref HEAD)
 if [ "$actual_branch" != "$expected_branch" ]; then
   echo "lab loop refusing to start: expected branch $expected_branch, on $actual_branch. Exiting." >&2
-  rm -f "$PID_FILE"
   exit 1
 fi
 
@@ -116,36 +157,62 @@ print(os.environ["CONTENT"].replace("__" + os.environ["KEY"] + "__", os.environ[
 }
 
 # Watchdog: run "$@" with a wall-clock ceiling of $1 seconds. Inline so we
-# don't depend on GNU `timeout` (which is not in macOS base). On exceeded
-# watchdog we SIGTERM, sleep 5s, then SIGKILL; the function exits with the
-# child's actual exit code, or 124 (matching GNU timeout) if killed.
+# don't depend on GNU `timeout` (which is not in macOS base).
+#
+# Implementation: spawn a sidecar that records this shell's PID, sleeps, then
+# kills "$$"'s descendants matching the agent if we're still here. We run the
+# agent itself in the FOREGROUND so redirected stdin reaches it normally (a
+# backgrounded child can lose stdin). The function returns the agent's actual
+# exit code, or 124 (matching GNU `timeout`) when the watchdog had to kill it.
+#
+# We mark the killed case by writing a sentinel file the parent shell checks,
+# since a foreground process killed by SIGTERM exits with 143 — which would be
+# indistinguishable from "the agent itself returned 143" without the sentinel.
 run_with_watchdog() {
   local secs=$1
   shift
-  "$@" &
-  local child=$!
+  local parent_pid=$$
+  local sentinel
+  sentinel=$(mktemp -t rlh_wd_XXXXXX) || return 2
   (
     sleep "$secs"
-    if kill -0 "$child" 2>/dev/null; then
-      kill -TERM "$child" 2>/dev/null
+    # If parent is still alive, the foreground child has not exited yet. Mark
+    # the kill and signal the parent's process group so the foreground agent
+    # dies. We avoid killing the parent shell itself by targeting only the
+    # most-recently-forked descendant.
+    if kill -0 "$parent_pid" 2>/dev/null; then
+      touch "$sentinel.killed"
+      # Find the agent child of the parent shell and SIGTERM it. There should
+      # be exactly one — the foreground command we're about to launch.
+      local kids
+      kids=$(pgrep -P "$parent_pid" 2>/dev/null || true)
+      for k in $kids; do
+        kill -TERM "$k" 2>/dev/null || true
+      done
       sleep 5
-      kill -KILL "$child" 2>/dev/null
+      for k in $kids; do
+        kill -KILL "$k" 2>/dev/null || true
+      done
     fi
   ) &
   local watchdog=$!
-  local rc=0
-  wait "$child" 2>/dev/null
-  rc=$?
-  # Watchdog still alive means child exited on its own — cancel it. If the
-  # watchdog already fired (child killed), kill returns nonzero, which is fine.
-  kill "$watchdog" 2>/dev/null
-  wait "$watchdog" 2>/dev/null
+  # Run the agent in the FOREGROUND. stdin/stdout/stderr inherit from the
+  # caller, including any redirected stdin we were given.
+  "$@"
+  local rc=$?
+  # Agent returned on its own — cancel the watchdog.
+  kill "$watchdog" 2>/dev/null || true
+  wait "$watchdog" 2>/dev/null || true
+  if [ -e "$sentinel.killed" ]; then
+    rc=124
+  fi
+  rm -f "$sentinel" "$sentinel.killed"
   return "$rc"
 }
 
 # ----- main loop ----------------------------------------------------------- #
 
-trap 'echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] lab loop stopping" >> "$log_run"; rm -f "$PID_FILE"; exit 0' INT TERM
+trap 'echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] lab loop stopping" >> "$log_run"; exit 0' INT TERM
 
 while true; do
   # Per-iteration branch guard: if something switched the working tree off
@@ -153,7 +220,6 @@ while true; do
   iter_branch=$(git rev-parse --abbrev-ref HEAD)
   if [ "$iter_branch" != "$expected_branch" ]; then
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] lab loop aborting: branch drifted to $iter_branch (expected $expected_branch)" | tee -a "$log_run" >&2
-    rm -f "$PID_FILE"
     exit 1
   fi
 
@@ -174,10 +240,12 @@ while true; do
   set +e
   # NOTE: --add-dir is variadic (<directories...>), so any positional that
   # follows it gets consumed as another directory and the prompt is lost.
-  # Pipe the prompt on stdin instead. The wrapping watchdog is NOT a normal-
-  # case budget — a healthy session is 1-5 min; it exists only to recover
-  # from a stuck CLI process.
-  printf '%s' "$claude_prompt" | run_with_watchdog "$AGENT_WATCHDOG_SECS" claude -p \
+  # Feed the prompt on stdin from a file. Do not pipe into run_with_watchdog:
+  # in macOS bash 3.2 the function then runs in a pipeline subshell while $$
+  # still names the parent shell, so the watchdog cannot find/kill the agent.
+  # The wrapping watchdog is NOT a normal-case budget — a healthy session is
+  # 1-5 min; it exists only to recover from a stuck CLI process.
+  run_with_watchdog "$AGENT_WATCHDOG_SECS" claude -p \
     --bare \
     --system-prompt-file "$LAB_DIR/prompts/claude_system.md" \
     --no-session-persistence \
@@ -189,6 +257,7 @@ while true; do
     --add-dir "$REPO_ROOT/lab" \
     --add-dir "$REPO_ROOT/src" \
     --add-dir "$REPO_ROOT/tests" \
+    < "$iter_dir/claude_prompt.txt" \
     > "$iter_dir/claude_stdout.txt" 2> "$iter_dir/claude_stderr.txt"
   claude_exit=$?
   set -e
@@ -221,7 +290,7 @@ while true; do
   # (the node wrapper occasionally fails to propagate exit from the native
   # helper, leaving codex hung indefinitely).
   run_with_watchdog "$AGENT_WATCHDOG_SECS" codex exec \
-    -p jelly \
+    -p hai \
     -c "model_instructions_file=\"$LAB_DIR/prompts/codex_system.md\"" \
     --sandbox workspace-write \
     --dangerously-bypass-approvals-and-sandbox \

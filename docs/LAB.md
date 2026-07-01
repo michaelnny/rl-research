@@ -20,7 +20,7 @@ rationale.
 The lab has two members:
 
 - **Claude** — works one session at a time, writes a journal entry.
-- **Codex** (profile `jelly`) — reads the entry afterwards as a peer
+- **Codex** (profile `hai`) — reads the entry afterwards as a peer
   and adds a `## Peer note` section to the same entry.
 
 Neither agent reviews the other. There is no gatekeeper, no verdict,
@@ -49,7 +49,7 @@ a downstream consequence of the journal being honest and varied.
 ## How a session works
 
 A session is one `claude -p` invocation followed by one
-`codex exec -p jelly` invocation. The Claude side does whatever a
+`codex exec -p hai` invocation. The Claude side does whatever a
 thoughtful researcher in this lab would do right now — the disposition
 and the menu of session kinds are in `lab/prompts/claude_system.md`
 (loaded as Claude's system prompt via `--bare --system-prompt-file`).

@@ -76,10 +76,10 @@ work but isn't covered by the smoke tests.
   v2.1+ — needed by the loop. Authenticated with whatever method your
   Anthropic account uses.
 - [Codex CLI](https://developers.openai.com/codex/) v0.142+ — needed
-  by the loop. A custom profile named `jelly` is expected at
-  `~/.codex/jelly.config.toml` pointing at whichever provider you
-  use. The provider's API key must be exported in the environment
-  variable the profile names (e.g. `JELLY_OPENAI_API_KEY`).
+  by the loop. A custom profile named `hai` is expected at
+  `~/.codex/hai.config.toml` pointing at whichever provider you use.
+  The provider's API key must be exported in the environment variable
+  the profile names (e.g. `HAI_OPENAI_API_KEY`).
 
 ### Bootstrap
 
@@ -115,7 +115,7 @@ claude -p --bare --system-prompt-file lab/prompts/claude_system.md \
 Codex (replaces `base_instructions` for this run only):
 
 ```bash
-codex exec -p jelly \
+codex exec -p hai \
   -c "model_instructions_file=\"$(pwd)/lab/prompts/codex_system.md\"" \
   --sandbox read-only --skip-git-repo-check --ephemeral \
   'In one sentence, what kind of lab are you in?' < /dev/null
@@ -130,8 +130,8 @@ agent, the override didn't load — check that the path in
 
 ```bash
 # Forever, detached:
-nohup bash lab/run_lab.sh > lab/logs/run.log 2>&1 &
-echo $! > lab/logs/run.pid
+mkdir -p lab/logs
+nohup bash lab/run_lab.sh > lab/logs/console.log 2>&1 &
 
 # Or in tmux (easier to detach/reattach):
 tmux new -s rl-lab 'bash lab/run_lab.sh'
@@ -146,6 +146,7 @@ it and Codex appends a `## Peer note`.
 
 ```bash
 tail -f lab/logs/run.log
+tail -f lab/logs/console.log   # only needed for shell-level stderr/stdout
 ls -lat docs/journal/ | head        # newest entries first
 git log --oneline lab/auto | head   # commits the loop has made
 ```
@@ -166,7 +167,7 @@ Per iteration (≈ 5-20 minutes wall-clock on Opus max-effort):
 
 1. Loop reads the next session number from `docs/journal/`.
 2. Loop invokes `claude -p --bare --system-prompt-file lab/prompts/claude_system.md ...` with a tiny user prompt that names the session number. Claude reads the recent journal, picks a session kind (read/play/propose/implement/synthesize/tool-build), does the work, and writes `docs/journal/sessionNNNN-<slug>.md` ending in an empty `## Peer note` section.
-3. Loop invokes `codex exec -p jelly -c model_instructions_file=... ...` pointing at the new entry. Codex reads the entry (and any artifacts it depends on) and appends a peer note.
+3. Loop invokes `codex exec -p hai -c model_instructions_file=... ...` pointing at the new entry. Codex reads the entry (and any artifacts it depends on) and appends a peer note.
 4. Loop commits with a descriptive non-verdictive message and starts the next iteration.
 
 Full operator's manual is in [`lab/README.md`](lab/README.md).
