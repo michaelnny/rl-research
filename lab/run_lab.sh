@@ -3,22 +3,25 @@
 #
 # Per iteration:
 #   1. Pick the next session number from docs/journal/.
-#   2. Render the Claude prompt with that number; run `claude -p` at
-#      max-effort Opus inside the repo. Claude writes
-#      docs/journal/sessionNNNN-<slug>.md.
-#   3. Find the journal entry Claude just created.
-#   4. Render the Codex prompt with that path; run `codex exec -p hai`
+#   2. If enough Claude sessions have accumulated since the last Codex
+#      steering memo, run `codex -a never exec -p hai` to write
+#      docs/journal/sessionNNNN-codex-steering.md, commit it, and move on.
+#   3. Otherwise render the Claude prompt with that number; run `claude -p`.
+#      Claude writes docs/journal/sessionNNNN-<slug>.md.
+#   4. Find the journal entry Claude just created.
+#   5. Render the Codex peer prompt with that path; run
+#      `codex -a never exec -p hai`
 #      to append a `## Peer note`.
-#   5. Commit whatever changed under a non-verdictive descriptive
-#      message.
-#   6. Sleep a small jitter so back-to-back failures don't burn API
-#      tokens at full speed, and start the next iteration.
+#   6. Commit whatever changed under a non-verdictive descriptive message.
+#   7. Sleep a small jitter so back-to-back failures don't burn API tokens at
+#      full speed, and start the next iteration.
 #
 # Run with:
-#     nohup bash lab/run_lab.sh > lab/logs/run.log 2>&1 &
+#     nohup bash lab/run_lab.sh > lab/logs/console.log 2>&1 &
 # or in a tmux/screen session. Stop with Ctrl+C or `kill <pid>`.
 
-set -u
+set +e
+set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -28,37 +31,130 @@ JOURNAL_DIR="$REPO_ROOT/docs/journal"
 LOG_DIR="$LAB_DIR/logs"
 CLAUDE_PROMPT_TEMPLATE="$LAB_DIR/prompts/claude_session.md"
 CODEX_PROMPT_TEMPLATE="$LAB_DIR/prompts/codex_peer.md"
+CODEX_STEERING_PROMPT_TEMPLATE="$LAB_DIR/prompts/codex_steering.md"
+CODEX_STEERING_SYSTEM_PROMPT="$LAB_DIR/prompts/codex_steering_system.md"
+CODEX_PROFILE="${CODEX_PROFILE:-hai}"
+CODEX_ENV_KEY="${CODEX_ENV_KEY:-HAI_OPENAI_API_KEY}"
+CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
+CODEX_PROFILE_CONFIG="$CODEX_HOME_DIR/${CODEX_PROFILE}.config.toml"
+STEERING_INTERVAL="${STEERING_INTERVAL:-5}"
 # Watchdog upper bound for each agent call (seconds). Far above the normal
 # wall-clock of a session — present only to recover from a stuck CLI process
 # (e.g. the codex node wrapper failing to propagate native-helper exit). NOT a
 # normal-case latency budget; a healthy session finishes in 1-5 minutes.
 AGENT_WATCHDOG_SECS=1800
+ACTIVE_CHILD=""
 
 mkdir -p "$LOG_DIR" "$JOURNAL_DIR"
 
 log_run="$LOG_DIR/run.log"
 
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "lab loop refusing to start: required command not found: $1" >&2
+    exit 1
+  fi
+}
+
+require_file() {
+  if [ ! -r "$1" ]; then
+    echo "lab loop refusing to start: required file is missing or unreadable: $1" >&2
+    exit 1
+  fi
+}
+
+worktree_status() {
+  git status --porcelain --untracked-files=all
+}
+
+abort_if_dirty() {
+  local reason dirty
+  reason="$1"
+  dirty="$(worktree_status)"
+  if [ -n "$dirty" ]; then
+    echo "$reason" >&2
+    printf '%s\n' "$dirty" >&2
+    exit 1
+  fi
+}
+
+changed_paths() {
+  {
+    git diff --name-only
+    git diff --cached --name-only
+    git ls-files --others --exclude-standard
+  } | sort -u
+}
+
+assert_no_substrate_changes() {
+  local paths
+  paths="$(changed_paths | grep -E '^src/rlh_bench(/|$)' || true)"
+  if [ -n "$paths" ]; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] refusing to commit substrate changes under src/rlh_bench:" | tee -a "$log_run" >&2
+    printf '%s\n' "$paths" | tee -a "$log_run" >&2
+    exit 1
+  fi
+}
+
+assert_only_changed_path() {
+  local allowed paths unexpected
+  allowed="$1"
+  paths="$(changed_paths)"
+  unexpected="$(printf '%s\n' "$paths" | sed '/^$/d' | grep -vxF "$allowed" || true)"
+  if [ -n "$unexpected" ]; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] expected only $allowed to change, but saw:" | tee -a "$log_run" >&2
+    printf '%s\n' "$unexpected" | tee -a "$log_run" >&2
+    exit 1
+  fi
+}
+
+assert_no_other_journal_changes() {
+  local allowed paths
+  allowed="$1"
+  paths="$(changed_paths | grep -E '^docs/journal/' | grep -vxF "$allowed" || true)"
+  if [ -n "$paths" ]; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] refusing to commit edits to journal files other than $allowed:" | tee -a "$log_run" >&2
+    printf '%s\n' "$paths" | tee -a "$log_run" >&2
+    exit 1
+  fi
+}
+
+for cmd in git claude codex python3 pgrep mktemp awk comm grep sed sort tail ps; do
+  require_command "$cmd"
+done
+
+for required_file in \
+  "$CLAUDE_PROMPT_TEMPLATE" \
+  "$LAB_DIR/prompts/claude_system.md" \
+  "$CODEX_PROMPT_TEMPLATE" \
+  "$LAB_DIR/prompts/codex_system.md" \
+  "$CODEX_STEERING_PROMPT_TEMPLATE" \
+  "$CODEX_STEERING_SYSTEM_PROMPT"; do
+  require_file "$required_file"
+done
+
+require_file "$CODEX_PROFILE_CONFIG"
+
+if ! [[ "$CODEX_ENV_KEY" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+  echo "lab loop refusing to start: CODEX_ENV_KEY is not a valid environment variable name: $CODEX_ENV_KEY" >&2
+  exit 1
+fi
+
 # Single-instance lock: refuse to start if another loop is already running.
 # Two concurrent loops race on the journal + the working tree; never desired.
 #
-# The lock is process-name-aware: we only treat the PID file as live if the
-# recorded PID belongs to a `run_lab.sh` process. `kill -0 $pid` alone is not
-# enough — after a SIGKILL or crash the PID file is left behind and PIDs get
-# recycled by the kernel, so a fresh unrelated process can falsely satisfy
-# `kill -0`. Verifying the process command guards against that.
+# The lock is process-name-aware: `kill -0 $pid` alone is not enough after a
+# crash because PIDs get recycled. We only treat the PID file as live if the
+# recorded PID still belongs to a run_lab.sh process.
 PID_FILE="$LOG_DIR/run.pid"
 pid_belongs_to_this_loop() {
   local pid="$1"
   [ -n "$pid" ] || return 1
   kill -0 "$pid" 2>/dev/null || return 1
-  # On macOS+Linux `ps -o command=` returns the command line; we match against
-  # the script's basename so any path / interpreter variations still match.
   ps -p "$pid" -o command= 2>/dev/null | grep -q "run_lab\.sh" || return 1
   return 0
 }
 
-# Support an explicit unlock for the operator: `bash lab/run_lab.sh --unlock`
-# removes a stale (or wrong-process) PID file and exits without launching.
 if [ "${1:-}" = "--unlock" ]; then
   if [ -f "$PID_FILE" ]; then
     rm -f "$PID_FILE"
@@ -73,31 +169,29 @@ if [ -f "$PID_FILE" ]; then
   existing_pid=$(cat "$PID_FILE" 2>/dev/null || echo "")
   if [ "$existing_pid" = "$$" ]; then
     # Backward compatibility with the old README launch snippet, which wrote
-    # `$!` to run.pid outside the script. If that race happens, the file names
-    # this process, not a competing loop.
+    # `$!` to run.pid outside the script.
     :
   elif pid_belongs_to_this_loop "$existing_pid"; then
     echo "lab loop already running as PID $existing_pid (see $PID_FILE). Exiting." >&2
     echo "if you're sure it isn't, run: bash lab/run_lab.sh --unlock" >&2
     exit 1
   else
-    # Stale PID file (process died without cleanup, or PID was recycled to an
-    # unrelated process) — remove and continue.
     rm -f "$PID_FILE"
   fi
 fi
 echo $$ > "$PID_FILE"
-
-# Register the cleanup trap *immediately after* claiming the lock so any
-# subsequent failure (set -u, branch check, etc.) still releases it. We catch
-# EXIT in addition to INT/TERM so even normal exits clean up.
-cleanup_pid_file() { rm -f "$PID_FILE"; }
+cleanup_pid_file() {
+  if [ -f "$PID_FILE" ] && [ "$(cat "$PID_FILE" 2>/dev/null || true)" = "$$" ]; then
+    rm -f "$PID_FILE"
+  fi
+}
 trap cleanup_pid_file EXIT
 
 # Branch sanity: we don't want the loop committing to master by accident.
 # If we're on master, branch to `lab/auto` once.
 current_branch=$(git rev-parse --abbrev-ref HEAD)
 if [ "$current_branch" = "master" ] || [ "$current_branch" = "main" ]; then
+  abort_if_dirty "lab loop refusing to auto-branch from $current_branch with uncommitted changes. Commit or stash them first."
   if git show-ref --verify --quiet refs/heads/lab/auto; then
     git checkout lab/auto
   else
@@ -114,7 +208,23 @@ if [ "$actual_branch" != "$expected_branch" ]; then
   exit 1
 fi
 
+abort_if_dirty "lab loop refusing to start: working tree is not clean. Commit or stash human changes before launching the autonomous loop."
+
+if [ -z "${!CODEX_ENV_KEY:-}" ]; then
+  echo "lab loop refusing to start: missing required Codex API env var $CODEX_ENV_KEY for profile $CODEX_PROFILE" >&2
+  exit 1
+fi
+if ! [[ "$STEERING_INTERVAL" =~ ^[1-9][0-9]*$ ]]; then
+  echo "lab loop refusing to start: STEERING_INTERVAL must be a positive integer, got $STEERING_INTERVAL" >&2
+  exit 1
+fi
+
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] lab loop starting on branch $(git rev-parse --abbrev-ref HEAD) (pid $$)" >> "$log_run"
+
+legacy_peer_gaps=$(grep -Rsl '<!-- Codex appends here -->' "$JOURNAL_DIR"/session*.md 2>/dev/null | wc -l | tr -d ' ')
+if [ "${legacy_peer_gaps:-0}" -gt 0 ]; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] warning: $legacy_peer_gaps existing journal entries still contain Codex peer placeholders; new entries are enforced, old entries are not backfilled" | tee -a "$log_run" >&2
+fi
 
 # ----- helpers ------------------------------------------------------------- #
 
@@ -127,7 +237,8 @@ next_session_number() {
       | grep -E '^session[0-9]{4}-' \
       | sed -E 's/^session([0-9]{4}).*/\1/' \
       | sort -n \
-      | tail -n 1
+      | tail -n 1 \
+      || true
   )
   if [ -z "$max" ]; then
     printf '0000'
@@ -135,6 +246,47 @@ next_session_number() {
     # Strip leading zeros for arithmetic, then re-pad.
     printf '%04d' $((10#$max + 1))
   fi
+}
+
+latest_steering_number() {
+  local max
+  max=$(
+    ls "$JOURNAL_DIR" 2>/dev/null \
+      | grep -E '^session[0-9]{4}-codex-steering\.md$' \
+      | sed -E 's/^session([0-9]{4}).*/\1/' \
+      | sort -n \
+      | tail -n 1 \
+      || true
+  )
+  if [ -z "$max" ]; then
+    printf '%d' -1
+  else
+    printf '%d' $((10#$max))
+  fi
+}
+
+regular_sessions_since_latest_steering() {
+  local latest count
+  latest="$(latest_steering_number)"
+  count=0
+  while IFS= read -r entry; do
+    [ -n "$entry" ] || continue
+    case "$entry" in
+      *-codex-steering.md) continue ;;
+    esac
+    local n
+    n="$(echo "$entry" | sed -E 's/^session([0-9]{4}).*/\1/')"
+    if [ $((10#$n)) -gt "$latest" ]; then
+      count=$((count + 1))
+    fi
+  done < <(ls "$JOURNAL_DIR" 2>/dev/null | grep -E '^session[0-9]{4}-.*\.md$' || true)
+  printf '%d' "$count"
+}
+
+should_run_steering() {
+  local since
+  since="$(regular_sessions_since_latest_steering)"
+  [ "$since" -ge "$STEERING_INTERVAL" ]
 }
 
 # Substitute __KEY__ placeholders in a template file. Reads from stdin if
@@ -156,51 +308,44 @@ print(os.environ["CONTENT"].replace("__" + os.environ["KEY"] + "__", os.environ[
   printf '%s' "$content"
 }
 
+kill_tree() {
+  local signal pid children child
+  signal="$1"
+  pid="$2"
+  children="$(pgrep -P "$pid" 2>/dev/null || true)"
+  for child in $children; do
+    kill_tree "$signal" "$child"
+  done
+  kill "-$signal" "$pid" 2>/dev/null || true
+}
+
 # Watchdog: run "$@" with a wall-clock ceiling of $1 seconds. Inline so we
-# don't depend on GNU `timeout` (which is not in macOS base).
-#
-# Implementation: spawn a sidecar that records this shell's PID, sleeps, then
-# kills "$$"'s descendants matching the agent if we're still here. We run the
-# agent itself in the FOREGROUND so redirected stdin reaches it normally (a
-# backgrounded child can lose stdin). The function returns the agent's actual
-# exit code, or 124 (matching GNU `timeout`) when the watchdog had to kill it.
-#
-# We mark the killed case by writing a sentinel file the parent shell checks,
-# since a foreground process killed by SIGTERM exits with 143 — which would be
-# indistinguishable from "the agent itself returned 143" without the sentinel.
+# don't depend on GNU `timeout` (which is not in macOS base). The function
+# returns the command's actual exit code, or 124 (matching GNU timeout) when
+# the watchdog had to kill it.
 run_with_watchdog() {
   local secs=$1
   shift
-  local parent_pid=$$
-  local sentinel
+  local child watchdog rc sentinel
   sentinel=$(mktemp -t rlh_wd_XXXXXX) || return 2
+  "$@" &
+  child=$!
+  ACTIVE_CHILD="$child"
   (
     sleep "$secs"
-    # If parent is still alive, the foreground child has not exited yet. Mark
-    # the kill and signal the parent's process group so the foreground agent
-    # dies. We avoid killing the parent shell itself by targeting only the
-    # most-recently-forked descendant.
-    if kill -0 "$parent_pid" 2>/dev/null; then
+    if kill -0 "$child" 2>/dev/null; then
       touch "$sentinel.killed"
-      # Find the agent child of the parent shell and SIGTERM it. There should
-      # be exactly one — the foreground command we're about to launch.
-      local kids
-      kids=$(pgrep -P "$parent_pid" 2>/dev/null || true)
-      for k in $kids; do
-        kill -TERM "$k" 2>/dev/null || true
-      done
+      kill_tree TERM "$child"
       sleep 5
-      for k in $kids; do
-        kill -KILL "$k" 2>/dev/null || true
-      done
+      kill_tree KILL "$child"
     fi
   ) &
-  local watchdog=$!
-  # Run the agent in the FOREGROUND. stdin/stdout/stderr inherit from the
-  # caller, including any redirected stdin we were given.
-  "$@"
-  local rc=$?
-  # Agent returned on its own — cancel the watchdog.
+  watchdog=$!
+  wait "$child" 2>/dev/null
+  rc=$?
+  if [ "${ACTIVE_CHILD:-}" = "$child" ]; then
+    ACTIVE_CHILD=""
+  fi
   kill "$watchdog" 2>/dev/null || true
   wait "$watchdog" 2>/dev/null || true
   if [ -e "$sentinel.killed" ]; then
@@ -210,9 +355,27 @@ run_with_watchdog() {
   return "$rc"
 }
 
+stop_active_child() {
+  if [ -n "${ACTIVE_CHILD:-}" ] && kill -0 "$ACTIVE_CHILD" 2>/dev/null; then
+    kill_tree TERM "$ACTIVE_CHILD"
+    sleep 5
+    kill_tree KILL "$ACTIVE_CHILD"
+  fi
+}
+
+handle_signal() {
+  local signal code
+  signal="$1"
+  code="$2"
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] lab loop stopping after $signal" >> "$log_run"
+  stop_active_child
+  exit "$code"
+}
+
 # ----- main loop ----------------------------------------------------------- #
 
-trap 'echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] lab loop stopping" >> "$log_run"; exit 0' INT TERM
+trap 'handle_signal SIGINT 130' INT
+trap 'handle_signal SIGTERM 143' TERM
 
 while true; do
   # Per-iteration branch guard: if something switched the working tree off
@@ -223,11 +386,71 @@ while true; do
     exit 1
   fi
 
+  abort_if_dirty "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] lab loop aborting: working tree became dirty before starting a new session. Resolve these changes first."
+
   session_num="$(next_session_number)"
   iter_dir="$LOG_DIR/iter-$session_num"
   mkdir -p "$iter_dir"
 
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] === session $session_num starting ===" | tee -a "$log_run"
+
+  if should_run_steering; then
+    steering_entry_path="docs/journal/session${session_num}-codex-steering.md"
+    echo "session $session_num steering: $steering_entry_path" | tee -a "$log_run"
+    steering_prompt="$(render_template "$CODEX_STEERING_PROMPT_TEMPLATE" SESSION_NUMBER "$session_num" JOURNAL_ENTRY_PATH "$steering_entry_path" STEERING_INTERVAL "$STEERING_INTERVAL")"
+    printf '%s' "$steering_prompt" > "$iter_dir/codex_steering_prompt.txt"
+
+    run_with_watchdog "$AGENT_WATCHDOG_SECS" codex -a never exec \
+      -p "$CODEX_PROFILE" \
+      -c "model_instructions_file=\"$CODEX_STEERING_SYSTEM_PROMPT\"" \
+      --sandbox workspace-write \
+      -C "$REPO_ROOT" \
+      --skip-git-repo-check \
+      --ephemeral \
+      "$steering_prompt" \
+      < /dev/null \
+      > "$iter_dir/codex_steering_stdout.txt" 2> "$iter_dir/codex_steering_stderr.txt"
+    steering_exit=$?
+    echo "codex steering exit=$steering_exit" >> "$log_run"
+
+    if [ "$steering_exit" -ne 0 ]; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: Codex steering failed with exit $steering_exit; leaving changes uncommitted and stopping" | tee -a "$log_run" >&2
+      exit 1
+    fi
+    if [ ! -s "$steering_entry_path" ]; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: Codex steering did not create $steering_entry_path; stopping" | tee -a "$log_run" >&2
+      exit 1
+    fi
+    if ! grep -q '^session kind: steer$' "$steering_entry_path"; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: steering entry is missing 'session kind: steer'; stopping" | tee -a "$log_run" >&2
+      exit 1
+    fi
+    if ! grep -q '^author: Codex$' "$steering_entry_path"; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: steering entry is missing 'author: Codex'; stopping" | tee -a "$log_run" >&2
+      exit 1
+    fi
+    if grep -q '<!-- Codex appends here -->\|^## Peer note' "$steering_entry_path"; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: steering entry looks like a peer-reviewed Claude entry; stopping" | tee -a "$log_run" >&2
+      exit 1
+    fi
+    assert_only_changed_path "$steering_entry_path"
+
+    git add -A
+    if git diff --cached --quiet; then
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: steering produced nothing to commit; stopping" | tee -a "$log_run" >&2
+      exit 1
+    else
+      if ! git commit -m "session $session_num: codex steering memo" >> "$log_run" 2>&1; then
+        echo "commit failed" | tee -a "$log_run" >&2
+        exit 1
+      fi
+    fi
+    abort_if_dirty "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: working tree still dirty after steering commit; stopping"
+
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] === session $session_num steering done ===" | tee -a "$log_run"
+    sleep $(( 5 + RANDOM % 20 ))
+    continue
+  fi
 
   # 1) Claude session.
   claude_prompt="$(render_template "$CLAUDE_PROMPT_TEMPLATE" SESSION_NUMBER "$session_num")"
@@ -237,14 +460,10 @@ while true; do
   # Claude added.
   before_entries="$(ls "$JOURNAL_DIR" 2>/dev/null | sort)"
 
-  set +e
   # NOTE: --add-dir is variadic (<directories...>), so any positional that
   # follows it gets consumed as another directory and the prompt is lost.
-  # Feed the prompt on stdin from a file. Do not pipe into run_with_watchdog:
-  # in macOS bash 3.2 the function then runs in a pipeline subshell while $$
-  # still names the parent shell, so the watchdog cannot find/kill the agent.
-  # The wrapping watchdog is NOT a normal-case budget — a healthy session is
-  # 1-5 min; it exists only to recover from a stuck CLI process.
+  # Feed the prompt on stdin from a file. Do not pipe into run_with_watchdog;
+  # pipeline subshell behavior makes process supervision brittle on macOS bash.
   run_with_watchdog "$AGENT_WATCHDOG_SECS" claude -p \
     --bare \
     --system-prompt-file "$LAB_DIR/prompts/claude_system.md" \
@@ -260,22 +479,22 @@ while true; do
     < "$iter_dir/claude_prompt.txt" \
     > "$iter_dir/claude_stdout.txt" 2> "$iter_dir/claude_stderr.txt"
   claude_exit=$?
-  set -e
   echo "claude exit=$claude_exit" >> "$log_run"
 
   after_entries="$(ls "$JOURNAL_DIR" 2>/dev/null | sort)"
   new_entry="$(comm -13 <(echo "$before_entries") <(echo "$after_entries") | grep -E "^session${session_num}-.*\.md$" | head -n 1 || true)"
 
   if [ -z "$new_entry" ]; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: Claude did not create a journal entry; logging and moving on" | tee -a "$log_run"
-    # Commit anything else Claude might have done so we don't carry it forward.
-    git add -A
-    if ! git diff --cached --quiet; then
-      git commit -m "session $session_num: claude produced no journal entry, recording side effects" >> "$log_run" 2>&1 || true
-    fi
-    sleep 30
-    continue
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: Claude did not create a journal entry; leaving changes uncommitted and stopping" | tee -a "$log_run" >&2
+    exit 1
   fi
+
+  case "$new_entry" in
+    *-codex-steering.md)
+      echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: Claude created reserved steering filename $new_entry; stopping" | tee -a "$log_run" >&2
+      exit 1
+      ;;
+  esac
 
   entry_path="docs/journal/$new_entry"
   echo "session $session_num entry: $entry_path" | tee -a "$log_run"
@@ -284,24 +503,40 @@ while true; do
   codex_prompt="$(render_template "$CODEX_PROMPT_TEMPLATE" JOURNAL_ENTRY_PATH "$entry_path")"
   printf '%s' "$codex_prompt" > "$iter_dir/codex_prompt.txt"
 
-  set +e
   # Watchdog (NOT a normal-case budget). Codex peer review typically completes
   # in 1-3 min; the long ceiling is only to recover from a stuck CLI process
   # (the node wrapper occasionally fails to propagate exit from the native
   # helper, leaving codex hung indefinitely).
-  run_with_watchdog "$AGENT_WATCHDOG_SECS" codex exec \
-    -p hai \
+  run_with_watchdog "$AGENT_WATCHDOG_SECS" codex -a never exec \
+    -p "$CODEX_PROFILE" \
     -c "model_instructions_file=\"$LAB_DIR/prompts/codex_system.md\"" \
     --sandbox workspace-write \
-    --dangerously-bypass-approvals-and-sandbox \
     -C "$REPO_ROOT" \
     --skip-git-repo-check \
+    --ephemeral \
     "$codex_prompt" \
     < /dev/null \
     > "$iter_dir/codex_stdout.txt" 2> "$iter_dir/codex_stderr.txt"
   codex_exit=$?
-  set -e
   echo "codex exit=$codex_exit" >> "$log_run"
+
+  if [ "$codex_exit" -ne 0 ]; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: Codex failed with exit $codex_exit; leaving changes uncommitted and stopping" | tee -a "$log_run" >&2
+    exit 1
+  fi
+
+  if ! grep -q '^## Peer note' "$entry_path"; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: Codex/Claude entry has no ## Peer note section; leaving changes uncommitted and stopping" | tee -a "$log_run" >&2
+    exit 1
+  fi
+
+  if grep -q '<!-- Codex appends here -->' "$entry_path"; then
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: Codex left peer-note placeholder unchanged; leaving changes uncommitted and stopping" | tee -a "$log_run" >&2
+    exit 1
+  fi
+
+  assert_no_substrate_changes
+  assert_no_other_journal_changes "$entry_path"
 
   # 3) Commit. Descriptive, not verdictive. We pull a one-line summary from
   # the entry's first non-heading non-empty line, falling back to the slug.
@@ -320,10 +555,15 @@ while true; do
 
   git add -A
   if git diff --cached --quiet; then
-    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: nothing to commit (entry not written?)" | tee -a "$log_run"
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: nothing to commit (entry not written?); stopping" | tee -a "$log_run" >&2
+    exit 1
   else
-    git commit -m "$msg" >> "$log_run" 2>&1 || echo "commit failed" | tee -a "$log_run"
+    if ! git commit -m "$msg" >> "$log_run" 2>&1; then
+      echo "commit failed" | tee -a "$log_run" >&2
+      exit 1
+    fi
   fi
+  abort_if_dirty "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] session $session_num: working tree still dirty after commit; stopping"
 
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] === session $session_num done ===" | tee -a "$log_run"
 

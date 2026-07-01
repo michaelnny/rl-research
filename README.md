@@ -115,7 +115,7 @@ claude -p --bare --system-prompt-file lab/prompts/claude_system.md \
 Codex (replaces `base_instructions` for this run only):
 
 ```bash
-codex exec -p hai \
+codex -a never exec -p hai \
   -c "model_instructions_file=\"$(pwd)/lab/prompts/codex_system.md\"" \
   --sandbox read-only --skip-git-repo-check --ephemeral \
   'In one sentence, what kind of lab are you in?' < /dev/null
@@ -129,6 +129,10 @@ agent, the override didn't load — check that the path in
 ### Launch the loop
 
 ```bash
+# Refuses to start unless the worktree is clean and HAI_OPENAI_API_KEY
+# is exported in this shell.
+git status --short
+
 # Forever, detached:
 mkdir -p lab/logs
 nohup bash lab/run_lab.sh > lab/logs/console.log 2>&1 &
@@ -138,9 +142,12 @@ tmux new -s rl-lab 'bash lab/run_lab.sh'
 ```
 
 The loop auto-branches off `master` to `lab/auto`, so the main branch
-is never auto-committed to. Each iteration is one session, recorded
-as one journal entry in `docs/journal/`, committed once Claude writes
-it and Codex appends a `## Peer note`.
+is never auto-committed to. It refuses to start from a dirty worktree,
+because each successful autonomous session is committed with `git add -A`.
+Regular iterations are Claude journal entries followed by
+mandatory Codex peer notes. After several regular sessions, the loop
+inserts a Codex-authored steering memo before the next Claude session
+to break local-search drift.
 
 ### Watching it
 
@@ -158,17 +165,24 @@ kill $(cat lab/logs/run.pid)        # nohup
 # or Ctrl-C inside the tmux session
 ```
 
-The loop catches `SIGINT`/`SIGTERM` and exits cleanly between
-iterations.
+The loop catches `SIGINT`/`SIGTERM`, stops the active agent process
+tree if one is running, and removes `lab/logs/run.pid`.
 
 ## How sessions work
 
-Per iteration (≈ 5-20 minutes wall-clock on Opus max-effort):
+Per regular iteration (≈ 5-20 minutes wall-clock on Opus max-effort):
 
 1. Loop reads the next session number from `docs/journal/`.
 2. Loop invokes `claude -p --bare --system-prompt-file lab/prompts/claude_system.md ...` with a tiny user prompt that names the session number. Claude reads the recent journal, picks a session kind (read/play/propose/implement/synthesize/tool-build), does the work, and writes `docs/journal/sessionNNNN-<slug>.md` ending in an empty `## Peer note` section.
-3. Loop invokes `codex exec -p hai -c model_instructions_file=... ...` pointing at the new entry. Codex reads the entry (and any artifacts it depends on) and appends a peer note.
+3. Loop invokes `codex -a never exec -p hai -c model_instructions_file=... ...` pointing at the new entry. Codex reads the entry (and any artifacts it depends on) and appends a peer note. If Codex exits nonzero, leaves the placeholder unchanged, or edits the wrong journal file, the loop stops instead of committing.
 4. Loop commits with a descriptive non-verdictive message and starts the next iteration.
+
+Every `STEERING_INTERVAL` regular Claude sessions (default: 5), the
+next session number is used for a Codex-authored steering memo instead:
+`docs/journal/sessionNNNN-codex-steering.md`. Claude's following
+session is explicitly prompted to pick up one of the memo's leads.
+Set `STEERING_INTERVAL=0` is not supported; use a larger positive
+integer if you want steering less often.
 
 Full operator's manual is in [`lab/README.md`](lab/README.md).
 
@@ -176,9 +190,10 @@ Full operator's manual is in [`lab/README.md`](lab/README.md).
 
 Read `lab/README.md` → "What 'good' looks like" for the early-warning
 signs (session-kind monoculture, peer notes turning into verdicts,
-files under `src/rlh_bench/` changing). The loop is dumb on purpose;
-the human's job is to watch the journal and intervene by hand when
-the disposition slips.
+files under `src/rlh_bench/` changing). The runner now refuses to
+commit substrate changes, but the loop is still dumb on purpose; the
+human's job is to watch the journal and intervene by hand when the
+disposition slips.
 
 ## Tests
 

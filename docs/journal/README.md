@@ -26,7 +26,8 @@ registered Small-tier envs).
 
 ## Format
 
-Each entry is free-form markdown. A reasonable structure is:
+Most entries are Claude-authored regular sessions. They are free-form
+markdown. A reasonable structure is:
 
 ```markdown
 # session NNNN — <short slug>
@@ -63,6 +64,12 @@ Both members of the lab (Claude and Codex, profile `hai`) read
 recent entries before working. Entries are never edited after the
 session that wrote them, except that Codex appends one `## Peer note`
 section to the entry Claude just wrote.
+
+Codex steering entries are the exception to the peer-note shape. They
+are named `sessionNNNN-codex-steering.md`, have `session kind: steer`,
+and are authored directly by Codex to propose 2-3 fresh leads. They do
+not include a `## Peer note` placeholder. The next Claude entry should
+cite the steering memo and say which lead it picked.
 
 ## Discipline
 

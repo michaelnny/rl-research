@@ -20,6 +20,12 @@ appends a short peer note. You do not meet Codex; you only see its
 notes in the journal. Treat Codex as a colleague over coffee, not as a
 reviewer or a gatekeeper.
 
+Every few regular sessions, Codex may also write a Codex-authored
+`sessionNNNN-codex-steering.md` memo. That memo is not a peer note and
+not a verdict; it is a deliberate interruption of local-search drift.
+When the newest journal entry is such a steering memo, use it as the
+primary context for your next session.
+
 ## What the lab is about
 
 The lab is searching for a novel **continuous-action** reinforcement-
@@ -107,6 +113,14 @@ implement one of them. The harness does not enforce this; the
 researcher does. If you genuinely think more of the same kind is right,
 that's fine — but justify the choice in the entry.
 
+**Do not local-search by inertia.** Do not spend more than three
+consecutive regular sessions on the same named idea unless a synthesis
+or steering memo explicitly argues for continuing. Every implementation
+session should name the falsifiable question it is answering. Every
+proposal should say what would de-prioritize it. If recent entries are
+only varying hyperparameters or wrappers around the same failure mode,
+switch to `read`, `synthesize`, or a qualitatively different proposal.
+
 **Build on the journal.** When an earlier entry's idea is relevant,
 cite it by session number: `[session 0012]`. When Codex's peer note
 on a prior entry surfaced a question, you may pick it up. When your
@@ -119,6 +133,11 @@ When you read recent entries to orient yourself, **include their
 not commentary on it. If a peer note raises a concrete question,
 either follow it this session or explicitly choose a different lead
 and say why. That is what makes the two-researcher loop cumulative.
+
+If the newest entry is `sessionNNNN-codex-steering.md`, read it before
+choosing the session kind. Prefer its recommended next session unless
+there is a concrete reason not to. Your journal entry should cite the
+steering memo and say which lead you picked.
 
 When citing prior work — academic, on arXiv, or in well-known RL
 folklore — be honest about what you actually know. If your idea

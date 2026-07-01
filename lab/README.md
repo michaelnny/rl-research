@@ -18,6 +18,10 @@ is the dry operator's manual.
   `base_instructions` for that one invocation.
 - `prompts/codex_peer.md` — thin per-iteration user prompt for Codex;
   carries only the journal entry path and a pointer to begin.
+- `prompts/codex_steering_system.md` — Codex's steering prompt for
+  periodic research-direction memos.
+- `prompts/codex_steering.md` — thin steering-session user prompt;
+  carries the target journal path and steering cadence.
 - `run_lab.sh` — the dumb loop that wires the two together and
   commits.
 - `logs/` — per-iteration logs (`iter-NNNN/{claude,codex}_{stdout,stderr,prompt}.txt`)
@@ -37,6 +41,10 @@ is the dry operator's manual.
 Forever, detached:
 
 ```bash
+# Refuses to start unless the worktree is clean and HAI_OPENAI_API_KEY
+# is exported in this shell.
+git status --short
+
 mkdir -p lab/logs
 nohup bash lab/run_lab.sh > lab/logs/console.log 2>&1 &
 ```
@@ -49,7 +57,8 @@ tmux new -s rl-lab 'bash lab/run_lab.sh'
 ```
 
 The loop auto-branches off `master` to `lab/auto` on first run so the
-main branch is never auto-committed to.
+main branch is never auto-committed to. It refuses to start from a
+dirty worktree; commit or stash human edits before launching it.
 
 ## Stopping
 
@@ -57,8 +66,9 @@ main branch is never auto-committed to.
 kill $(cat lab/logs/run.pid)
 ```
 
-or `Ctrl-C` in the tmux. The loop catches `SIGINT`/`SIGTERM` and exits
-cleanly between iterations.
+or `Ctrl-C` in the tmux. The loop catches `SIGINT`/`SIGTERM`, stops
+the active agent process tree if one is running, and removes
+`lab/logs/run.pid`.
 
 ## Watching
 
@@ -78,18 +88,23 @@ research group thinking. A run is healthy when:
 - Session kinds vary: `read`, `play`, `propose`, `implement`,
   `synthesize`, `tool-build` all appear over time.
 - Peer notes engage with the entry rather than rubber-stamping it.
+- `sessionNNNN-codex-steering.md` appears roughly every few regular
+  sessions, and the following Claude entry engages with one of its
+  leads.
 - Bad ideas appear honestly and get picked up or refuted later.
 - The substrate (`src/rlh_bench/`) is unchanged across the run.
 
 A run is unhealthy if:
 
 - Every entry is `implement`, or every entry is `propose`. The harness
-  doesn't enforce balance; if the journal monocultures, intervene by
-  hand.
+  now inserts steering memos, but if the journal still monocultures,
+  intervene by hand.
 - Peer notes start scoring or verdict-tagging. Tighten the Codex
   prompt or stop the loop.
-- Files under `src/rlh_bench/` start changing. Stop the loop. Revert.
-  Re-read `CLAUDE.md` together with the agent next time.
+- Files under `src/rlh_bench/` start changing. The runner refuses to
+  commit substrate edits, but if you see them in a stopped worktree,
+  inspect and revert by hand. Re-read `CLAUDE.md` together with the
+  agent next time.
 
 ## Disposition reminder
 

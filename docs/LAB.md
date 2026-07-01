@@ -20,8 +20,9 @@ rationale.
 The lab has two members:
 
 - **Claude** — works one session at a time, writes a journal entry.
-- **Codex** (profile `hai`) — reads the entry afterwards as a peer
-  and adds a `## Peer note` section to the same entry.
+- **Codex** (profile `hai`) — reads Claude entries afterwards as a
+  peer and adds a `## Peer note` section. Every few regular sessions,
+  Codex also writes a short steering memo with fresh research leads.
 
 Neither agent reviews the other. There is no gatekeeper, no verdict,
 no scoring.
@@ -48,18 +49,20 @@ a downstream consequence of the journal being honest and varied.
 
 ## How a session works
 
-A session is one `claude -p` invocation followed by one
-`codex exec -p hai` invocation. The Claude side does whatever a
-thoughtful researcher in this lab would do right now — the disposition
-and the menu of session kinds are in `lab/prompts/claude_system.md`
-(loaded as Claude's system prompt via `--bare --system-prompt-file`).
-The Codex side reads what just got written and reacts as a colleague
-would — its disposition is in `lab/prompts/codex_system.md` (loaded via
-`-c model_instructions_file=...`). Both per-iteration user prompts
-(`claude_session.md`, `codex_peer.md`) are deliberately tiny; the
-system prompts are the source of truth. Then the loop commits the
-journal entry with a descriptive (not verdictive) message and starts
-the next session.
+A regular session is one `claude -p` invocation followed by one
+`codex -a never exec -p hai` peer-note invocation. The Claude side
+does whatever a thoughtful researcher in this lab would do right now —
+the disposition and the menu of session kinds are in
+`lab/prompts/claude_system.md` (loaded as Claude's system prompt via
+`--bare --system-prompt-file`). The Codex peer side reads what just got
+written and reacts as a colleague would — its disposition is in
+`lab/prompts/codex_system.md`.
+
+Every few regular sessions, the loop instead asks Codex to write
+`sessionNNNN-codex-steering.md`: a short memo with 2-3 next-session
+leads and one recommended lead for Claude. The following Claude prompt
+explicitly tells Claude to use that memo rather than continuing by
+inertia.
 
 ## The only hard rules
 
@@ -87,10 +90,12 @@ Everything else is the agent's call. Speculate freely.
 - `docs/journal/` — every session's entry, append-only.
 - `lab/prompts/claude_system.md` — Claude's lab system prompt (the
   source of truth for how Claude should behave in a session).
-- `lab/prompts/codex_system.md` — Codex's lab system prompt (peer
-  reviewer disposition).
-- `lab/prompts/{claude_session,codex_peer}.md` — thin per-iteration
-  user prompts; the system prompts above carry the substance.
+- `lab/prompts/codex_system.md` — Codex's peer-note system prompt.
+- `lab/prompts/codex_steering_system.md` — Codex's steering-memo
+  system prompt.
+- `lab/prompts/{claude_session,codex_peer,codex_steering}.md` — thin
+  per-iteration user prompts; the system prompts above carry the
+  substance.
 - `lab/run_lab.sh` — the dumb loop.
 - `lab/README.md` — operator's manual (start/stop/watch).
 - `CLAUDE.md` — project-level rules of engagement.

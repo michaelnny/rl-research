@@ -84,9 +84,8 @@ commits. Do not let the loop write to `master`.
   - [`journal/`](docs/journal/) — append-only research journal.
 - `lab/` — the loop itself:
   - [`run_lab.sh`](lab/run_lab.sh) — the loop.
-  - [`prompts/`](lab/prompts/) — the four production prompts
-    (`claude_system.md`, `claude_session.md`, `codex_system.md`,
-    `codex_peer.md`).
+  - [`prompts/`](lab/prompts/) — production prompts for Claude
+    sessions, Codex peer notes, and Codex steering memos.
   - [`notes/`](lab/notes/) — lab-meta artifacts (substrate design,
     peer reviews, audit). Subfolders: `planning/`, `reviews/`,
     `briefs/`. See [`lab/notes/README.md`](lab/notes/README.md) for
