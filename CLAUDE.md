@@ -47,7 +47,7 @@ is information about the algorithm. Then do not break it.
 ## How the lab operates
 
 The repository runs an autonomous research loop. Two AI agents
-(Claude and Codex/hai) take turns each iteration: Claude writes a
+(Claude and Codex/jelly) take turns each iteration: Claude writes a
 journal entry to `lab/journal/`, Codex appends a `## Peer note` to
 the same entry. The loop is [`lab/run_lab.sh`](lab/run_lab.sh); the
 operator's manual is [`lab/README.md`](lab/README.md); the lab's

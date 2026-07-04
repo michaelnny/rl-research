@@ -4,13 +4,13 @@
 # Per iteration:
 #   1. Pick the next session number from lab/journal/.
 #   2. If enough Claude sessions have accumulated since the last Codex
-#      steering memo, run `codex -a never exec -p hai` to write
+#      steering memo, run `codex -a never exec -p jelly` to write
 #      lab/journal/sessionNNNN-codex-steering.md, commit it, and move on.
 #   3. Otherwise render the Claude prompt with that number; run `claude -p`.
 #      Claude writes lab/journal/sessionNNNN-<slug>.md.
 #   4. Find the journal entry Claude just created.
 #   5. Render the Codex peer prompt with that path; run
-#      `codex -a never exec -p hai`
+#      `codex -a never exec -p jelly`
 #      to append a `## Peer note`.
 #   6. Commit whatever changed under a non-verdictive descriptive message.
 #   7. Sleep a small jitter so back-to-back failures don't burn API tokens at
@@ -34,8 +34,8 @@ CLAUDE_PROMPT_TEMPLATE="$LAB_DIR/prompts/claude_session.md"
 CODEX_PROMPT_TEMPLATE="$LAB_DIR/prompts/codex_peer.md"
 CODEX_STEERING_PROMPT_TEMPLATE="$LAB_DIR/prompts/codex_steering.md"
 CODEX_STEERING_SYSTEM_PROMPT="$LAB_DIR/prompts/codex_steering_system.md"
-CODEX_PROFILE="${CODEX_PROFILE:-hai}"
-CODEX_ENV_KEY="${CODEX_ENV_KEY:-HAI_OPENAI_API_KEY}"
+CODEX_PROFILE="${CODEX_PROFILE:-jelly}"
+CODEX_ENV_KEY="${CODEX_ENV_KEY:-JELLY_OPENAI_API_KEY}"
 CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
 CODEX_PROFILE_CONFIG="$CODEX_HOME_DIR/${CODEX_PROFILE}.config.toml"
 STEERING_INTERVAL="${STEERING_INTERVAL:-5}"
