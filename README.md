@@ -78,10 +78,8 @@ work but isn't covered by the smoke tests.
   v2.1+ — needed by the loop. Authenticated with whatever method your
   Anthropic account uses.
 - [Codex CLI](https://developers.openai.com/codex/) v0.142+ — needed
-  by the loop. A custom profile named `jelly` is expected at
-  `~/.codex/jelly.config.toml` pointing at whichever provider you use.
-  The provider's API key must be exported in the environment variable
-  the profile names (e.g. `JELLY_OPENAI_API_KEY`).
+  by the loop. The provider's API key must be exported as `OPENAI_API_KEY`
+  (or override via `CODEX_ENV_KEY=YOUR_VAR_NAME`).
 
 ### Bootstrap
 
@@ -117,7 +115,7 @@ claude -p --bare --system-prompt-file lab/prompts/claude_system.md \
 Codex (replaces `base_instructions` for this run only):
 
 ```bash
-codex -a never exec -p jelly \
+codex -a never exec \
   -c "model_instructions_file=\"$(pwd)/lab/prompts/codex_system.md\"" \
   --sandbox read-only --skip-git-repo-check --ephemeral \
   'In one sentence, what kind of lab are you in?' < /dev/null
@@ -131,7 +129,7 @@ agent, the override didn't load — check that the path in
 ### Launch the loop
 
 ```bash
-# Refuses to start unless the worktree is clean and HAI_OPENAI_API_KEY
+# Refuses to start unless the worktree is clean and OPENAI_API_KEY
 # is exported in this shell.
 git status --short
 
@@ -177,7 +175,7 @@ Per regular iteration (≈ 5-20 minutes wall-clock on Opus max-effort):
 
 1. Loop reads the next session number from `lab/journal/`.
 2. Loop invokes `claude -p --bare --system-prompt-file lab/prompts/claude_system.md ...` with a tiny user prompt that names the session number. Claude reads the recent journal, picks a session kind (read/play/propose/implement/synthesize/tool-build), does the work, and writes `lab/journal/sessionNNNN-<slug>.md` ending in an empty `## Peer note` section.
-3. Loop invokes `codex -a never exec -p jelly -c model_instructions_file=... ...` pointing at the new entry. Codex reads the entry (and any artifacts it depends on) and appends a peer note. If Codex exits nonzero, leaves the placeholder unchanged, or edits the wrong journal file, the loop stops instead of committing.
+3. Loop invokes `codex -a never exec -c model_instructions_file=... ...` pointing at the new entry. Codex reads the entry (and any artifacts it depends on) and appends a peer note. If Codex exits nonzero, leaves the placeholder unchanged, or edits the wrong journal file, the loop stops instead of committing.
 4. Loop commits with a descriptive non-verdictive message and starts the next iteration.
 
 Every `STEERING_INTERVAL` regular Claude sessions (default: 5), the

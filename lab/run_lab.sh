@@ -4,13 +4,13 @@
 # Per iteration:
 #   1. Pick the next session number from lab/journal/.
 #   2. If enough Claude sessions have accumulated since the last Codex
-#      steering memo, run `codex -a never exec -p jelly` to write
+#      steering memo, run `codex -a never exec` to write
 #      lab/journal/sessionNNNN-codex-steering.md, commit it, and move on.
 #   3. Otherwise render the Claude prompt with that number; run `claude -p`.
 #      Claude writes lab/journal/sessionNNNN-<slug>.md.
 #   4. Find the journal entry Claude just created.
 #   5. Render the Codex peer prompt with that path; run
-#      `codex -a never exec -p jelly`
+#      `codex -a never exec`
 #      to append a `## Peer note`.
 #   6. Commit whatever changed under a non-verdictive descriptive message.
 #   7. Sleep a small jitter so back-to-back failures don't burn API tokens at
@@ -34,10 +34,7 @@ CLAUDE_PROMPT_TEMPLATE="$LAB_DIR/prompts/claude_session.md"
 CODEX_PROMPT_TEMPLATE="$LAB_DIR/prompts/codex_peer.md"
 CODEX_STEERING_PROMPT_TEMPLATE="$LAB_DIR/prompts/codex_steering.md"
 CODEX_STEERING_SYSTEM_PROMPT="$LAB_DIR/prompts/codex_steering_system.md"
-CODEX_PROFILE="${CODEX_PROFILE:-jelly}"
-CODEX_ENV_KEY="${CODEX_ENV_KEY:-JELLY_OPENAI_API_KEY}"
-CODEX_HOME_DIR="${CODEX_HOME:-$HOME/.codex}"
-CODEX_PROFILE_CONFIG="$CODEX_HOME_DIR/${CODEX_PROFILE}.config.toml"
+CODEX_ENV_KEY="${CODEX_ENV_KEY:-OPENAI_API_KEY}"
 STEERING_INTERVAL="${STEERING_INTERVAL:-5}"
 # Watchdog upper bound for each agent call (seconds). Far above the normal
 # wall-clock of a session — present only to recover from a stuck CLI process
@@ -134,8 +131,6 @@ for required_file in \
   require_file "$required_file"
 done
 
-require_file "$CODEX_PROFILE_CONFIG"
-
 if ! [[ "$CODEX_ENV_KEY" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
   echo "lab loop refusing to start: CODEX_ENV_KEY is not a valid environment variable name: $CODEX_ENV_KEY" >&2
   exit 1
@@ -212,7 +207,7 @@ fi
 abort_if_dirty "lab loop refusing to start: working tree is not clean. Commit or stash human changes before launching the autonomous loop."
 
 if [ -z "${!CODEX_ENV_KEY:-}" ]; then
-  echo "lab loop refusing to start: missing required Codex API env var $CODEX_ENV_KEY for profile $CODEX_PROFILE" >&2
+  echo "lab loop refusing to start: missing required Codex API env var $CODEX_ENV_KEY" >&2
   exit 1
 fi
 if ! [[ "$STEERING_INTERVAL" =~ ^[1-9][0-9]*$ ]]; then
@@ -411,8 +406,8 @@ while true; do
     printf '%s' "$steering_prompt" > "$iter_dir/codex_steering_prompt.txt"
 
     run_with_watchdog "$AGENT_WATCHDOG_SECS" codex -a never exec \
-      -p "$CODEX_PROFILE" \
       -c "model_instructions_file=\"$CODEX_STEERING_SYSTEM_PROMPT\"" \
+      -c 'model_reasoning_effort="high"' \
       --sandbox workspace-write \
       -C "$REPO_ROOT" \
       --skip-git-repo-check \
@@ -518,8 +513,8 @@ while true; do
   # (the node wrapper occasionally fails to propagate exit from the native
   # helper, leaving codex hung indefinitely).
   run_with_watchdog "$AGENT_WATCHDOG_SECS" codex -a never exec \
-    -p "$CODEX_PROFILE" \
     -c "model_instructions_file=\"$LAB_DIR/prompts/codex_system.md\"" \
+    -c 'model_reasoning_effort="high"' \
     --sandbox workspace-write \
     -C "$REPO_ROOT" \
     --skip-git-repo-check \
