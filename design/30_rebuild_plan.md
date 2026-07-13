@@ -3,8 +3,9 @@
 Status: execution plan
 
 Progress on 2026-07-13: Milestone 1's replacement kernel is implemented and
-tested. Milestone 2's FactorLab scientific kernel and preference-conditioned
-candidate evaluation path are implemented but remain under calibration.
+tested. The original Milestone 2 implementation was rejected because it made
+tabular cue lookup the central learner. Neural FactorLab v1 and the batched
+neural candidate protocol replace it; no v0 calibration result carries over.
 Milestone 4's deterministic campaign controller is implemented ahead of the
 applied families, but its seven-day exit condition has not been run. No applied
 family is implemented or qualified. The legacy package, environments, tests,
@@ -67,6 +68,10 @@ Deliverables:
 - intervention-based causal audit;
 - training/evaluation budget enforcement; and
 - a baseline fingerprint over horizon, causal lag, and action structure.
+- continuous procedural observations and a nonlinear suite-shared kernel that
+  require neural representation generalization;
+- compact MLP/recurrent neural reference learners with parameter and GPU-hour
+  accounting; and
 
 Exit condition: changing one controlled factor produces the predicted baseline
 sensitivity while non-target factors remain bounded.
@@ -101,10 +106,10 @@ final audit that no new module imports or relies on legacy code.
 
 ## Immediate next implementation slice
 
-Complete FactorLab qualification rather than adding benchmark stories:
+Complete Neural FactorLab v1 qualification rather than adding benchmark stories:
 
 1. extend isolated evaluation to every action and vector-objective protocol;
-2. implement the remaining contrastive reference algorithms;
+2. implement the remaining compact neural contrastive reference algorithms;
 3. execute the preregistered fractional factor-sensitivity study across worlds
    and training seeds;
 4. build an independent causal/oracle audit path;

@@ -1,6 +1,21 @@
-"""Reference learners and explicitly labeled diagnostic probes."""
+"""Compact neural reference learners and process-isolated candidate tools."""
 
-from .probes import cue_oracle_probe
-from .tabular import EpisodeResult, FactorizedReinforce, TabularReinforce
+from .neural import (
+    BranchingActorCritic,
+    EpisodeResult,
+    NeuralModelManifest,
+    NeuralReferenceConfig,
+    NeuralTrainingResult,
+    evaluate_actor_critic,
+    train_actor_critic,
+)
 
-__all__ = ["EpisodeResult", "FactorizedReinforce", "TabularReinforce", "cue_oracle_probe"]
+__all__ = [
+    "BranchingActorCritic",
+    "EpisodeResult",
+    "NeuralModelManifest",
+    "NeuralReferenceConfig",
+    "NeuralTrainingResult",
+    "evaluate_actor_critic",
+    "train_actor_critic",
+]

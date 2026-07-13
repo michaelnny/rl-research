@@ -11,18 +11,13 @@ from rlx_agents.evaluate import CandidateEvaluationConfig, evaluate_candidate
 from rlx_agents.ipc import CandidateClient, CandidateProcessLimits, CandidateProtocolError
 
 
-GOOD_CANDIDATE = r"""
-import itertools
+PROTOCOL_FIXTURE = r"""
+import hashlib
 import json
 import os
 import sys
 
-phase = None
-hypotheses = None
-episode = 0
-scores = {}
-current = None
-best = None
+factors = 1
 for line in sys.stdin:
     message = json.loads(line)
     kind = message["type"]
@@ -30,38 +25,34 @@ for line in sys.stdin:
         if "RLX_FACTORLAB_SUITE_KEY_FILE" in os.environ:
             print(json.dumps({"type": "secret_leaked"}), flush=True)
             continue
-        phase = message["phase"]
-        if phase == "evaluation":
-            best = message["checkpoint"]["best"]
-        print(json.dumps({"type": "ready"}), flush=True)
-    elif kind == "reset":
-        pass
-    elif kind == "act":
-        cue = message["observation"]["revealed_cue"]
-        if hypotheses is None:
-            width = len(cue)
-            hypotheses = [
-                (permutation, signs)
-                for permutation in itertools.permutations(range(width))
-                for signs in itertools.product((-1, 1), repeat=width)
-            ]
-        if phase == "training":
-            public_worlds = message.get("public_worlds", 1)
-            current = hypotheses[min(episode, len(hypotheses) - 1)]
-        else:
-            current = (tuple(best[0]), tuple(best[1]))
-        permutation, signs = current
-        target = [signs[index] * cue[source] for index, source in enumerate(permutation)]
-        action = [1 if value > 0 else 0 for value in target]
-        print(json.dumps({"type": "action", "action": action}), flush=True)
-    elif kind in {"transition", "episode_end"}:
-        if kind == "episode_end" and phase == "training":
-            score = message["return_vector"][0]
-            scores[episode] = score
-            episode += 1
+        factors = len(message["task_spec"]["action_spec"]["factors"])
+        checkpoint = message.get("checkpoint")
+        if checkpoint:
+            path = os.path.join(os.environ["RLX_CANDIDATE_SCRATCH"], checkpoint["artifact"])
+            content = open(path, "rb").read()
+            assert hashlib.sha256(content).hexdigest() == checkpoint["sha256"]
+        manifest = {
+            "model_family": "neural_policy",
+            "architecture": "test_residual_policy",
+            "framework": "test",
+            "trainable_parameters": 32,
+            "recurrent": False,
+            "device": "cpu",
+        }
+        print(json.dumps({"type": "ready", "model_manifest": manifest}), flush=True)
+    elif kind == "act_batch":
+        actions = [[0] * factors for _ in message["observations"]]
+        print(json.dumps({"type": "actions", "actions": actions}), flush=True)
     elif kind == "checkpoint":
-        winner = max(scores, key=scores.get)
-        print(json.dumps({"type": "checkpoint", "state": {"best": hypotheses[winner]}}), flush=True)
+        content = b"bounded-neural-checkpoint-fixture"
+        name = "model.bin"
+        path = os.path.join(os.environ["RLX_CANDIDATE_SCRATCH"], name)
+        open(path, "wb").write(content)
+        print(json.dumps({
+            "type": "checkpoint",
+            "artifact": name,
+            "sha256": hashlib.sha256(content).hexdigest(),
+        }), flush=True)
     elif kind == "close":
         print(json.dumps({"type": "closed"}), flush=True)
         break
@@ -78,36 +69,51 @@ def test_candidate_client_strips_evaluator_environment_and_round_trips_json(
     tmp_path, monkeypatch
 ) -> None:
     monkeypatch.setenv("RLX_FACTORLAB_SUITE_KEY_FILE", "/secret/path")
-    script = _script(tmp_path, GOOD_CANDIDATE)
-
-    with CandidateClient((sys.executable, str(script)), cwd=tmp_path, sandbox=False) as client:
-        response = client.request(
-            {
-                "type": "init",
-                "phase": "training",
-                "checkpoint": None,
-                "protocol": "test",
-            }
-        )
-        assert response == {"type": "ready"}
-
-
-def test_candidate_client_times_out_and_terminates_process(tmp_path) -> None:
     script = _script(
         tmp_path,
         """
-        import json, sys, time
+        import json, os, sys
         for line in sys.stdin:
-            time.sleep(30)
+            message = json.loads(line)
+            if message["type"] == "init":
+                print(json.dumps({"type": "clean", "leaked": "RLX_FACTORLAB_SUITE_KEY_FILE" in os.environ}), flush=True)
+            elif message["type"] == "close":
+                print(json.dumps({"type": "closed"}), flush=True)
+                break
         """,
     )
+    with CandidateClient((sys.executable, str(script)), cwd=tmp_path, sandbox=False) as client:
+        assert client.request({"type": "init"}) == {"type": "clean", "leaked": False}
+
+
+def test_candidate_client_reads_bounded_scratch_artifact(tmp_path) -> None:
+    script = _script(
+        tmp_path,
+        """
+        import json, os, sys
+        for line in sys.stdin:
+            message = json.loads(line)
+            if message["type"] == "write":
+                open(os.path.join(os.environ["RLX_CANDIDATE_SCRATCH"], "state.bin"), "wb").write(b"state")
+                print(json.dumps({"type": "written"}), flush=True)
+            elif message["type"] == "close":
+                print(json.dumps({"type": "closed"}), flush=True)
+                break
+        """,
+    )
+    with CandidateClient((sys.executable, str(script)), cwd=tmp_path, sandbox=False) as client:
+        assert client.request({"type": "write"}) == {"type": "written"}
+        assert client.read_artifact("state.bin", max_bytes=10) == b"state"
+
+
+def test_candidate_client_times_out_and_terminates_process(tmp_path) -> None:
+    script = _script(tmp_path, "import sys, time\nfor line in sys.stdin: time.sleep(30)\n")
     client = CandidateClient(
         (sys.executable, str(script)),
         cwd=tmp_path,
         sandbox=False,
         limits=CandidateProcessLimits(response_seconds=0.05),
     )
-
     started = time.monotonic()
     with pytest.raises(CandidateProtocolError, match="did not respond"):
         client.request({"type": "init"})
@@ -129,17 +135,14 @@ def test_candidate_sandbox_denies_runtime_reads(tmp_path) -> None:
             message = json.loads(line)
             if message["type"] == "init":
                 try:
-                    open({str(secret)!r}).read()
-                    leaked = True
+                    open({str(secret)!r}).read(); leaked = True
                 except OSError:
                     leaked = False
                 print(json.dumps({{"type": "leaked" if leaked else "ready"}}), flush=True)
             elif message["type"] == "close":
-                print(json.dumps({{"type": "closed"}}), flush=True)
-                break
+                print(json.dumps({{"type": "closed"}}), flush=True); break
         """,
     )
-
     with CandidateClient(
         (sys.executable, str(script)),
         cwd=tmp_path,
@@ -149,20 +152,28 @@ def test_candidate_sandbox_denies_runtime_reads(tmp_path) -> None:
         assert client.request({"type": "init"}) == {"type": "ready"}
 
 
-def test_candidate_evaluator_hides_worlds_and_restarts_from_checkpoint(tmp_path) -> None:
-    script = _script(tmp_path, GOOD_CANDIDATE)
+def test_neural_candidate_evaluator_batches_training_and_restarts_from_binary_checkpoint(
+    tmp_path,
+) -> None:
+    script = _script(tmp_path, PROTOCOL_FIXTURE)
     config = CandidateEvaluationConfig(
-        horizon=8,
+        horizon=6,
         n_factors=2,
-        max_causal_lag=8,
-        training_episodes=8,
+        levels_per_factor=3,
+        signal_dim=3,
+        context_dim=2,
+        state_dim=2,
+        teacher_hidden_dim=4,
+        max_causal_lag=6,
+        training_episodes=4,
+        training_batch_size=2,
         training_trials=2,
-        public_worlds=1,
+        public_worlds=2,
         heldout_worlds=2,
         wall_seconds=20,
         response_seconds=2,
+        max_parameters=1000,
     )
-
     report = evaluate_candidate(
         (sys.executable, str(script)),
         cwd=tmp_path,
@@ -172,57 +183,46 @@ def test_candidate_evaluator_hides_worlds_and_restarts_from_checkpoint(tmp_path)
     )
 
     assert report["status"] == "complete"
-    assert report["normalized_return_mean"] == pytest.approx([1.0, 0.0])
-    assert report["normalized_utility_mean"] == pytest.approx(1.0)
-    assert report["random_policy_expected_utility"] == pytest.approx(0.5)
-    assert report["improvement_over_random"] == pytest.approx(0.5)
-    assert report["regret_to_ceiling"] == pytest.approx(0.0)
-    assert report["training_trials"] == 2
-    assert report["budget_usage"]["episodes"] == 20
-    assert report["budget_usage"]["transitions"] == 160
-    assert report["budget_usage"]["policies"] == 2
+    assert report["protocol"] == "rlx-neural-candidate-jsonl-v2"
+    assert report["training_batch_size"] == 2
+    assert report["budget_usage"]["episodes"] == 12
+    assert report["budget_usage"]["transitions"] == 72
+    assert report["model_manifests"][0]["model_family"] == "neural_policy"
+    assert len(report["checkpoint_sha256"]) == 2
     assert len(report["candidate_stderr"]) == 6
-    serialized = json.dumps(report)
-    assert "world_id" not in serialized
-    assert "master_seed" not in serialized
     assert report["heldout_identifiers_exposed"] is False
+    serialized = json.dumps(report)
+    assert "world_id" not in serialized and "master_seed" not in serialized
 
 
-def test_invalid_candidate_action_becomes_scientific_error_record(tmp_path) -> None:
+def test_parameter_budget_violation_becomes_scientific_error_record(tmp_path) -> None:
     script = _script(
         tmp_path,
-        """
-        import json, sys
-        for line in sys.stdin:
-            message = json.loads(line)
-            if message["type"] == "init":
-                print(json.dumps({"type": "ready"}), flush=True)
-            elif message["type"] == "act":
-                print(json.dumps({"type": "action", "action": [99]}), flush=True)
-            elif message["type"] == "close":
-                print(json.dumps({"type": "closed"}), flush=True)
-                break
-        """,
+        PROTOCOL_FIXTURE.replace('"trainable_parameters": 32', '"trainable_parameters": 32000'),
     )
-    config = CandidateEvaluationConfig(
-        horizon=3,
-        n_factors=1,
-        max_causal_lag=3,
-        training_episodes=1,
-        training_trials=1,
-        public_worlds=1,
-        heldout_worlds=1,
-        wall_seconds=10,
-    )
-
     report = evaluate_candidate(
         (sys.executable, str(script)),
         cwd=tmp_path,
         master_key=b"z" * 32,
-        config=config,
+        config=CandidateEvaluationConfig(
+            horizon=3,
+            n_factors=1,
+            levels_per_factor=2,
+            signal_dim=2,
+            context_dim=2,
+            state_dim=2,
+            teacher_hidden_dim=4,
+            max_causal_lag=3,
+            training_episodes=1,
+            training_batch_size=1,
+            training_trials=1,
+            public_worlds=1,
+            heldout_worlds=1,
+            wall_seconds=10,
+            max_parameters=100,
+        ),
         sandbox=False,
     )
-
     assert report["status"] == "candidate_error"
     assert report["error_class"] == "CandidateProtocolError"
-    assert "rejected" in report["error_detail"]
+    assert "above cap" in report["error_detail"]

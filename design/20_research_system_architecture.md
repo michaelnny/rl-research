@@ -107,10 +107,15 @@ not assume that “more agents” means independent evidence.
 - Candidate worktrees cannot write benchmark, evaluator, reference-result, or
   held-out-manifest paths.
 - Experiments run through a local executor with CPU, memory, wall-time, and
-  process-count limits. GPU use requires an explicit budget grant.
+  process-count limits. GPU use requires an explicit parameter, accelerator-time,
+  and device-memory budget grant. Compact neural GPU training is the normal RL
+  workload, not an exceptional algorithm class.
 - Held-out evaluation runs in a separate checkout without agent tools and does
   not reveal world identifiers to training code.
 - Provider output, stdout, stderr, exit code, duration, and usage are retained.
+- Candidate measurements retain a neural model manifest, framework/device,
+  trainable parameter count, binary checkpoint digest, and evaluator-measured
+  training/accelerator-time upper bound.
 - One high-entropy suite key is stored per campaign with owner-only permissions.
   Model-provider processes are OS-sandboxed from the runtime tree and strip all
   `RLX_` variables. The trusted outer evaluator receives only the path to its

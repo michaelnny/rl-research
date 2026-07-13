@@ -38,7 +38,7 @@ def test_public_manifest_reveals_only_public_seeds() -> None:
             assert str(seed) not in serialized
     assert public["band_counts"]["heldout"] == 4
     assert len(public["band_commitments"]["heldout"]) == 64
-    assert len(public["cue_transform_commitment"]) == 64
+    assert len(public["neural_kernel_commitment"]) == 64
 
 
 def test_suite_and_world_derivation_are_reproducible() -> None:
@@ -85,12 +85,13 @@ def test_world_index_and_suite_spec_validation_are_strict() -> None:
         WorldSuiteSpec(namespace="valid", version=0, master_key=b"short")
 
 
-def test_suite_transform_is_shared_and_hidden_from_the_manifest() -> None:
+def test_suite_neural_kernel_is_shared_and_hidden_from_the_manifest() -> None:
     suite = _suite()
     public_world = suite.world(WorldBand.PUBLIC, 0)
     heldout_world = suite.world(WorldBand.HELDOUT, 0)
     serialized = json.dumps(suite.public_manifest().to_dict(), sort_keys=True)
 
-    assert public_world.cue_transform == heldout_world.cue_transform
-    assert "permutation" not in serialized
-    assert "signs" not in serialized
+    assert public_world.task_kernel == heldout_world.task_kernel
+    assert "encoder" not in serialized
+    assert "objective_heads" not in serialized
+    assert "kernel_key" not in serialized

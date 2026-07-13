@@ -1,0 +1,79 @@
+{
+  "protocol_id": "factorlab-small-v1-qualification-2026-07-13",
+  "tier_id": "factorlab-small-v1",
+  "preference": [1.0, 0.0],
+  "suite": {
+    "namespace": "factorlab-small-v1-qualification",
+    "version": 1,
+    "public_worlds": 16,
+    "tune_worlds": 8,
+    "heldout_worlds": 32,
+    "audit_worlds": 8
+  },
+  "anchor_configuration": {
+    "horizon": 64,
+    "n_objectives": 2,
+    "n_factors": 4,
+    "action_mode": "factored_discrete",
+    "levels_per_factor": 4,
+    "signal_dim": 8,
+    "context_dim": 4,
+    "state_dim": 4,
+    "teacher_hidden_dim": 16,
+    "signal_autocorrelation": 0.2,
+    "signal_target_scale": 1.5,
+    "context_target_scale": 0.75,
+    "state_target_scale": 0.75,
+    "max_causal_lag": 64,
+    "memory_lag": 0,
+    "reward_events": 1,
+    "conflict_strength": 0.75,
+    "effects": ["additive", "dynamics"],
+    "terminal_state_weight": 1.0
+  },
+  "reference": {
+    "anchor_architecture": "residual_mlp",
+    "memory_architecture": "transformer",
+    "hidden_size": 64,
+    "residual_blocks": 2,
+    "transformer_layers": 2,
+    "transformer_heads": 4,
+    "context_window": 16,
+    "learning_rate": 0.001,
+    "entropy_coefficient": 0.01,
+    "value_coefficient": 0.5,
+    "episodes": 1024,
+    "batch_episodes": 16,
+    "max_parameters": 2000000,
+    "device": "mps",
+    "training_seeds": [101, 211, 307, 401, 503],
+    "sensitivity_seeds": [607, 701, 809],
+    "random_policies": 16
+  },
+  "memory_contrast": {
+    "memory_lag": 8,
+    "episodes": 512,
+    "signal_autocorrelation": 0.0,
+    "signal_target_scale": 2.0,
+    "context_target_scale": 0.4,
+    "state_target_scale": 0.4
+  },
+  "statistics": {
+    "minimum_training_seeds": 5,
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 20260713,
+    "confidence": 0.95
+  },
+  "thresholds": {
+    "minimum_nonlinear_residual": 0.0001,
+    "minimum_env_transitions_per_second": 50.0,
+    "minimum_mean_improvement": 0.03,
+    "minimum_improvement_ci_lower": 0.0,
+    "maximum_reference_utility": 0.95,
+    "minimum_headroom": 0.05,
+    "minimum_memory_architecture_gain": 0.01,
+    "minimum_joint_choices": 1000000000000,
+    "maximum_specificity_error": 1e-10,
+    "maximum_public_heldout_gap": 0.25
+  }
+}

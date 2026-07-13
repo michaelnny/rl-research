@@ -143,8 +143,25 @@ def run_preflight(
     except KeyError:
         campaign_ok = False
         campaign_detail = "campaign not found"
+        policy = {}
         required_providers = {"codex", "claude"}
     checks.append(PreflightCheck("active_campaign", campaign_ok, campaign_detail))
+
+    definition_path = repository / "campaigns" / "factorlab_v1" / "definition.json"
+    try:
+        definition = json.loads(definition_path.read_text(encoding="utf-8"))
+        benchmark_tier = str(policy.get("benchmark_tier", ""))
+        admitted = definition.get("admitted_tiers", [])
+        tier_ok = benchmark_tier in admitted
+        tier_detail = (
+            f"{benchmark_tier} admitted by {definition_path.relative_to(repository)}"
+            if tier_ok
+            else f"{benchmark_tier or '<missing>'} is not an admitted benchmark tier"
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        tier_ok = False
+        tier_detail = f"cannot validate benchmark admission: {exc}"
+    checks.append(PreflightCheck("qualified_benchmark_tier", tier_ok, tier_detail))
 
     try:
         secrets.load(campaign_id)

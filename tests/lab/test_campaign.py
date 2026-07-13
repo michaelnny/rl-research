@@ -32,6 +32,13 @@ def _complete_next(store: ResearchStore, provider: str):
                 "candidate_argv": ["python", f"{allowed}/candidate.py"],
                 "summary": "independent candidate implementation for controlled evaluation",
                 "files": [f"{allowed}/candidate.py"],
+                "model_manifest": {
+                    "architecture": "residual_policy",
+                    "framework": "torch",
+                    "trainable_parameters": 1000,
+                    "recurrent": False,
+                    "device": "cpu",
+                },
                 "mechanism_invariants": ["uses learner-visible observations only"],
                 "self_checks": ["protocol handshake passes"],
             }
@@ -97,7 +104,7 @@ def test_controller_expands_independent_evidence_dag_and_completes_campaign(tmp_
         job.payload["argv"][job.payload["argv"].index("--suite-namespace") + 1]
         for job in run_jobs
     }
-    assert namespaces == {f"{campaign}-factorlab-v0"}
+    assert namespaces == {f"{campaign}-factorlab-v1-neural"}
     assert all("--training-trials" in job.payload["argv"] for job in run_jobs)
     _complete_next(store, "local")
     _complete_next(store, "local")

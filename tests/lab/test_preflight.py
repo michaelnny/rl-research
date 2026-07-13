@@ -21,10 +21,14 @@ def test_preflight_requires_a_committed_rebuild_and_valid_secret(tmp_path, monke
         "src/rlx_agents/evaluate.py",
         "src/rlx_bench/suite.py",
         "campaigns/schemas/example.json",
+        "campaigns/factorlab_v1/definition.json",
     ):
         path = repository / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{}\n" if path.suffix == ".json" else "# fixture\n")
+    (repository / "campaigns/factorlab_v1/definition.json").write_text(
+        '{"admitted_tiers":["factorlab-small-v1"]}\n'
+    )
     _git(repository, "init", "-q")
     _git(repository, "config", "user.email", "test@example.com")
     _git(repository, "config", "user.name", "Test")

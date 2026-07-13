@@ -19,55 +19,47 @@ SOURCE_REPOSITORY = Path(__file__).resolve().parents[2]
 
 
 CANDIDATE = r"""
-import itertools
+import hashlib
 import json
 import os
 import sys
 
-phase = None
-hypotheses = None
-episode = 0
-public_worlds = 1
-scores = {}
-current = None
-best = None
+factors = 1
 for line in sys.stdin:
     message = json.loads(line)
     kind = message["type"]
     if kind == "init":
         assert "RLX_FACTORLAB_SUITE_KEY_FILE" not in os.environ
-        phase = message["phase"]
-        public_worlds = message["public_suite_manifest"]["band_counts"]["public"]
-        if phase == "evaluation":
-            best = message["checkpoint"]["best"]
-        print(json.dumps({"type": "ready"}), flush=True)
-    elif kind == "act":
-        cue = message["observation"]["revealed_cue"]
-        if hypotheses is None:
-            width = len(cue)
-            hypotheses = [
-                (permutation, signs)
-                for permutation in itertools.permutations(range(width))
-                for signs in itertools.product((-1, 1), repeat=width)
-            ]
-        if phase == "training":
-            index = min(episode // public_worlds, len(hypotheses) - 1)
-            current = hypotheses[index]
-        else:
-            current = (tuple(best[0]), tuple(best[1]))
-        permutation, signs = current
-        target = [signs[index] * cue[source] for index, source in enumerate(permutation)]
+        factors = len(message["task_spec"]["action_spec"]["factors"])
+        checkpoint = message.get("checkpoint")
+        if checkpoint:
+            content = open(os.path.join(os.environ["RLX_CANDIDATE_SCRATCH"], checkpoint["artifact"]), "rb").read()
+            assert hashlib.sha256(content).hexdigest() == checkpoint["sha256"]
         print(json.dumps({
-            "type": "action",
-            "action": [1 if value > 0 else 0 for value in target],
+            "type": "ready",
+            "model_manifest": {
+                "model_family": "neural_policy",
+                "architecture": "integration_residual_policy",
+                "framework": "fixture",
+                "trainable_parameters": 32,
+                "recurrent": False,
+                "device": "cpu"
+            }
         }), flush=True)
-    elif kind == "episode_end" and phase == "training":
-        index = min(episode // public_worlds, len(hypotheses) - 1)
-        scores[index] = scores.get(index, 0.0) + message["return_vector"][0]
-        episode += 1
+    elif kind == "act_batch":
+        print(json.dumps({
+            "type": "actions",
+            "actions": [[0] * factors for _ in message["observations"]],
+        }), flush=True)
     elif kind == "checkpoint":
-        winner = max(scores, key=scores.get)
-        print(json.dumps({"type": "checkpoint", "state": {"best": hypotheses[winner]}}), flush=True)
+        content = b"integration-neural-checkpoint"
+        path = os.path.join(os.environ["RLX_CANDIDATE_SCRATCH"], "model.bin")
+        open(path, "wb").write(content)
+        print(json.dumps({
+            "type": "checkpoint",
+            "artifact": "model.bin",
+            "sha256": hashlib.sha256(content).hexdigest()
+        }), flush=True)
     elif kind == "close":
         print(json.dumps({"type": "closed"}), flush=True)
         break
@@ -173,10 +165,12 @@ def test_controller_runs_real_isolated_primary_and_replication_evaluations(tmp_p
                 "intervention": "restart from one checkpoint on separately generated worlds",
                 "controls": ["fixed transition and episode budget"],
                 "measurements": ["normalized component return"],
-                "budget": {
-                    "environment_steps": 16,
-                    "wall_seconds": 20,
-                    "training_seeds": 1,
+                    "budget": {
+                        "environment_steps": 16,
+                        "wall_seconds": 20,
+                        "accelerator_seconds": 0,
+                        "max_trainable_parameters": 1000,
+                        "training_seeds": 1,
                 },
                 "decision_table": ["effect >= 0.2: support", "effect < 0.2: contradict"],
             }
@@ -191,6 +185,13 @@ def test_controller_runs_real_isolated_primary_and_replication_evaluations(tmp_p
                 "summary": "implemented a standalone JSONL candidate for hidden-world evaluation",
                 "candidate_argv": ["python", f"{allowed}/candidate.py"],
                 "files": [f"{allowed}/candidate.py"],
+                "model_manifest": {
+                    "architecture": "integration_residual_policy",
+                    "framework": "fixture",
+                    "trainable_parameters": 32,
+                    "recurrent": False,
+                    "device": "cpu",
+                },
                 "mechanism_invariants": ["no evaluator metadata access"],
                 "self_checks": ["JSONL messages are flushed"],
             }
@@ -237,7 +238,7 @@ def test_controller_runs_real_isolated_primary_and_replication_evaluations(tmp_p
     ]
     assert len(measurements) == 2
     assert all(measurement["status"] == "complete" for measurement in measurements)
-    assert all(measurement["normalized_utility_mean"] == 1.0 for measurement in measurements)
+    assert all(0.0 <= measurement["normalized_utility_mean"] <= 1.0 for measurement in measurements)
     assert len({measurement["suite_id"] for measurement in measurements}) == 1
     assert all(measurement["heldout_identifiers_exposed"] is False for measurement in measurements)
     assert list(worktrees.root.iterdir()) == []

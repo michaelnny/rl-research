@@ -23,6 +23,29 @@ The goal is not to maximize one benchmark score. The goal is to identify which
 algorithmic mechanisms help which capabilities, compose those mechanisms, and
 produce reproducible evidence strong enough to support a novelty investigation.
 
+## Compute envelope: neural, not tabular
+
+The learner in this project is a compact neural policy/value system. “Compute
+light” means that ordinary probes complete in minutes to an hour and serious
+confirmation runs complete within hours on one consumer GPU. It does **not**
+mean tabular learning, linear cue maps, or a ban on neural networks. The thing
+being avoided is frontier-model-scale learner training, giant simulators, and
+multi-node accelerator requirements.
+
+Every reported run declares and the evaluator bounds trainable parameters,
+environment transitions, wall time, accelerator time, peak device memory, and
+the number of training seeds. The initial Small envelope is at most two million
+trainable learner parameters, four accelerator-hours per training seed, five
+million transitions, and one accelerator with at most 24 GiB of memory. Smaller
+probe budgets precede it. Larger confirmation envelopes require an explicit,
+versioned campaign amendment.
+
+Reference agents and research candidates may use MLPs, CNNs, recurrent nets,
+attention, graph networks, or other compact neural architectures. Pretrained
+foundation models and LLM inference are not part of the learner policy unless a
+separate campaign explicitly studies them; the Codex/Claude research workers
+are outside the RL learner’s compute accounting.
+
 ## Formal target
 
 Each task is drawn from a procedural family of finite-horizon POMDPs
@@ -83,6 +106,8 @@ the task and never the sole headline metric.
 - It will not equate a scripted heuristic with evidence that an RL learner can
   learn the task.
 - It will not ban established libraries merely to make baseline code local.
+- It will not substitute a table, one parameter vector per observed cue, or an
+  enumerated action policy for the compact neural RL problem.
 - It will not call an environment “real-world” because its variables have
   scheduling or navigation names.
 - It will not make prose, a journal, an LLM review score, or a paper draft the
@@ -90,6 +115,19 @@ the task and never the sole headline metric.
 - It will not ask one scalar leaderboard to choose the research direction.
 - It will not let candidate code alter benchmark definitions, hidden evaluation
   instances, metrics, or reference results.
+
+## Neural-task admissibility
+
+A task tier is inadmissible for this project if its learner-visible state can be
+exhausted under the training budget, if held-out evaluation reuses a finite cue
+dictionary, or if a state-key lookup policy can solve it without representation
+generalization. Diagnostic worlds therefore use continuous procedural
+observations, held-out trajectories and contexts, nonlinear shared task
+kernels, and action spaces handled through parameter-sharing neural heads.
+
+Exact enumeration is allowed only behind the evaluator on tiny instances to
+check mechanics and feasibility. It is never a candidate method, a reference
+learner, or evidence that the neural benchmark tier is learnable.
 
 ## Scientific products
 
@@ -123,4 +161,3 @@ formalizes research agents as search policies and shows that the
 [operator set and search policy must be designed together](https://arxiv.org/abs/2507.02554).
 These findings motivate the evidence graph, deterministic scheduler, and
 explicit search policy in this rebuild.
-

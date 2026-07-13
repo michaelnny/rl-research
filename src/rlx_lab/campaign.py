@@ -39,7 +39,7 @@ PROTECTED_PATHS = (
     "tests/bench",
     "tests/agents",
     "tests/lab",
-    "campaigns/factorlab_v0",
+    "campaigns/factorlab_v1",
     "campaigns/schemas",
     "design",
 )
@@ -47,6 +47,7 @@ PROTECTED_PATHS = (
 
 @dataclass(frozen=True)
 class CampaignPolicy:
+    benchmark_tier: str = "factorlab-small-v1"
     concurrent_branches: int = 3
     max_branches: int = 24
     max_inflight_jobs: int = 12
@@ -61,11 +62,18 @@ class CampaignPolicy:
     synthesis_interval_findings: int = 4
     evaluation_horizon: int = 64
     evaluation_factors: int = 4
-    evaluation_training_episodes: int = 64
+    evaluation_levels_per_factor: int = 4
+    evaluation_signal_dim: int = 8
+    evaluation_context_dim: int = 4
+    evaluation_state_dim: int = 4
+    evaluation_teacher_hidden_dim: int = 16
+    evaluation_training_episodes: int = 1024
+    evaluation_training_batch_size: int = 16
     evaluation_training_trials: int = 3
-    evaluation_public_worlds: int = 4
-    evaluation_heldout_worlds: int = 8
-    evaluation_wall_seconds: float = 900.0
+    evaluation_public_worlds: int = 16
+    evaluation_heldout_worlds: int = 32
+    evaluation_max_parameters: int = 2_000_000
+    evaluation_wall_seconds: float = 14_400.0
 
     def __post_init__(self) -> None:
         integer_limits = (
@@ -77,10 +85,17 @@ class CampaignPolicy:
             self.synthesis_interval_findings,
             self.evaluation_horizon,
             self.evaluation_factors,
+            self.evaluation_levels_per_factor,
+            self.evaluation_signal_dim,
+            self.evaluation_context_dim,
+            self.evaluation_state_dim,
+            self.evaluation_teacher_hidden_dim,
             self.evaluation_training_episodes,
+            self.evaluation_training_batch_size,
             self.evaluation_training_trials,
             self.evaluation_public_worlds,
             self.evaluation_heldout_worlds,
+            self.evaluation_max_parameters,
         )
         if any(value < 1 for value in integer_limits):
             raise ValueError("campaign policy integer limits must be positive")
@@ -90,6 +105,8 @@ class CampaignPolicy:
             raise ValueError("campaign wall limits must be positive")
         if not self.primary_provider or not self.independent_provider:
             raise ValueError("campaign providers cannot be empty")
+        if not self.benchmark_tier:
+            raise ValueError("campaign benchmark_tier cannot be empty")
         normalized = {SearchLane(key): float(value) for key, value in self.portfolio.items()}
         if set(normalized) != set(SearchLane) or any(value <= 0.0 for value in normalized.values()):
             raise ValueError("portfolio must give every search lane positive weight")
@@ -359,7 +376,8 @@ class CampaignController:
         prompt = (
             f"Research question: {question}\nSearch lane: {lane.value}; {lane_instruction}. "
             "Return one typed hypothesis with quantitative predictions and a real falsifier. "
-            "It must target controlled FactorLab axes and remain compute-light. Do not write code."
+            "It must target controlled Neural FactorLab axes and fit the published compact-neural "
+            "consumer-GPU envelope. Do not write code."
         )
         payload = {
             **self._base_payload(stage="hypothesis", branch_id=branch_id, lane=lane),
@@ -450,8 +468,9 @@ class CampaignController:
                 **self._base_payload(stage=stage, branch_id=branch_id, lane=lane),
                 "prompt": (
                     f"Implement an RL candidate only under {allowed}/. Read "
-                    "design/40_candidate_protocol.md. The program must speak RLX JSONL v1, "
-                    "serialize all learned state in checkpoint, and use learner-visible data only. "
+                    "design/40_candidate_protocol.md. The program must implement a compact neural "
+                    "RL policy, speak RLX batched JSONL v2, write a bounded binary checkpoint, "
+                    "declare its exact neural model manifest, and use learner-visible data only. "
                     "Return candidate_argv exactly as ['python', '"
                     f"{allowed}/candidate.py']. Do not edit benchmark, evaluator, tests, schemas, or design."
                 ),
@@ -546,10 +565,22 @@ class CampaignController:
             str(policy.evaluation_horizon),
             "--n-factors",
             str(policy.evaluation_factors),
+            "--levels-per-factor",
+            str(policy.evaluation_levels_per_factor),
+            "--signal-dim",
+            str(policy.evaluation_signal_dim),
+            "--context-dim",
+            str(policy.evaluation_context_dim),
+            "--state-dim",
+            str(policy.evaluation_state_dim),
+            "--teacher-hidden-dim",
+            str(policy.evaluation_teacher_hidden_dim),
             "--max-causal-lag",
             str(policy.evaluation_horizon),
             "--training-episodes",
             str(policy.evaluation_training_episodes),
+            "--training-batch-size",
+            str(policy.evaluation_training_batch_size),
             "--training-trials",
             str(policy.evaluation_training_trials),
             "--public-worlds",
@@ -558,8 +589,10 @@ class CampaignController:
             str(policy.evaluation_heldout_worlds),
             "--wall-seconds",
             str(policy.evaluation_wall_seconds),
+            "--max-parameters",
+            str(policy.evaluation_max_parameters),
             "--suite-namespace",
-            f"{campaign_id}-factorlab-v0",
+            f"{campaign_id}-factorlab-v1-neural",
             "--candidate",
             *normalized_candidate,
         ]

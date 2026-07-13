@@ -12,9 +12,11 @@
       "properties": {
         "environment_steps": {"type": "integer", "minimum": 1},
         "wall_seconds": {"type": "integer", "minimum": 1},
+        "accelerator_seconds": {"type": "integer", "minimum": 0},
+        "max_trainable_parameters": {"type": "integer", "minimum": 1},
         "training_seeds": {"type": "integer", "minimum": 1}
       },
-      "required": ["environment_steps", "wall_seconds", "training_seeds"],
+      "required": ["environment_steps", "wall_seconds", "accelerator_seconds", "max_trainable_parameters", "training_seeds"],
       "additionalProperties": false
     },
     "decision_table": {"type": "array", "items": {"type": "string"}, "minItems": 2}

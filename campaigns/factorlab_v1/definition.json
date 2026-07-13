@@ -1,0 +1,79 @@
+{
+  "campaign_id": "factorlab-v1-neural",
+  "status": "qualification_pending",
+  "benchmark_revision": "factorlab-v1",
+  "admitted_tiers": [],
+  "scientific_question": "Which compact neural RL mechanisms remain effective as causal span, structured action scale, sparse feedback, memory demand, and vector-objective conflict vary independently?",
+  "learner_class": {
+    "required": "compact_neural_policy",
+    "excluded": ["tabular_policy", "cue_keyed_lookup", "enumerated_joint_action_policy", "pretrained_foundation_model"],
+    "small_max_trainable_parameters": 2000000,
+    "small_max_accelerator_seconds_per_seed": 14400,
+    "small_max_device_memory_bytes": 25769803776,
+    "small_max_transitions_per_seed": 5000000
+  },
+  "objective_protocols": ["preference_conditioned", "policy_coverage", "constrained"],
+  "action_renderings": ["flat_discrete", "embedded_catalog", "factored_discrete", "continuous", "conditional_hybrid"],
+  "world_suite": {
+    "namespace": "factorlab-v1-neural",
+    "version": 1,
+    "master_key_source": "runtime/secrets/<campaign_id>.key",
+    "derivation": "HMAC-SHA256",
+    "shared_hidden_neural_kernel": true,
+    "continuous_procedural_observations": true,
+    "public_worlds": 16,
+    "tune_worlds": 8,
+    "heldout_worlds": 32,
+    "audit_worlds": 8
+  },
+  "anchor_configuration": {
+    "horizon": 128,
+    "n_objectives": 2,
+    "n_factors": 8,
+    "levels_per_factor": 4,
+    "joint_choices": 65536,
+    "signal_dim": 16,
+    "context_dim": 8,
+    "state_dim": 8,
+    "teacher_hidden_dim": 32,
+    "action_mode": "factored_discrete",
+    "max_causal_lag": 128,
+    "memory_lag": 0,
+    "reward_events": 1,
+    "conflict_strength": 0.75,
+    "effects": ["additive", "dynamics"]
+  },
+  "diagnostic_sweeps": {
+    "horizon": [64, 128, 256, 512, 1024],
+    "max_causal_lag": [8, 32, 128, 512, "full_horizon"],
+    "joint_discrete_designs": [
+      {"n_factors": 4, "levels_per_factor": 4, "joint_choices": 256},
+      {"n_factors": 8, "levels_per_factor": 4, "joint_choices": 65536},
+      {"n_factors": 12, "levels_per_factor": 10, "joint_choices": 1000000000000}
+    ],
+    "continuous_dimensions": [4, 16, 64],
+    "reward_events": [1, 2, 4, 8],
+    "n_objectives": [2, 4, 8],
+    "conflict_strength": [0.0, 0.5, 1.0],
+    "memory_lag": [0, 16, 64, 256],
+    "world_shift": ["same_distribution", "parameter_interpolation", "unseen_composition"]
+  },
+  "fractional_design": {
+    "rule": "anchor plus one-factor contrasts plus preregistered two-factor interactions",
+    "required_interactions": [
+      ["horizon", "max_causal_lag"],
+      ["horizon", "reward_events"],
+      ["action_rendering", "joint_choices"],
+      ["memory_lag", "recurrent_architecture"],
+      ["n_objectives", "conflict_strength"]
+    ],
+    "forbidden": "unreviewed full Cartesian sweep"
+  },
+  "budgets": {
+    "probe": {"transitions": 250000, "episodes": 1024, "wall_seconds": 3600, "accelerator_seconds": 3600, "max_trainable_parameters": 500000},
+    "confirmation": {"transitions": 5000000, "episodes": 8192, "wall_seconds": 14400, "accelerator_seconds": 14400, "max_trainable_parameters": 2000000}
+  },
+  "qualification_checks": ["mechanics", "causal_audit", "feasibility", "learnability", "headroom", "factor_sensitivity", "specificity", "generalization", "statistics", "independent_audit"],
+  "implemented_references": ["compact_branching_residual_mlp_actor_critic", "compact_branching_residual_gru_actor_critic", "compact_branching_causal_attention_actor_critic", "random_policy_control", "evaluator_only_exact_tiny_solver"],
+  "planned_references": ["compact_ppo", "compact_branching_dqn", "compact_rudder", "preference_conditioned_morl", "policy_coverage_morl"]
+}
