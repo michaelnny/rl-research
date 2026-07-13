@@ -3,31 +3,43 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-
-DEFINITION = (
-    Path(__file__).resolve().parents[2] / "campaigns" / "factorlab_v0" / "definition.json"
-)
+from rlx_agents.evaluate import CandidateEvaluationConfig
+from rlx_bench.factorlab import FactorLabConfig
 
 
-def test_factorlab_campaign_is_explicitly_unqualified_and_keyless() -> None:
+ROOT = Path(__file__).resolve().parents[2]
+DEFINITION = ROOT / "campaigns" / "factorlab_long_v1" / "definition.json"
+PROTOCOL = ROOT / "campaigns" / "factorlab_long_v1" / "qualification_protocol.json"
+
+
+def test_factorlab_campaign_requires_compact_neural_learners_and_hidden_kernel() -> None:
     definition = json.loads(DEFINITION.read_text())
 
-    assert definition["status"] == "under_calibration"
-    assert definition["world_suite"]["master_key_source"].startswith("runtime/secrets/")
-    assert definition["world_suite"]["derivation"] == "HMAC-SHA256"
-    assert definition["world_suite"]["shared_hidden_cue_transform"] is True
-    assert "master_key" not in definition["world_suite"]
-    assert "master_seed" not in definition["world_suite"]
-    assert definition["world_suite"]["heldout_worlds"] > definition["world_suite"]["public_worlds"]
+    assert definition["status"] == "qualification_pending"
+    assert definition["admitted_tiers"] == []
+    assert definition["learner_class"]["required"] == "compact_neural_policy"
+    assert "tabular_policy" in definition["learner_class"]["excluded"]
+    assert definition["anchor_configuration"]["horizon"] == 5000
+    assert definition["anchor_configuration"]["joint_choices"] == 10**12
+    assert definition["anchor_configuration"]["reward_events"] == 1
+    assert max(definition["target_horizons"]) == 20_000
+
+    protocol = json.loads(PROTOCOL.read_text())
+    anchor = dict(protocol["anchor_configuration"])
+    anchor["levels_per_factor"] = (anchor["levels_per_factor"],)
+    evaluator = CandidateEvaluationConfig()
+    assert evaluator.factor_config().task_id == FactorLabConfig(**anchor).task_id
+    assert evaluator.training_episodes == protocol["reference"]["episodes"]
+    assert evaluator.public_worlds == protocol["suite"]["public_worlds"]
+    assert evaluator.heldout_worlds == protocol["suite"]["heldout_worlds"]
+    assert definition["evaluation_protocol"]["wall_seconds_total"] == 14_400
+    assert protocol["reference"]["device"] == "auto"
 
 
-def test_factorlab_campaign_covers_required_extremes_without_cartesian_explosion() -> None:
+def test_campaign_covers_extremes_with_consumer_gpu_budgets() -> None:
     definition = json.loads(DEFINITION.read_text())
-    sweeps = definition["diagnostic_sweeps"]
-
-    assert max(sweeps["horizon"]) >= 1024
-    assert max(item["joint_choices"] for item in sweeps["joint_discrete_designs"]) >= 10**12
-    assert max(sweeps["continuous_dimensions"]) >= 64
-    assert 1 in sweeps["reward_events"]
-    assert max(sweeps["n_objectives"]) >= 8
-    assert definition["fractional_design"]["forbidden"] == "unreviewed full Cartesian sweep"
+    assert min(definition["target_horizons"]) >= 5000
+    assert max(definition["target_horizons"]) >= 20_000
+    assert definition["learner_class"]["max_accelerator_seconds_per_seed"] == 14_400
+    assert definition["learner_class"]["max_trainable_parameters"] == 2_000_000
+    assert definition["learner_class"]["max_transitions_per_seed"] == 5_000_000

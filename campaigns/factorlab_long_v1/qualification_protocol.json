@@ -1,0 +1,80 @@
+{
+  "protocol_id": "factorlab-long-5k-v1-qualification-2026-07-13",
+  "tier_id": "factorlab-long-5k-v1",
+  "preference": [1.0, 0.0],
+  "suite": {
+    "namespace": "factorlab-long-5k-v1-qualification",
+    "version": 1,
+    "public_worlds": 32,
+    "tune_worlds": 8,
+    "heldout_worlds": 16,
+    "audit_worlds": 2
+  },
+  "anchor_configuration": {
+    "horizon": 5000,
+    "n_objectives": 2,
+    "n_factors": 12,
+    "action_mode": "factored_discrete",
+    "levels_per_factor": 10,
+    "signal_dim": 16,
+    "context_dim": 8,
+    "state_dim": 8,
+    "teacher_hidden_dim": 16,
+    "signal_autocorrelation": 0.2,
+    "signal_target_scale": 0.25,
+    "context_target_scale": 2.0,
+    "state_target_scale": 0.25,
+    "max_causal_lag": 5000,
+    "memory_lag": 0,
+    "reward_events": 1,
+    "conflict_strength": 0.75,
+    "effects": ["additive", "dynamics"],
+    "terminal_state_weight": 1.0
+  },
+  "reference": {
+    "anchor_architecture": "residual_mlp",
+    "hidden_size": 64,
+    "residual_blocks": 2,
+    "transformer_layers": 2,
+    "transformer_heads": 4,
+    "context_window": 256,
+    "learning_rate": 0.001,
+    "entropy_coefficient": 0.01,
+    "value_coefficient": 0.5,
+    "episodes": 256,
+    "batch_episodes": 64,
+    "optimization_batch_size": 8192,
+    "optimization_epochs": 4,
+    "ppo_clip": 0.2,
+    "truncated_bptt_steps": 256,
+    "max_parameters": 500000,
+    "max_wall_seconds_per_seed": 14400,
+    "device": "auto",
+    "training_seeds": [101, 211, 307, 401, 503],
+    "random_policies": 8
+  },
+  "scaling_contrast": {
+    "horizon": 20000
+  },
+  "statistics": {
+    "minimum_training_seeds": 5,
+    "bootstrap_draws": 10000,
+    "bootstrap_seed": 20260713,
+    "confidence": 0.95
+  },
+  "thresholds": {
+    "minimum_anchor_horizon": 5000,
+    "minimum_long_horizon": 20000,
+    "minimum_nonlinear_residual": 0.0001,
+    "minimum_env_transitions_per_second": 3000.0,
+    "minimum_long_transitions_per_second": 3000.0,
+    "maximum_storage_bytes_per_step": 100.0,
+    "minimum_joint_choices": 1000000000000,
+    "minimum_mean_improvement": 0.015,
+    "minimum_improvement_ci_lower": 0.0,
+    "maximum_reference_utility": 0.9,
+    "minimum_headroom": 0.1,
+    "maximum_specificity_error": 1e-8,
+    "maximum_public_heldout_gap": 0.15
+  }
+}

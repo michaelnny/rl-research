@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, field
 from enum import Enum
 from typing import Any
 
-from .factorlab import CueTransform, FactorLabConfig, FactorLabWorld, generate_world
+from .factorlab import FactorLabConfig, FactorLabWorld, generate_world
 
 
 class WorldBand(str, Enum):
@@ -55,14 +55,14 @@ class PublicSuiteManifest:
     public_seeds: tuple[int, ...]
     band_counts: dict[str, int]
     band_commitments: dict[str, str]
-    cue_transform_commitment: str
+    neural_kernel_commitment: str
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
 def _derive(spec: WorldSuiteSpec, purpose: str) -> bytes:
-    payload = f"rlx-suite-v1|{spec.namespace}|{spec.version}|{purpose}".encode()
+    payload = f"rlx-long-suite-v1|{spec.namespace}|{spec.version}|{purpose}".encode()
     return hmac.new(spec.master_key, payload, hashlib.sha256).digest()
 
 
@@ -70,17 +70,6 @@ def _derive_seed(spec: WorldSuiteSpec, band: WorldBand, index: int) -> int:
     return int.from_bytes(_derive(spec, f"world|{band.value}|{index}")[:8], "big") & (
         2**63 - 1
     )
-
-
-def _derive_cue_transform(spec: WorldSuiteSpec, width: int) -> CueTransform:
-    permutation = tuple(
-        sorted(range(width), key=lambda index: _derive(spec, f"cue-permutation|{index}"))
-    )
-    signs = tuple(
-        1.0 if _derive(spec, f"cue-sign|{index}")[0] & 1 else -1.0
-        for index in range(width)
-    )
-    return CueTransform(permutation, signs)
 
 
 def _commit_band(namespace: str, version: int, band: WorldBand, seeds: tuple[int, ...]) -> str:
@@ -103,7 +92,7 @@ class EvaluatorWorldSuite:
     def __init__(self, config: FactorLabConfig, spec: WorldSuiteSpec):
         self.config = config
         self.spec = spec
-        self._cue_transform = _derive_cue_transform(spec, config.n_factors)
+        self._kernel_key = _derive(spec, "neural-task-kernel-v1")
         counts = {
             WorldBand.PUBLIC: spec.public_worlds,
             WorldBand.TUNE: spec.tune_worlds,
@@ -118,12 +107,11 @@ class EvaluatorWorldSuite:
             band.value: _commit_band(spec.namespace, spec.version, band, seeds)
             for band, seeds in self._seeds.items()
         }
-        transform_payload = json.dumps(
-            self._cue_transform.to_dict(), sort_keys=True, separators=(",", ":")
-        ).encode()
-        transform_commitment = hmac.new(
+        kernel_commitment = hmac.new(
             spec.master_key,
-            b"rlx-suite-v1|cue-transform-commitment|" + transform_payload,
+            b"rlx-long-suite-v1|neural-kernel-commitment|" + hashlib.sha256(
+                self._kernel_key
+            ).digest(),
             hashlib.sha256,
         ).hexdigest()
         identity = {
@@ -132,7 +120,7 @@ class EvaluatorWorldSuite:
             "task_id": config.task_id,
             "band_counts": {band.value: count for band, count in counts.items()},
             "band_commitments": commitments,
-            "cue_transform_commitment": transform_commitment,
+            "neural_kernel_commitment": kernel_commitment,
         }
         canonical = json.dumps(identity, sort_keys=True, separators=(",", ":"))
         self.suite_id = f"fls-{hashlib.sha256(canonical.encode()).hexdigest()}"
@@ -144,8 +132,9 @@ class EvaluatorWorldSuite:
             public_seeds=self._seeds[WorldBand.PUBLIC],
             band_counts={band.value: count for band, count in counts.items()},
             band_commitments=commitments,
-            cue_transform_commitment=transform_commitment,
+            neural_kernel_commitment=kernel_commitment,
         )
+        self._world_cache: dict[tuple[WorldBand, int], FactorLabWorld] = {}
 
     def public_manifest(self) -> PublicSuiteManifest:
         return self._public_manifest
@@ -158,9 +147,12 @@ class EvaluatorWorldSuite:
         seeds = self._seeds[normalized]
         if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < len(seeds):
             raise IndexError("world index is out of range")
-        return generate_world(
-            self.config, seeds[index], cue_transform=self._cue_transform
-        )
+        key = (normalized, index)
+        world = self._world_cache.get(key)
+        if world is None:
+            world = generate_world(self.config, seeds[index], kernel_key=self._kernel_key)
+            self._world_cache[key] = world
+        return world
 
     def replay_token(self, band: WorldBand | str, index: int, episode: int) -> str:
         if episode < 0:

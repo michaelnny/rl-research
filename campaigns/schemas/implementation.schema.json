@@ -10,9 +10,21 @@
       "items": {"type": "string", "minLength": 1}
     },
     "files": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "model_manifest": {
+      "type": "object",
+      "properties": {
+        "architecture": {"type": "string", "minLength": 3},
+        "framework": {"type": "string", "minLength": 2},
+        "trainable_parameters": {"type": "integer", "minimum": 1},
+        "recurrent": {"type": "boolean"},
+        "device": {"type": "string", "enum": ["cpu", "cuda", "mps"]}
+      },
+      "required": ["architecture", "framework", "trainable_parameters", "recurrent", "device"],
+      "additionalProperties": false
+    },
     "mechanism_invariants": {"type": "array", "items": {"type": "string"}, "minItems": 1},
     "self_checks": {"type": "array", "items": {"type": "string"}, "minItems": 1}
   },
-  "required": ["summary", "candidate_argv", "files", "mechanism_invariants", "self_checks"],
+  "required": ["summary", "candidate_argv", "files", "model_manifest", "mechanism_invariants", "self_checks"],
   "additionalProperties": false
 }

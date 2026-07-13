@@ -1,15 +1,16 @@
-"""Command line entry point for reference calibration runs."""
+"""Command-line entry point for preregistered neural qualification studies."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import stat
 import tempfile
 from pathlib import Path
 from typing import Sequence
 
-from .calibration import SmokeCalibrationSettings, run_smoke_calibration
+from .qualification_study import load_protocol, run_qualification_study
 
 
 def _write_atomic(path: Path, content: str) -> None:
@@ -26,34 +27,53 @@ def _write_atomic(path: Path, content: str) -> None:
             os.unlink(temporary)
 
 
+def _read_key(path: Path) -> bytes:
+    metadata = path.stat()
+    if not stat.S_ISREG(metadata.st_mode) or stat.S_IMODE(metadata.st_mode) & 0o077:
+        raise SystemExit("suite key must be a regular owner-only file")
+    content = path.read_bytes()
+    if len(content) != 32:
+        raise SystemExit("suite key must contain exactly 32 bytes")
+    return content
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="rlx-calibrate")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-    smoke = subparsers.add_parser("smoke", help="run provisional FactorLab calibration")
-    smoke.add_argument("--learner-episodes", type=int, default=200)
-    smoke.add_argument("--headroom-episodes", type=int, default=20)
-    smoke.add_argument("--master-seed", type=int, default=20260713)
-    smoke.add_argument("--output", type=Path, help="write JSON atomically instead of stdout")
+    parser = argparse.ArgumentParser(prog="rlx-qualify")
+    parser.add_argument("--protocol", type=Path, required=True)
+    parser.add_argument("--key-file", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--device", choices=("auto", "cpu", "cuda", "mps"))
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if args.command == "smoke":
-        report = run_smoke_calibration(
-            SmokeCalibrationSettings(
-                learner_episodes=args.learner_episodes,
-                headroom_episodes=args.headroom_episodes,
-                master_seed=args.master_seed,
-            )
+    protocol, protocol_sha = load_protocol(args.protocol)
+    result = run_qualification_study(
+        protocol,
+        protocol_sha256=protocol_sha,
+        master_key=_read_key(args.key_file),
+        device_override=args.device,
+    )
+    _write_atomic(
+        args.output_dir / "evidence.json",
+        json.dumps(result.evidence_bundle, indent=2, sort_keys=True) + "\n",
+    )
+    _write_atomic(
+        args.output_dir / "qualification-report.json",
+        json.dumps(result.report.to_dict(), indent=2, sort_keys=True) + "\n",
+    )
+    print(
+        json.dumps(
+            {
+                "qualified": result.report.qualified,
+                "report_id": result.report.report_id,
+                "evidence_sha256": result.evidence_sha256,
+            },
+            sort_keys=True,
         )
-        content = json.dumps(report.to_dict(), indent=2, sort_keys=True) + "\n"
-        if args.output:
-            _write_atomic(args.output, content)
-        else:
-            print(content, end="")
-        return 0
-    raise AssertionError("unreachable")
+    )
+    return 0 if result.report.qualified else 2
 
 
 if __name__ == "__main__":

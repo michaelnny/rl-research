@@ -42,6 +42,7 @@ class CandidateClient:
         limits: CandidateProcessLimits = CandidateProcessLimits(),
         unreadable_roots: tuple[Path, ...] = (),
         unwritable_roots: tuple[Path, ...] = (),
+        seed_artifacts: Mapping[str, bytes] | None = None,
         sandbox: bool | None = None,
     ):
         if not argv or any(not isinstance(part, str) or not part for part in argv):
@@ -49,14 +50,24 @@ class CandidateClient:
         self.cwd = cwd.resolve()
         self.limits = limits
         self._temporary = tempfile.TemporaryDirectory(prefix="rlx-candidate-")
+        self._scratch = Path(self._temporary.name).resolve()
+        for name, content in (seed_artifacts or {}).items():
+            path = self._artifact_path(name)
+            if not isinstance(content, bytes):
+                raise TypeError("seed artifact content must be bytes")
+            path.write_bytes(content)
+            path.chmod(0o400)
         environment = {
             key: os.environ[key] for key in self._SAFE_ENV_KEYS if key in os.environ
         }
         environment.setdefault("PATH", "/usr/bin:/bin")
         environment["PYTHONUNBUFFERED"] = "1"
         environment["TMPDIR"] = self._temporary.name
+        environment["RLX_CANDIDATE_SCRATCH"] = self._temporary.name
         use_sandbox = sys.platform == "darwin" if sandbox is None else sandbox
         command = tuple(argv)
+        if Path(command[0]).name in {"python", "python3"}:
+            command = (sys.executable, *command[1:])
         if use_sandbox:
             command = _sandbox_command(
                 command,
@@ -80,6 +91,28 @@ class CandidateClient:
         self._reader = threading.Thread(target=self._read_lines, daemon=True)
         self._reader.start()
         self._closed = False
+
+    def _artifact_path(self, name: str) -> Path:
+        if not isinstance(name, str) or not name or Path(name).name != name:
+            raise CandidateProtocolError("candidate artifact name must be one plain filename")
+        path = (self._scratch / name).resolve()
+        if path.parent != self._scratch:
+            raise CandidateProtocolError("candidate artifact escaped scratch directory")
+        return path
+
+    def read_artifact(self, name: str, *, max_bytes: int) -> bytes:
+        """Read a regular, non-symlink artifact from evaluator-owned scratch."""
+
+        path = self._artifact_path(name)
+        try:
+            metadata = path.lstat()
+        except OSError as exc:
+            raise CandidateProtocolError("candidate checkpoint artifact is missing") from exc
+        if path.is_symlink() or not path.is_file():
+            raise CandidateProtocolError("candidate checkpoint must be a regular file")
+        if metadata.st_size > max_bytes:
+            raise CandidateProtocolError("candidate checkpoint exceeds artifact limit")
+        return path.read_bytes()
 
     def _read_lines(self) -> None:
         assert self.process.stdout is not None

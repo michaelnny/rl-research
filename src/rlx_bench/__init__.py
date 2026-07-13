@@ -14,13 +14,14 @@ from .actions import (
 from .audit import CausalAuditResult, audit_causal_contract
 from .budget import BudgetExceeded, BudgetLedger, BudgetLimits, BudgetedEnv
 from .factorlab import (
-    CueTransform,
     EffectKind,
     FactorLabConfig,
     FactorLabEnv,
     FactorLabInspector,
     FactorLabWorld,
+    NeuralTaskKernel,
     ObjectiveProtocol,
+    derive_task_kernel,
     generate_world,
 )
 from .metrics import (
@@ -30,6 +31,7 @@ from .metrics import (
     normalize_returns,
     pareto_mask,
 )
+from .independent_audit import IndependentAuditReport, run_independent_audit
 from .oracle import ExactSolution, ParetoSolution, exact_pareto_front, exact_weighted_solution
 from .suite import EvaluatorWorldSuite, PublicSuiteManifest, WorldBand, WorldSuiteSpec
 
@@ -43,7 +45,6 @@ __all__ = [
     "CausalAuditResult",
     "ConditionalHybridActionSpec",
     "ContinuousActionSpec",
-    "CueTransform",
     "EffectKind",
     "EmbeddedCatalogActionSpec",
     "EvaluatorWorldSuite",
@@ -55,6 +56,8 @@ __all__ = [
     "FactoredDiscreteActionSpec",
     "FlatDiscreteActionSpec",
     "InvalidAction",
+    "IndependentAuditReport",
+    "NeuralTaskKernel",
     "ObjectiveProtocol",
     "ParetoSolution",
     "PublicSuiteManifest",
@@ -63,6 +66,7 @@ __all__ = [
     "audit_causal_contract",
     "constraint_metrics",
     "coverage_metrics",
+    "derive_task_kernel",
     "exact_pareto_front",
     "exact_weighted_solution",
     "generate_world",
@@ -70,4 +74,5 @@ __all__ = [
     "make_action_spec",
     "normalize_returns",
     "pareto_mask",
+    "run_independent_audit",
 ]

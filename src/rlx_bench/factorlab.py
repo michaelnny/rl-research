@@ -1,7 +1,9 @@
-"""FactorLab: controlled causal diagnostics for long-horizon vector RL.
+"""Long-horizon Neural FactorLab: controlled diagnostics for compact neural RL.
 
-This module intentionally contains no imports from ``rlh_bench``. It defines a
-new procedural task family with separate learner and privileged-inspector APIs.
+FactorLab is deliberately not a finite cue/action lookup problem.  Every world
+contains continuous procedural observations and shares an evaluator-owned,
+nonlinear task kernel with the other worlds in its suite.  A useful policy must
+learn a representation that transfers to unseen trajectories and worlds.
 """
 
 from __future__ import annotations
@@ -26,6 +28,7 @@ class ObjectiveProtocol(str, Enum):
 
 class EffectKind(str, Enum):
     ADDITIVE = "additive"
+    DYNAMICS = "dynamics"
     PAIRWISE = "pairwise"
     THRESHOLD = "threshold"
     PREREQUISITE = "prerequisite"
@@ -41,26 +44,45 @@ ACTION_MODES = frozenset(
     }
 )
 
+BENCHMARK_REVISION = "factorlab-long-v1"
+BENCHMARK_VERSION = 2
+
 
 @dataclass(frozen=True)
 class FactorLabConfig:
-    horizon: int = 64
+    """Public task dimensions; no hidden task-kernel parameters live here."""
+
+    horizon: int = 5000
     n_objectives: int = 2
-    n_factors: int = 4
+    n_factors: int = 12
     action_mode: str = "factored_discrete"
-    levels_per_factor: tuple[int, ...] = (2,)
-    catalog_size: int = 128
+    levels_per_factor: tuple[int, ...] = (10,)
+    catalog_size: int = 256
+    signal_dim: int = 16
+    context_dim: int = 8
+    state_dim: int = 8
+    teacher_hidden_dim: int = 16
+    signal_autocorrelation: float = 0.2
+    signal_target_scale: float = 0.25
+    context_target_scale: float = 2.0
+    state_target_scale: float = 0.25
     max_causal_lag: int | None = None
     memory_lag: int = 0
     reward_events: int = 1
-    conflict_strength: float = 1.0
-    effects: tuple[EffectKind | str, ...] = (EffectKind.ADDITIVE,)
+    conflict_strength: float = 0.75
+    effects: tuple[EffectKind | str, ...] = (
+        EffectKind.ADDITIVE,
+        EffectKind.DYNAMICS,
+    )
     pairwise_gap: int = 1
-    interaction_strength: float = 0.25
+    interaction_strength: float = 0.15
     prerequisite_span: int = 4
-    threshold: float = 0.7
+    threshold: float = 0.72
     threshold_bonus: float = 0.5
-    cue_cardinality: int = 8
+    terminal_state_weight: float = 1.0
+    state_decay: float = 0.85
+    action_influence: float = 0.25
+    exogenous_influence: float = 0.15
     protocol: ObjectiveProtocol | str = ObjectiveProtocol.PREFERENCE_CONDITIONED
     constraint_floors: tuple[float, ...] = ()
 
@@ -81,34 +103,47 @@ class FactorLabConfig:
         object.__setattr__(self, "levels_per_factor", counts)
         if self.catalog_size < 2:
             raise ValueError("catalog_size must be at least 2")
-        max_causal_lag = min(32, self.horizon) if self.max_causal_lag is None else self.max_causal_lag
-        if not 1 <= max_causal_lag <= self.horizon:
+        for name in ("signal_dim", "context_dim", "state_dim", "teacher_hidden_dim"):
+            if getattr(self, name) < 2:
+                raise ValueError(f"{name} must be at least 2")
+        if not 0.0 <= self.signal_autocorrelation < 1.0:
+            raise ValueError("signal_autocorrelation must lie in [0, 1)")
+        if min(
+            self.signal_target_scale,
+            self.context_target_scale,
+            self.state_target_scale,
+        ) <= 0.0:
+            raise ValueError("target channel scales must be positive")
+        lag = self.horizon if self.max_causal_lag is None else self.max_causal_lag
+        if not 1 <= lag <= self.horizon:
             raise ValueError("max_causal_lag must lie in [1, horizon]")
-        object.__setattr__(self, "max_causal_lag", int(max_causal_lag))
+        object.__setattr__(self, "max_causal_lag", int(lag))
         if not 0 <= self.memory_lag < self.horizon:
             raise ValueError("memory_lag must lie in [0, horizon)")
         if not 1 <= self.reward_events <= self.horizon:
             raise ValueError("reward_events must lie in [1, horizon]")
         if not 0.0 <= self.conflict_strength <= 1.0:
             raise ValueError("conflict_strength must lie in [0, 1]")
-        normalized_effects = tuple(EffectKind(effect) for effect in self.effects)
-        if not normalized_effects or len(set(normalized_effects)) != len(normalized_effects):
+        effects = tuple(EffectKind(effect) for effect in self.effects)
+        if not effects or len(set(effects)) != len(effects):
             raise ValueError("effects must be a non-empty set of mechanisms")
-        if EffectKind.ADDITIVE not in normalized_effects:
-            raise ValueError("additive must be present so every decision has a direct effect")
-        object.__setattr__(self, "effects", normalized_effects)
-        if self.pairwise_gap < 1:
-            raise ValueError("pairwise_gap must be positive")
-        if self.interaction_strength < 0.0:
-            raise ValueError("interaction_strength cannot be negative")
-        if self.prerequisite_span < 2:
-            raise ValueError("prerequisite_span must be at least 2")
+        if EffectKind.ADDITIVE not in effects:
+            raise ValueError("additive must be present so every action has a direct effect")
+        object.__setattr__(self, "effects", effects)
+        if self.pairwise_gap < 1 or self.prerequisite_span < 2:
+            raise ValueError("interaction spans must be positive")
+        if self.interaction_strength < 0.0 or self.threshold_bonus < 0.0:
+            raise ValueError("reward bonuses cannot be negative")
         if not 0.0 <= self.threshold <= 1.0:
             raise ValueError("threshold must lie in [0, 1]")
-        if self.threshold_bonus < 0.0:
-            raise ValueError("threshold_bonus cannot be negative")
-        if self.cue_cardinality < 2:
-            raise ValueError("cue_cardinality must be at least 2")
+        if self.terminal_state_weight < 0.0:
+            raise ValueError("terminal_state_weight cannot be negative")
+        if EffectKind.DYNAMICS not in effects and self.terminal_state_weight:
+            raise ValueError("terminal_state_weight requires the dynamics mechanism")
+        if not 0.0 <= self.state_decay < 1.0:
+            raise ValueError("state_decay must lie in [0, 1)")
+        if self.action_influence < 0.0 or self.exogenous_influence < 0.0:
+            raise ValueError("state influences cannot be negative")
         protocol = ObjectiveProtocol(self.protocol)
         object.__setattr__(self, "protocol", protocol)
         if protocol is ObjectiveProtocol.CONSTRAINED:
@@ -116,7 +151,7 @@ class FactorLabConfig:
             if len(floors) != self.n_objectives - 1:
                 raise ValueError("constrained protocol needs one floor after the primary objective")
             if any(not 0.0 <= floor <= 1.0 for floor in floors):
-                raise ValueError("constraint floors are normalized and must lie in [0, 1]")
+                raise ValueError("constraint floors must lie in [0, 1]")
             object.__setattr__(self, "constraint_floors", tuple(float(x) for x in floors))
         elif self.constraint_floors:
             raise ValueError("constraint_floors only apply to the constrained protocol")
@@ -129,6 +164,18 @@ class FactorLabConfig:
     def joint_discrete_choices(self) -> int:
         return math.prod(self.levels_per_factor)
 
+    @property
+    def observation_width(self) -> int:
+        # time fraction, sin/cos time, action mask, signal mask, then dense channels.
+        return (
+            5
+            + self.signal_dim
+            + self.context_dim
+            + self.state_dim
+            + self.n_factors
+            + self.n_objectives
+        )
+
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         data["protocol"] = self.protocol.value
@@ -140,55 +187,121 @@ class FactorLabConfig:
     @property
     def task_id(self) -> str:
         payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
-        return f"factorlab-v0-{hashlib.sha256(payload.encode()).hexdigest()[:16]}"
+        return f"{BENCHMARK_REVISION}-{hashlib.sha256(payload.encode()).hexdigest()[:16]}"
+
+
+FloatVector = tuple[float, ...]
+FloatMatrix = tuple[FloatVector, ...]
+
+
+def _nested_tuple(array: np.ndarray) -> Any:
+    if array.ndim == 1:
+        return tuple(float(value) for value in array)
+    return tuple(_nested_tuple(value) for value in array)
 
 
 @dataclass(frozen=True)
-class CueTransform:
-    """Evaluator-owned signed permutation shared by a task suite.
+class NeuralTaskKernel:
+    """Evaluator-owned nonlinear task and dynamics parameters."""
 
-    Learners observe the untransformed cue and must infer this mapping from
-    training feedback instead of exploiting a public cue/action identity.
-    """
+    encoder: tuple[FloatVector, ...]
+    encoder_bias: FloatVector
+    objective_heads: tuple[tuple[FloatVector, ...], ...]
+    objective_bias: tuple[FloatVector, ...]
+    transition: FloatMatrix
+    action_to_state: FloatMatrix
+    signal_to_state: FloatMatrix
+    terminal_heads: tuple[FloatMatrix, ...]
+    kernel_id: str
 
-    permutation: tuple[int, ...]
-    signs: tuple[float, ...]
 
-    def __post_init__(self) -> None:
-        width = len(self.permutation)
-        if width < 1 or tuple(sorted(self.permutation)) != tuple(range(width)):
-            raise ValueError("cue transform permutation must contain each dimension once")
-        if len(self.signs) != width or any(sign not in (-1.0, 1.0) for sign in self.signs):
-            raise ValueError("cue transform signs must be +/-1 for every dimension")
+def derive_task_kernel(config: FactorLabConfig, kernel_key: bytes) -> NeuralTaskKernel:
+    """Derive one suite-shared hidden kernel without exposing its key."""
 
-    @classmethod
-    def identity(cls, width: int) -> CueTransform:
-        if width < 1:
-            raise ValueError("cue transform width must be positive")
-        return cls(tuple(range(width)), (1.0,) * width)
-
-    def apply(self, cue: tuple[float, ...]) -> tuple[float, ...]:
-        if len(cue) != len(self.permutation):
-            raise ValueError("cue width does not match cue transform")
-        return tuple(
-            self.signs[index] * float(cue[source])
-            for index, source in enumerate(self.permutation)
+    if not isinstance(kernel_key, bytes) or len(kernel_key) < 32:
+        raise ValueError("kernel_key must contain at least 256 bits")
+    dimensions = (
+        config.signal_dim,
+        config.context_dim,
+        config.state_dim,
+        config.teacher_hidden_dim,
+        config.n_factors,
+        config.n_objectives,
+    )
+    digest = hashlib.sha256(kernel_key + repr(dimensions).encode()).digest()
+    rng = np.random.default_rng(int.from_bytes(digest[:8], "big"))
+    input_width = config.signal_dim + config.context_dim + config.state_dim
+    encoder = rng.normal(0.0, 1.25 / math.sqrt(input_width), (config.teacher_hidden_dim, input_width))
+    encoder_bias = rng.normal(0.0, 0.3, config.teacher_hidden_dim)
+    base_head = rng.normal(
+        0.0,
+        1.1 / math.sqrt(config.teacher_hidden_dim),
+        (config.n_factors, config.teacher_hidden_dim),
+    )
+    heads: list[np.ndarray] = []
+    biases: list[np.ndarray] = []
+    for objective in range(config.n_objectives):
+        independent = rng.normal(
+            0.0,
+            1.1 / math.sqrt(config.teacher_hidden_dim),
+            (config.n_factors, config.teacher_hidden_dim),
         )
+        if objective == 0:
+            head = base_head
+        elif objective == 1:
+            angle = math.pi * config.conflict_strength
+            head = math.cos(angle) * base_head + math.sin(angle) * independent
+        else:
+            angle = math.pi * config.conflict_strength * objective / (config.n_objectives - 1)
+            head = math.cos(angle) * base_head + math.sin(angle) * independent
+        heads.append(head)
+        biases.append(rng.normal(0.0, 0.15, config.n_factors))
+    transition_raw = rng.normal(size=(config.state_dim, config.state_dim))
+    transition, _ = np.linalg.qr(transition_raw)
+    action_to_state = rng.normal(
+        0.0, 1.0 / math.sqrt(config.n_factors), (config.state_dim, config.n_factors)
+    )
+    signal_to_state = rng.normal(
+        0.0, 1.0 / math.sqrt(config.signal_dim), (config.state_dim, config.signal_dim)
+    )
+    terminal_heads = rng.normal(
+        0.0,
+        1.0 / math.sqrt(config.context_dim),
+        (config.n_objectives, config.state_dim, config.context_dim),
+    )
+    identity = hashlib.sha256(
+        kernel_key + b"|factorlab-long-neural-kernel-v1|" + repr(dimensions).encode()
+    ).hexdigest()
+    return NeuralTaskKernel(
+        encoder=_nested_tuple(encoder),
+        encoder_bias=_nested_tuple(encoder_bias),
+        objective_heads=_nested_tuple(np.asarray(heads)),
+        objective_bias=_nested_tuple(np.asarray(biases)),
+        transition=_nested_tuple(transition),
+        action_to_state=_nested_tuple(action_to_state),
+        signal_to_state=_nested_tuple(signal_to_state),
+        terminal_heads=_nested_tuple(terminal_heads),
+        kernel_id=f"flk-{identity}",
+    )
 
-    def to_dict(self) -> dict[str, Any]:
-        return {"permutation": list(self.permutation), "signs": list(self.signs)}
 
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class FactorLabWorld:
     config: FactorLabConfig
     seed: int
-    cues: tuple[tuple[float, ...], ...]
-    intrinsic_lags: tuple[int, ...]
-    objective_signs: tuple[tuple[float, ...], ...]
-    cue_transform: CueTransform
+    signals: np.ndarray
+    context: FloatVector
+    initial_state: FloatVector
+    intrinsic_lags: np.ndarray
+    task_kernel: NeuralTaskKernel
     action_spec: ActionSpec
     world_id: str
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FactorLabWorld) and self.world_id == other.world_id
+
+    def __hash__(self) -> int:
+        return hash(self.world_id)
 
     @property
     def reward_schedule(self) -> tuple[int, ...]:
@@ -197,12 +310,15 @@ class FactorLabWorld:
     @property
     def return_upper_bound(self) -> tuple[float, ...]:
         config = self.config
-        pair_count = max(0, config.decision_count - config.pairwise_gap)
         upper = float(config.decision_count)
         if EffectKind.PAIRWISE in config.effects:
-            upper += pair_count * config.interaction_strength
+            upper += max(0, config.decision_count - config.pairwise_gap) * (
+                config.interaction_strength
+            )
         if EffectKind.THRESHOLD in config.effects:
             upper += config.threshold_bonus
+        if EffectKind.DYNAMICS in config.effects:
+            upper += config.terminal_state_weight
         return (upper,) * config.n_objectives
 
 
@@ -222,46 +338,6 @@ class Trajectory:
     return_vector: tuple[float, ...]
 
 
-def _objective_signs(n_objectives: int, n_factors: int) -> tuple[tuple[float, ...], ...]:
-    signs: list[tuple[float, ...]] = []
-    for objective in range(n_objectives):
-        if objective == 0:
-            signs.append((1.0,) * n_factors)
-        elif objective == 1:
-            signs.append((-1.0,) * n_factors)
-        else:
-            signs.append(
-                tuple(
-                    1.0 if ((factor + 1) * (objective + 1)) % (objective + 2) else -1.0
-                    for factor in range(n_factors)
-                )
-            )
-    return tuple(signs)
-
-
-def score_canonical_action(
-    config: FactorLabConfig,
-    objective_signs: tuple[tuple[float, ...], ...],
-    cue: tuple[float, ...],
-    canonical_action: tuple[float, ...],
-) -> tuple[float, ...]:
-    """Return fixed-semantics objective scores in [0, 1]."""
-
-    if len(cue) != config.n_factors or len(canonical_action) != config.n_factors:
-        raise ValueError("cue and canonical action dimensions must match the configuration")
-    cue_array = np.asarray(cue, dtype=np.float64)
-    action_array = np.asarray(canonical_action, dtype=np.float64)
-    scores: list[float] = []
-    for signs in objective_signs:
-        alternate = cue_array * np.asarray(signs, dtype=np.float64)
-        ideal = (1.0 - config.conflict_strength) * cue_array + (
-            config.conflict_strength * alternate
-        )
-        squared_distance = np.square((action_array - ideal) / 2.0)
-        scores.append(float(np.clip(1.0 - np.mean(squared_distance), 0.0, 1.0)))
-    return tuple(scores)
-
-
 def reward_schedule(horizon: int, reward_events: int) -> tuple[int, ...]:
     """Return after-step indices; one event means terminal-only feedback."""
 
@@ -269,63 +345,45 @@ def reward_schedule(horizon: int, reward_events: int) -> tuple[int, ...]:
 
 
 def _release_time(world: FactorLabWorld, action_time: int) -> tuple[int, int]:
-    maturity = min(world.config.horizon, action_time + world.intrinsic_lags[action_time])
+    maturity = min(
+        world.config.horizon,
+        action_time + int(world.intrinsic_lags[action_time]),
+    )
     release = next(time for time in world.reward_schedule if time >= maturity)
     return maturity, release
-
-
-def _world_payload(
-    config: FactorLabConfig,
-    seed: int,
-    cues: tuple[tuple[float, ...], ...],
-    lags: tuple[int, ...],
-    signs: tuple[tuple[float, ...], ...],
-    cue_transform: CueTransform,
-    action_spec: ActionSpec,
-) -> dict[str, Any]:
-    return {
-        "family": "factorlab",
-        "version": 0,
-        "config": config.to_dict(),
-        "seed": seed,
-        "cues": cues,
-        "intrinsic_lags": lags,
-        "objective_signs": signs,
-        "cue_transform": cue_transform.to_dict(),
-        "action_schema": action_spec.public_schema(),
-    }
 
 
 def generate_world(
     config: FactorLabConfig,
     seed: int,
     *,
-    cue_transform: CueTransform | None = None,
+    kernel_key: bytes | None = None,
 ) -> FactorLabWorld:
-    """Generate an immutable world; its seed is evaluator-only metadata."""
+    """Generate an immutable neural task world; its seed remains evaluator metadata."""
 
     if isinstance(seed, bool) or not isinstance(seed, (int, np.integer)):
         raise ValueError("world seed must be an integer")
     seed = int(seed)
-    cue_transform = cue_transform or CueTransform.identity(config.n_factors)
-    if len(cue_transform.permutation) != config.n_factors:
-        raise ValueError("cue transform width must match n_factors")
+    if kernel_key is None:
+        kernel_key = hashlib.sha256(b"factorlab-long-v1-standalone-test-kernel").digest()
+    kernel = derive_task_kernel(config, kernel_key)
     rng = np.random.default_rng(seed)
-    prototypes = rng.choice(
-        (-1.0, 1.0), size=(config.cue_cardinality, config.n_factors), replace=True
-    )
-    prototype_ids = rng.integers(config.cue_cardinality, size=config.horizon)
-    cues = tuple(
-        tuple(float(value) for value in prototypes[int(index)]) for index in prototype_ids
-    )
+    context = np.tanh(rng.normal(size=config.context_dim))
+    innovations = rng.normal(size=(config.horizon, config.signal_dim))
+    signals = np.zeros_like(innovations)
+    signals[0] = innovations[0]
+    correlation = config.signal_autocorrelation
+    for time in range(1, config.horizon):
+        signals[time] = correlation * signals[time - 1] + math.sqrt(
+            1.0 - correlation**2
+        ) * innovations[time]
+    signals = np.tanh(signals)
+    initial_state = np.tanh(rng.normal(0.0, 0.35, config.state_dim))
     lags = [0] * config.horizon
     for action_time in range(config.memory_lag, config.horizon):
         maximum = max(1, min(config.max_causal_lag, config.horizon - action_time))
         lags[action_time] = int(rng.integers(1, maximum + 1))
-    first_decision = config.memory_lag
-    lags[first_decision] = min(config.max_causal_lag, config.horizon - first_decision)
-    lags_tuple = tuple(lags)
-    signs = _objective_signs(config.n_objectives, config.n_factors)
+    lags[config.memory_lag] = min(config.max_causal_lag, config.horizon - config.memory_lag)
     action_spec = make_action_spec(
         config.action_mode,
         n_factors=config.n_factors,
@@ -333,18 +391,32 @@ def generate_world(
         catalog_size=config.catalog_size,
         seed=seed ^ 0xA5A5A5A5,
     )
-    payload = _world_payload(
-        config, seed, cues, lags_tuple, signs, cue_transform, action_spec
-    )
+    signals = np.ascontiguousarray(signals, dtype=np.float32)
+    signals.setflags(write=False)
+    lag_array = np.ascontiguousarray(lags, dtype=np.int32)
+    lag_array.setflags(write=False)
+    payload = {
+        "family": "factorlab",
+        "version": BENCHMARK_VERSION,
+        "config": config.to_dict(),
+        "seed": seed,
+        "signals_sha256": hashlib.sha256(signals.tobytes()).hexdigest(),
+        "context": _nested_tuple(context),
+        "initial_state": _nested_tuple(initial_state),
+        "intrinsic_lags_sha256": hashlib.sha256(lag_array.tobytes()).hexdigest(),
+        "kernel_id": kernel.kernel_id,
+        "action_schema": action_spec.public_schema(),
+    }
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     world_id = f"flw-{hashlib.sha256(canonical.encode()).hexdigest()}"
     return FactorLabWorld(
         config=config,
         seed=seed,
-        cues=cues,
-        intrinsic_lags=lags_tuple,
-        objective_signs=signs,
-        cue_transform=cue_transform,
+        signals=signals,
+        context=_nested_tuple(context),
+        initial_state=_nested_tuple(initial_state),
+        intrinsic_lags=lag_array,
+        task_kernel=kernel,
         action_spec=action_spec,
         world_id=world_id,
     )
@@ -371,8 +443,45 @@ def _validate_preference(config: FactorLabConfig, preference: Any) -> tuple[floa
     return None
 
 
+def _target_values(
+    world: FactorLabWorld,
+    signal: np.ndarray,
+    state: np.ndarray,
+) -> np.ndarray:
+    kernel = world.task_kernel
+    config = world.config
+    dense = np.concatenate(
+        (
+            config.signal_target_scale * signal,
+            config.context_target_scale * np.asarray(world.context),
+            config.state_target_scale * state,
+        )
+    )
+    hidden = np.tanh(np.asarray(kernel.encoder) @ dense + np.asarray(kernel.encoder_bias))
+    return np.tanh(np.einsum("ofh,h->of", np.asarray(kernel.objective_heads), hidden) + np.asarray(kernel.objective_bias))
+
+
+def score_canonical_action(
+    world: FactorLabWorld,
+    signal: tuple[float, ...] | np.ndarray,
+    state: tuple[float, ...] | np.ndarray,
+    canonical_action: tuple[float, ...] | np.ndarray,
+) -> tuple[float, ...]:
+    """Evaluator-side nonlinear score for one state, cue, and structured action."""
+
+    action = np.asarray(canonical_action, dtype=np.float64)
+    if action.shape != (world.config.n_factors,):
+        raise ValueError("canonical action width does not match n_factors")
+    targets = _target_values(world, np.asarray(signal), np.asarray(state))
+    squared = np.square((action[None, :] - targets) / 2.0)
+    # A bounded radial score gives useful separation between random and
+    # representation-aware actions without introducing discontinuous labels.
+    scores = np.mean(np.exp(-5.0 * squared), axis=1)
+    return tuple(float(value) for value in np.clip(scores, 0.0, 1.0))
+
+
 class FactorLabEnv:
-    """Learner-facing deterministic environment with no privileged metadata."""
+    """Learner-facing neural environment with no privileged task parameters."""
 
     def __init__(self, world: FactorLabWorld):
         self._world = world
@@ -381,7 +490,8 @@ class FactorLabEnv:
         self._done = False
         self._started = False
         self._preference: tuple[float, ...] | None = None
-        self._canonical_actions: dict[int, tuple[float, ...]] = {}
+        self._state = np.asarray(world.initial_state, dtype=np.float64)
+        self._previous_action = np.zeros(world.config.n_factors, dtype=np.float64)
         self._base_scores: dict[int, tuple[float, ...]] = {}
         self._pending: dict[int, np.ndarray] = {}
         self._return = np.zeros(world.config.n_objectives, dtype=np.float64)
@@ -389,13 +499,33 @@ class FactorLabEnv:
     def _observation(self) -> dict[str, Any]:
         config = self._world.config
         reveal_for = self._time + config.memory_lag
-        cue = self._world.cues[reveal_for] if reveal_for < config.horizon else None
+        signal = self._world.signals[reveal_for] if reveal_for < config.horizon else None
+        signal_values = signal if signal is not None else (0.0,) * config.signal_dim
+        preference = self._preference or (0.0,) * config.n_objectives
+        phase = 2.0 * math.pi * self._time / config.horizon
+        action_required = config.memory_lag <= self._time < config.horizon
+        features = (
+            self._time / config.horizon,
+            math.sin(phase),
+            math.cos(phase),
+            float(action_required),
+            float(signal is not None),
+            *signal_values,
+            *self._world.context,
+            *(float(value) for value in self._state),
+            *(float(value) for value in self._previous_action),
+            *preference,
+        )
         return {
             "time": self._time,
-            "time_fraction": self._time / config.horizon,
-            "action_required": config.memory_lag <= self._time < config.horizon,
-            "revealed_cue": cue,
-            "cue_for_time": reveal_for if cue is not None else None,
+            "action_required": action_required,
+            "signal": [float(value) for value in signal] if signal is not None else None,
+            "signal_for_time": reveal_for if signal is not None else None,
+            "state": [float(value) for value in self._state],
+            "context": list(self._world.context),
+            "previous_action": [float(value) for value in self._previous_action],
+            "preference": list(preference),
+            "features": [float(value) for value in features],
         }
 
     def reset(self, *, preference: Any = None) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -403,7 +533,8 @@ class FactorLabEnv:
         self._time = 0
         self._done = False
         self._started = True
-        self._canonical_actions.clear()
+        self._state = np.asarray(self._world.initial_state, dtype=np.float64)
+        self._previous_action = np.zeros(self._world.config.n_factors, dtype=np.float64)
         self._base_scores.clear()
         self._pending.clear()
         self._return = np.zeros(self._world.config.n_objectives, dtype=np.float64)
@@ -411,8 +542,9 @@ class FactorLabEnv:
         public_info = {
             "task_id": config.task_id,
             "family": "factorlab",
-            "version": 0,
+            "version": BENCHMARK_VERSION,
             "horizon": config.horizon,
+            "observation_spec": {"kind": "dense_float", "width": config.observation_width},
             "objective_names": [f"objective_{index}" for index in range(config.n_objectives)],
             "objective_orientation": ["maximize"] * config.n_objectives,
             "objective_protocol": config.protocol.value,
@@ -430,46 +562,71 @@ class FactorLabEnv:
         )
         bucket += values
 
-    def _apply_action(self, action: Any) -> None:
+    def _apply_action(self, action: Any) -> np.ndarray:
         world = self._world
         config = world.config
         action_time = self._time
         canonical = self.action_spec.decode(action)
         scores = score_canonical_action(
-            config,
-            world.objective_signs,
-            world.cue_transform.apply(world.cues[action_time]),
-            canonical,
+            world, world.signals[action_time], self._state, canonical
         )
-        self._canonical_actions[action_time] = canonical
-        self._base_scores[action_time] = scores
+        if (
+            EffectKind.PAIRWISE in config.effects
+            or EffectKind.PREREQUISITE in config.effects
+            or EffectKind.THRESHOLD in config.effects
+        ):
+            self._base_scores[action_time] = scores
         contribution = np.asarray(scores, dtype=np.float64)
-
         if EffectKind.PREREQUISITE in config.effects:
             relative = action_time - config.memory_lag
             anchor = action_time - (relative % config.prerequisite_span)
             if anchor != action_time:
                 contribution *= np.asarray(self._base_scores[anchor], dtype=np.float64)
-
         if EffectKind.PAIRWISE in config.effects:
             prior = action_time - config.pairwise_gap
             if prior >= config.memory_lag:
-                prior_scores = np.asarray(self._base_scores[prior], dtype=np.float64)
-                pairwise = config.interaction_strength * np.sqrt(
-                    np.asarray(scores, dtype=np.float64) * prior_scores
+                pair = config.interaction_strength * np.sqrt(
+                    np.asarray(scores) * np.asarray(self._base_scores[prior])
                 )
-                contribution += pairwise
-
+                contribution += pair
         _, release = _release_time(world, action_time)
         self._add_pending(release, contribution)
+        return np.asarray(canonical, dtype=np.float64)
 
-    def _threshold_reward(self) -> np.ndarray:
+    def _advance_state(self, canonical: np.ndarray) -> None:
         config = self._world.config
-        if EffectKind.THRESHOLD not in config.effects:
-            return np.zeros(config.n_objectives, dtype=np.float64)
-        scores = np.asarray(list(self._base_scores.values()), dtype=np.float64)
-        means = scores.mean(axis=0)
-        return config.threshold_bonus * (means >= config.threshold)
+        kernel = self._world.task_kernel
+        signal = np.asarray(self._world.signals[self._time])
+        action_term = np.zeros(config.state_dim)
+        if EffectKind.DYNAMICS in config.effects:
+            action_term = config.action_influence * (np.asarray(kernel.action_to_state) @ canonical)
+        self._state = np.tanh(
+            config.state_decay * (np.asarray(kernel.transition) @ self._state)
+            + action_term
+            + config.exogenous_influence * (np.asarray(kernel.signal_to_state) @ signal)
+        )
+        self._previous_action = canonical
+
+    def _terminal_reward(self) -> np.ndarray:
+        config = self._world.config
+        reward = np.zeros(config.n_objectives, dtype=np.float64)
+        if EffectKind.THRESHOLD in config.effects:
+            means = np.asarray(list(self._base_scores.values()), dtype=np.float64).mean(axis=0)
+            reward += config.threshold_bonus * (means >= config.threshold)
+        if EffectKind.DYNAMICS in config.effects and config.terminal_state_weight:
+            targets = np.tanh(
+                np.einsum(
+                    "osc,c->os",
+                    np.asarray(self._world.task_kernel.terminal_heads),
+                    np.asarray(self._world.context),
+                )
+            )
+            scores = np.mean(
+                np.exp(-5.0 * np.square((self._state[None, :] - targets) / 2.0)),
+                axis=1,
+            )
+            reward += config.terminal_state_weight * np.clip(scores, 0.0, 1.0)
+        return reward
 
     def step(
         self, action: Any
@@ -482,17 +639,18 @@ class FactorLabEnv:
         if self._time < config.memory_lag:
             if action is not None:
                 raise InvalidAction("warm-up steps require action=None")
+            canonical = np.zeros(config.n_factors, dtype=np.float64)
         else:
             if action is None:
                 raise InvalidAction("decision steps require an action")
-            self._apply_action(action)
-
+            canonical = self._apply_action(action)
+        self._advance_state(canonical)
         self._time += 1
         reward = self._pending.pop(
             self._time, np.zeros(config.n_objectives, dtype=np.float64)
         )
         if self._time == config.horizon:
-            reward += self._threshold_reward()
+            reward += self._terminal_reward()
         self._return += reward
         self._done = self._time == config.horizon
         info = {
@@ -500,17 +658,11 @@ class FactorLabEnv:
             "time": self._time,
             "reward_event": bool(np.any(reward)),
         }
-        return (
-            self._observation(),
-            tuple(float(value) for value in reward),
-            self._done,
-            False,
-            info,
-        )
+        return self._observation(), tuple(float(value) for value in reward), self._done, False, info
 
 
 class FactorLabInspector:
-    """Privileged evaluator-only access to a generated world's causal truth."""
+    """Privileged evaluator-only access to causal structure and simulation."""
 
     def __init__(self, world: FactorLabWorld):
         self.world = world
@@ -518,18 +670,16 @@ class FactorLabInspector:
     def manifest(self) -> dict[str, Any]:
         world = self.world
         return {
-            **_world_payload(
-                world.config,
-                world.seed,
-                world.cues,
-                world.intrinsic_lags,
-                world.objective_signs,
-                world.cue_transform,
-                world.action_spec,
-            ),
+            "family": "factorlab",
+            "version": BENCHMARK_VERSION,
+            "config": world.config.to_dict(),
             "world_id": world.world_id,
-            "reward_schedule": world.reward_schedule,
-            "return_upper_bound": world.return_upper_bound,
+            "world_seed": world.seed,
+            "kernel_id": world.task_kernel.kernel_id,
+            "intrinsic_lags": list(world.intrinsic_lags),
+            "reward_schedule": list(world.reward_schedule),
+            "return_upper_bound": list(world.return_upper_bound),
+            "action_schema": world.action_spec.public_schema(),
         }
 
     def influence_edges(self) -> tuple[InfluenceEdge, ...]:
@@ -537,28 +687,45 @@ class FactorLabInspector:
         config = world.config
         objectives = tuple(range(config.n_objectives))
         edges: set[InfluenceEdge] = set()
+        dynamics_last_action_by_release: dict[int, int] = {}
+        if EffectKind.DYNAMICS in config.effects:
+            for affected_time in range(config.memory_lag, config.horizon):
+                _, affected_release = _release_time(world, affected_time)
+                dynamics_last_action_by_release[affected_release] = affected_time
         for action_time in range(config.memory_lag, config.horizon):
             maturity, release = _release_time(world, action_time)
-            edges.add(
-                InfluenceEdge(
-                    action_time, maturity, release, objectives, EffectKind.ADDITIVE
-                )
-            )
+            edges.add(InfluenceEdge(action_time, maturity, release, objectives, EffectKind.ADDITIVE))
             if EffectKind.PAIRWISE in config.effects:
                 prior = action_time - config.pairwise_gap
                 if prior >= config.memory_lag:
-                    edges.add(
-                        InfluenceEdge(prior, maturity, release, objectives, EffectKind.PAIRWISE)
-                    )
+                    edges.add(InfluenceEdge(prior, maturity, release, objectives, EffectKind.PAIRWISE))
             if EffectKind.PREREQUISITE in config.effects:
                 relative = action_time - config.memory_lag
                 anchor = action_time - (relative % config.prerequisite_span)
                 if anchor != action_time:
+                    edges.add(InfluenceEdge(anchor, maturity, release, objectives, EffectKind.PREREQUISITE))
+            if EffectKind.DYNAMICS in config.effects:
+                for affected_release, last_action in dynamics_last_action_by_release.items():
+                    if last_action <= action_time:
+                        continue
                     edges.add(
                         InfluenceEdge(
-                            anchor, maturity, release, objectives, EffectKind.PREREQUISITE
+                            action_time,
+                            affected_release,
+                            affected_release,
+                            objectives,
+                            EffectKind.DYNAMICS,
                         )
                     )
+                edges.add(
+                    InfluenceEdge(
+                        action_time,
+                        config.horizon,
+                        config.horizon,
+                        objectives,
+                        EffectKind.DYNAMICS,
+                    )
+                )
         if EffectKind.THRESHOLD in config.effects:
             for action_time in range(config.memory_lag, config.horizon):
                 edges.add(
@@ -573,11 +740,7 @@ class FactorLabInspector:
         return tuple(
             sorted(
                 edges,
-                key=lambda edge: (
-                    edge.action_time,
-                    edge.reward_time,
-                    edge.mechanism.value,
-                ),
+                key=lambda edge: (edge.action_time, edge.reward_time, edge.mechanism.value),
             )
         )
 

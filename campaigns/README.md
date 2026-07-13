@@ -1,13 +1,10 @@
-# Campaign definitions
+# Versioned campaign definitions
 
-This directory contains versioned prompts, role schemas, and campaign
-configuration. Mutable databases, worktrees, transcripts, and experiment
-artifacts belong under ignored runtime storage.
+This directory contains immutable scientific definitions, schemas, and
+qualification protocols. Mutable queues, keys, model transcripts, checkpoints,
+worktrees, and raw runs belong under ignored `runtime/` storage.
 
-Role schemas are scientific contracts. Their required predictions and evidence
-identifiers are intentionally stricter than ordinary agent final messages.
-Changing a schema during a campaign creates a new campaign protocol version.
-
-`factorlab_v0/` is the first benchmark-calibration campaign. It deliberately
-contains no held-out master seed and remains `under_calibration` until every
-qualification gate has immutable, independently audited evidence.
+`factorlab_long_v1/` is the only active benchmark campaign. Automated algorithm
+research may run only tiers named in `admitted_tiers` and backed by a reviewed,
+verified qualification report. The rejected 64-step experiment remains only in
+Git history. A software test pass alone cannot add a tier.

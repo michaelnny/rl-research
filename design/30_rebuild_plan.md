@@ -1,13 +1,20 @@
 # Rebuild plan
 
-Status: execution plan
+Status: implementation complete; separate long-horizon qualification pending
 
 Progress on 2026-07-13: Milestone 1's replacement kernel is implemented and
-tested. Milestone 2's FactorLab scientific kernel and preference-conditioned
-candidate evaluation path are implemented but remain under calibration.
-Milestone 4's deterministic campaign controller is implemented ahead of the
-applied families, but its seven-day exit condition has not been run. No applied
-family is implemented or qualified. The legacy package, environments, tests,
+tested. The original Milestone 2 implementation was rejected because it made
+tabular cue lookup the central learner. Neural FactorLab v1 and the batched
+neural candidate protocol replace it; no v0 result carries over. The later
+64-step tier was removed because it does not represent the required
+5,000--20,000-step regime. The frozen `factorlab-long-5k-v1` protocol must pass
+in a separate qualification session before automated campaigns are admitted.
+Milestone 4's deterministic controller, isolated neural candidate evaluator,
+provider-crossed replication loop, fail-closed preflight, and process
+supervisor are implemented.
+A seven-day campaign is a post-launch operational study requiring explicit
+operator spend authorization, not a prerequisite hidden inside repository
+finalization. No applied family is implemented or qualified. The legacy package, environments, tests,
 experiments, outputs, reports, prompts, journals, examples, and shell loop have
 been removed; Git history is the archive.
 
@@ -67,14 +74,18 @@ Deliverables:
 - intervention-based causal audit;
 - training/evaluation budget enforcement; and
 - a baseline fingerprint over horizon, causal lag, and action structure.
+- continuous procedural observations and a nonlinear suite-shared kernel that
+  require neural representation generalization;
+- compact MLP/recurrent neural reference learners with parameter and GPU-hour
+  accounting; and
 
 Exit condition: changing one controlled factor produces the predicted baseline
 sensitivity while non-target factors remain bounded.
 
 ## Milestone 3: applied families
 
-Implement SlateMarket, GraphOps, and AssemblyLab one at a time. Each stays under
-calibration until it has a feasibility bound, learner evidence, headroom,
+Implement SlateMarket, GraphOps, and AssemblyLab one at a time. Each remains not
+admitted until it has a feasibility bound, learner evidence, headroom,
 generalization results, runtime measurements, and an independent audit.
 
 Exit condition: at least two families are qualified and a known mechanism found
@@ -89,9 +100,14 @@ in FactorLab transfers under the same fixed-budget protocol.
 - generate daily human briefs and weekly contradiction/prior-art audits; and
 - record harness incidents as a dataset for scheduler improvement.
 
-Exit condition: seven uninterrupted days of restart-safe operation with no
-benchmark mutation, no lost run provenance, bounded failure retries, and at
-least one independently replicated algorithmic result (positive or negative).
+Initial-release exit condition: the full primary/replica evidence DAG passes a
+bounded end-to-end test; termination/restart recovery, protected-path checks,
+candidate process isolation, and budget exhaustion are tested; and `doctor`
+passes against the committed qualified tier and authenticated providers.
+
+Operational validation target: seven uninterrupted days with no benchmark
+mutation, no lost run provenance, bounded failure retries, and at least one
+independently replicated algorithmic result (positive or negative).
 
 ## Milestone 5: remove legacy — completed 2026-07-13
 
@@ -99,18 +115,10 @@ Delete the old packages, tests, docs, prompts, baselines, results, and shell
 loop. Rewrite the root README and project metadata around the new system. Run a
 final audit that no new module imports or relies on legacy code.
 
-## Immediate next implementation slice
+## Post-qualification expansion
 
-Complete FactorLab qualification rather than adding benchmark stories:
-
-1. extend isolated evaluation to every action and vector-objective protocol;
-2. implement the remaining contrastive reference algorithms;
-3. execute the preregistered fractional factor-sensitivity study across worlds
-   and training seeds;
-4. build an independent causal/oracle audit path;
-5. freeze v0 only if all ten evidence gates pass; and
-6. then implement one applied family and require a diagnostic mechanism to
-   transfer under the same fixed-budget protocol.
-
-In parallel, run provider integration tests and then a bounded soak before any
-seven-day campaign. Live model output remains untrusted input throughout.
+The controller is fail-closed until `factorlab-long-5k-v1` is admitted. Future
+work may add the 10k/20k training tiers, memory-lag variants, other
+action/objective protocols, additional compact neural references, and applied
+families only through new frozen qualification studies. Live model output
+remains untrusted input throughout.

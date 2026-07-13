@@ -1,15 +1,21 @@
 # Autonomous research system architecture
 
-Status: clean-sheet architecture; durable kernel and deterministic controller implemented
+Status: automated harness implemented; long-horizon benchmark admission pending
+
+Repository finalization does not run benchmark qualification or a live provider
+campaign. Those are separate execution sessions governed by
+`design/50_execution_handoff.md`.
 
 The implementation now covers the graph, artifacts, queue/leases/recovery,
 provider adapters, worktree isolation, structured run parsing, campaign
 lifecycle, hard attempt/wall budgets, portfolio branch allocation, incidents,
 cross-provider replication DAGs, and the process-isolated candidate evaluator.
-The seven-day soak, provider-cost accounting, promotion/integration service,
-and policy-quality study remain outstanding. A fail-closed preflight,
-campaign-scoped process supervisor, repeated-trial evaluator, and durable
-implementation cleanup are implemented.
+The release includes fail-closed admission, a campaign-scoped process
+supervisor, repeated-trial evaluation, restart recovery, and deterministic
+budgets. A seven-day production campaign is operational evidence collected
+after an operator authorizes provider and accelerator spend; it is not replaced
+by a software claim. Provider billing reconciliation, automatic promotion, and
+applied-family transfer are later extensions and are not implied by this release.
 
 ## Core model
 
@@ -72,7 +78,7 @@ The first scheduler will use an explicit portfolio rather than one LLM score:
 - 10% synthesize/prior-art: merge duplicates and detect rediscovery.
 
 Within each pool, asynchronous successive halving allocates small probe budgets
-before full calibration. A novelty descriptor based on mechanism and measured
+before confirmation runs. A novelty descriptor based on mechanism and measured
 fingerprint prevents five prompt variants of one idea from consuming the
 exploration pool. These percentages are configuration, recorded per campaign,
 and must be evaluated rather than treated as universal truths.
@@ -107,10 +113,15 @@ not assume that “more agents” means independent evidence.
 - Candidate worktrees cannot write benchmark, evaluator, reference-result, or
   held-out-manifest paths.
 - Experiments run through a local executor with CPU, memory, wall-time, and
-  process-count limits. GPU use requires an explicit budget grant.
+  process-count limits. GPU use requires an explicit parameter, accelerator-time,
+  and device-memory budget grant. Compact neural GPU training is the normal RL
+  workload, not an exceptional algorithm class.
 - Held-out evaluation runs in a separate checkout without agent tools and does
   not reveal world identifiers to training code.
 - Provider output, stdout, stderr, exit code, duration, and usage are retained.
+- Candidate measurements retain a neural model manifest, framework/device,
+  trainable parameter count, binary checkpoint digest, and evaluator-measured
+  training/accelerator-time upper bound.
 - One high-entropy suite key is stored per campaign with owner-only permissions.
   Model-provider processes are OS-sandboxed from the runtime tree and strip all
   `RLX_` variables. The trusted outer evaluator receives only the path to its
@@ -172,15 +183,12 @@ These boundaries can be revisited after the system itself has a failure dataset.
 
 ## Operator surface
 
-The command-line surface supports:
-
-- campaign creation with a scientific question and budgets;
-- queue, graph, budget, worker, and incident status;
-- `once`, `drain`, and `daemon` worker modes;
-- pause/cancel at campaign and branch level;
-- deterministic replay of a run or analysis;
-- worktree inspection and promotion; and
-- generation of a human research brief from graph state.
+The command-line surface supports campaign creation and lifecycle control,
+queue/campaign status, manual structured-job enqueueing, lease recovery,
+`once`/`drain`/`daemon` worker modes, one-shot or daemon controllers, supervised
+serving, and disposable human research briefs. Candidate promotion and branch
+integration intentionally remain human-controlled actions rather than hidden
+automation.
 
 `doctor` verifies the committed snapshot, campaign key, schemas, provider CLI
 compatibility, and macOS sandbox. `serve` refuses to start on failure, then

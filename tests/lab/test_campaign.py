@@ -32,6 +32,13 @@ def _complete_next(store: ResearchStore, provider: str):
                 "candidate_argv": ["python", f"{allowed}/candidate.py"],
                 "summary": "independent candidate implementation for controlled evaluation",
                 "files": [f"{allowed}/candidate.py"],
+                "model_manifest": {
+                    "architecture": "residual_policy",
+                    "framework": "torch",
+                    "trainable_parameters": 1000,
+                    "recurrent": False,
+                    "device": "cpu",
+                },
                 "mechanism_invariants": ["uses learner-visible observations only"],
                 "self_checks": ["protocol handshake passes"],
             }
@@ -97,7 +104,7 @@ def test_controller_expands_independent_evidence_dag_and_completes_campaign(tmp_
         job.payload["argv"][job.payload["argv"].index("--suite-namespace") + 1]
         for job in run_jobs
     }
-    assert namespaces == {f"{campaign}-factorlab-v0"}
+    assert namespaces == {f"{campaign}-factorlab-long-v1-neural"}
     assert all("--training-trials" in job.payload["argv"] for job in run_jobs)
     _complete_next(store, "local")
     _complete_next(store, "local")
@@ -175,3 +182,16 @@ def test_claim_enforces_hard_campaign_attempt_budget(tmp_path):
     assert store.claim_job("second", lease_seconds=30, providers=("codex",)) is None
     assert store.get_campaign(campaign).status is CampaignStatus.BUDGET_EXHAUSTED
     assert store.get_job("job-1").status is JobStatus.CANCELLED
+
+
+def test_controller_does_not_schedule_a_paused_campaign(tmp_path):
+    store = ResearchStore(tmp_path / "state.db")
+    campaign = create_controlled_campaign(store, "campaign", "question")
+    store.set_campaign_status(campaign, CampaignStatus.PAUSED)
+    controller = CampaignController(repository=REPOSITORY, store=store, owner="controller")
+
+    result = controller.tick(campaign)
+
+    assert result.campaign_status is CampaignStatus.PAUSED
+    assert result.scheduled_jobs == ()
+    assert store.list_jobs(campaign_id=campaign) == []
