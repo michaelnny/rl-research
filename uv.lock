@@ -637,8 +637,8 @@ wheels = [
 ]
 
 [[package]]
-name = "rlh-bench"
-version = "0.2.0"
+name = "rlx-research"
+version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },

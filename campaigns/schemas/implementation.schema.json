@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "summary": {"type": "string", "minLength": 20},
+    "candidate_argv": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "files": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "mechanism_invariants": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "self_checks": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+  },
+  "required": ["summary", "candidate_argv", "files", "mechanism_invariants", "self_checks"],
+  "additionalProperties": false
+}

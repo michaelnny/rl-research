@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "status": {"type": "string", "enum": ["complete", "candidate_error"]},
+    "protocol": {"type": "string"},
+    "task_id": {"type": "string"},
+    "suite_id": {"type": "string"},
+    "objective_protocol": {"type": "string"},
+    "budget_usage": {"type": "object"},
+    "heldout_identifiers_exposed": {"type": "boolean", "const": false}
+  },
+  "required": ["status", "protocol", "task_id", "suite_id", "objective_protocol", "budget_usage", "heldout_identifiers_exposed"],
+  "additionalProperties": true
+}

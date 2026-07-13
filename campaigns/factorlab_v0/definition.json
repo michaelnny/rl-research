@@ -1,0 +1,110 @@
+{
+  "campaign_id": "factorlab-v0-calibration",
+  "status": "under_calibration",
+  "benchmark_revision": "factorlab-v0",
+  "scientific_question": "Which algorithmic mechanisms remain effective as causal span, structured action scale, feedback sparsity, memory demand, and vector-objective conflict vary independently?",
+  "objective_protocols": [
+    "preference_conditioned",
+    "policy_coverage",
+    "constrained"
+  ],
+  "action_renderings": [
+    "flat_discrete",
+    "embedded_catalog",
+    "factored_discrete",
+    "continuous",
+    "conditional_hybrid"
+  ],
+  "world_suite": {
+    "namespace": "factorlab-v0-calibration",
+    "version": 0,
+    "master_key_source": "runtime/secrets/<campaign_id>.key",
+    "derivation": "HMAC-SHA256",
+    "shared_hidden_cue_transform": true,
+    "public_worlds": 8,
+    "tune_worlds": 8,
+    "heldout_worlds": 32,
+    "audit_worlds": 8
+  },
+  "anchor_configuration": {
+    "horizon": 256,
+    "n_objectives": 4,
+    "n_factors": 16,
+    "levels_per_factor": 4,
+    "action_mode": "factored_discrete",
+    "max_causal_lag": 128,
+    "memory_lag": 0,
+    "reward_events": 1,
+    "conflict_strength": 0.75,
+    "effects": ["additive"]
+  },
+  "diagnostic_sweeps": {
+    "horizon": [64, 128, 256, 512, 1024],
+    "max_causal_lag": [8, 32, 128, 512, "full_horizon"],
+    "joint_discrete_designs": [
+      {"n_factors": 2, "levels_per_factor": 10, "joint_choices": 100},
+      {"n_factors": 4, "levels_per_factor": 10, "joint_choices": 10000},
+      {"n_factors": 8, "levels_per_factor": 10, "joint_choices": 100000000},
+      {"n_factors": 12, "levels_per_factor": 10, "joint_choices": 1000000000000}
+    ],
+    "continuous_dimensions": [4, 16, 64],
+    "reward_events": [1, 2, 4, 8],
+    "n_objectives": [2, 4, 8],
+    "conflict_strength": [0.0, 0.5, 1.0],
+    "memory_lag": [0, 16, 64, 256],
+    "world_shift": ["same_distribution", "parameter_interpolation", "unseen_composition"]
+  },
+  "fractional_design": {
+    "rule": "anchor plus one-factor contrasts plus preregistered two-factor interactions",
+    "required_interactions": [
+      ["horizon", "max_causal_lag"],
+      ["horizon", "reward_events"],
+      ["action_rendering", "joint_choices"],
+      ["memory_lag", "max_causal_lag"],
+      ["n_objectives", "conflict_strength"]
+    ],
+    "forbidden": "unreviewed full Cartesian sweep"
+  },
+  "budgets": {
+    "probe": {
+      "transitions": 50000,
+      "episodes": 512,
+      "wall_seconds": 900,
+      "accelerator_seconds": 0
+    },
+    "confirmation": {
+      "transitions": 250000,
+      "episodes": 2048,
+      "wall_seconds": 3600,
+      "accelerator_seconds": 0
+    }
+  },
+  "qualification_checks": [
+    "mechanics",
+    "causal_audit",
+    "feasibility",
+    "learnability",
+    "headroom",
+    "factor_sensitivity",
+    "specificity",
+    "generalization",
+    "statistics",
+    "independent_audit"
+  ],
+  "implemented_references": [
+    "exact_tiny_instance_solver",
+    "tabular_reinforce",
+    "factorized_reinforce",
+    "privileged_memory_mechanism_probe"
+  ],
+  "planned_references": [
+    "td_actor_critic",
+    "ppo",
+    "dqn",
+    "branching_value",
+    "cem",
+    "minimal_rudder",
+    "preference_conditioned_morl",
+    "policy_coverage_morl"
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "question": {"type": "string", "minLength": 10},
+    "competing_explanations": {"type": "array", "items": {"type": "string"}, "minItems": 2},
+    "intervention": {"type": "string", "minLength": 10},
+    "controls": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "measurements": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "budget": {
+      "type": "object",
+      "properties": {
+        "environment_steps": {"type": "integer", "minimum": 1},
+        "wall_seconds": {"type": "integer", "minimum": 1},
+        "training_seeds": {"type": "integer", "minimum": 1}
+      },
+      "required": ["environment_steps", "wall_seconds", "training_seeds"],
+      "additionalProperties": false
+    },
+    "decision_table": {"type": "array", "items": {"type": "string"}, "minItems": 2}
+  },
+  "required": ["question", "competing_explanations", "intervention", "controls", "measurements", "budget", "decision_table"],
+  "additionalProperties": false
+}
