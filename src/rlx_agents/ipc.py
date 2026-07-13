@@ -66,6 +66,8 @@ class CandidateClient:
         environment["RLX_CANDIDATE_SCRATCH"] = self._temporary.name
         use_sandbox = sys.platform == "darwin" if sandbox is None else sandbox
         command = tuple(argv)
+        if Path(command[0]).name in {"python", "python3"}:
+            command = (sys.executable, *command[1:])
         if use_sandbox:
             command = _sandbox_command(
                 command,

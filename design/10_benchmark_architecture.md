@@ -1,6 +1,6 @@
 # Benchmark architecture
 
-Status: neural-first architecture; Neural FactorLab v1 implementation in qualification
+Status: neural-first architecture; FactorLab Small v1 qualified, broader matrix not admitted
 
 The implemented v1 slice lives in `src/rlx_bench/`. It uses continuous
 procedural observations and an evaluator-owned nonlinear task/dynamics kernel
@@ -11,9 +11,11 @@ public/held-out suite boundaries. Preference-conditioned factored-discrete
 evaluation is executable through the batched neural candidate protocol v2.
 
 This is implementation progress, not qualification. The full fractional study,
-additional reference algorithms, final statistics, independent oracle/audit
-path, world-shift modes, and every applied family remain separate qualification
-scope. No result from an unsupported tier is admitted to a research campaign.
+The exact `factorlab-small-v1` preference-conditioned, factored-discrete anchor
+is qualified by the committed report under `campaigns/factorlab_v1/qualification/`.
+Additional algorithms, memory-lag tiers, world-shift modes, objective protocols,
+action renderings, and every applied family remain separate qualification scope.
+No result from an unsupported tier is admitted to a research campaign.
 
 ## Suite shape
 

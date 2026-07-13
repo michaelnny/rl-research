@@ -23,7 +23,7 @@ memory; LLM-scale learner training is outside the target envelope.
   interaction, model manifests, and bounded binary checkpoints.
 
 The rejected tabular-centered FactorLab v0 implementation and its learners have
-been removed. No v0 result, threshold, or calibration status carries into v1.
+been removed. No v0 result, threshold, or qualification result carries into v1.
 
 ## Neural FactorLab v1
 
@@ -53,10 +53,12 @@ conclusions:
 - candidate protocol v2 with batched rollouts, fresh held-out processes, and
   SHA-256-verified binary checkpoints.
 
-The preregistered Small-tier study is
-`campaigns/factorlab_v1/small_v1_qualification_protocol.json`. Automated
-campaigns may use only tiers listed in the campaign definition’s
-`admitted_tiers`; software tests cannot admit a benchmark tier.
+The preregistered Small-tier study in
+`campaigns/factorlab_v1/small_v1_qualification_protocol.json` passed all ten
+gates. Its reviewed report is committed under
+`campaigns/factorlab_v1/qualification/`. Automated campaigns may use only the
+exact `factorlab-small-v1` scope listed in `admitted_tiers`; software tests
+cannot admit another benchmark tier.
 
 ## Autonomous research loop
 

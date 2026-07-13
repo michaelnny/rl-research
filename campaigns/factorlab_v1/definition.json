@@ -1,8 +1,50 @@
 {
   "campaign_id": "factorlab-v1-neural",
-  "status": "qualification_pending",
+  "status": "qualified_tier_available",
   "benchmark_revision": "factorlab-v1",
-  "admitted_tiers": [],
+  "admitted_tiers": ["factorlab-small-v1"],
+  "qualification_reports": {
+    "factorlab-small-v1": {
+      "report_path": "campaigns/factorlab_v1/qualification/factorlab-small-v1-report.json",
+      "report_id": "flq-56bca4fcc1c5ccabf69f86ce22a17c3909a0a2af01066219965d0d947af3ec9a",
+      "protocol_path": "campaigns/factorlab_v1/small_v1_qualification_protocol.json",
+      "protocol_sha256": "8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf",
+      "evidence_sha256": "ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+      "reviewed_on": "2026-07-13",
+      "admitted_scope": {
+        "objective_protocol": "preference_conditioned",
+        "n_objectives": 2,
+        "action_mode": "factored_discrete",
+        "horizon": 64,
+        "n_factors": 4,
+        "levels_per_factor": 4,
+        "signal_dim": 8,
+        "context_dim": 4,
+        "state_dim": 4,
+        "teacher_hidden_dim": 16,
+        "max_causal_lag": 64,
+        "memory_lag": 0,
+        "reward_events": 1,
+        "conflict_strength": 0.75,
+        "terminal_state_weight": 1.0,
+        "effects": ["additive", "dynamics"],
+        "training_episodes": 1024,
+        "training_batch_size": 16,
+        "training_trials": 3,
+        "public_worlds": 16,
+        "heldout_worlds": 32,
+        "max_trainable_parameters": 2000000
+      },
+      "not_admitted": [
+        "memory_lag_greater_than_zero",
+        "other_action_renderings",
+        "policy_coverage",
+        "constrained_control",
+        "applied_families"
+      ],
+      "review_note": "The causal-attention memory contrast had positive preregistered mean gain but one of three paired seeds was negative; it supports factor sensitivity but does not qualify the memory-lag tier."
+    }
+  },
   "scientific_question": "Which compact neural RL mechanisms remain effective as causal span, structured action scale, sparse feedback, memory demand, and vector-objective conflict vary independently?",
   "learner_class": {
     "required": "compact_neural_policy",
@@ -25,23 +67,6 @@
     "tune_worlds": 8,
     "heldout_worlds": 32,
     "audit_worlds": 8
-  },
-  "anchor_configuration": {
-    "horizon": 128,
-    "n_objectives": 2,
-    "n_factors": 8,
-    "levels_per_factor": 4,
-    "joint_choices": 65536,
-    "signal_dim": 16,
-    "context_dim": 8,
-    "state_dim": 8,
-    "teacher_hidden_dim": 32,
-    "action_mode": "factored_discrete",
-    "max_causal_lag": 128,
-    "memory_lag": 0,
-    "reward_events": 1,
-    "conflict_strength": 0.75,
-    "effects": ["additive", "dynamics"]
   },
   "diagnostic_sweeps": {
     "horizon": [64, 128, 256, 512, 1024],

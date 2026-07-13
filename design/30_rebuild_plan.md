@@ -1,14 +1,18 @@
 # Rebuild plan
 
-Status: execution plan
+Status: initial automated-research release complete
 
 Progress on 2026-07-13: Milestone 1's replacement kernel is implemented and
 tested. The original Milestone 2 implementation was rejected because it made
 tabular cue lookup the central learner. Neural FactorLab v1 and the batched
-neural candidate protocol replace it; no v0 calibration result carries over.
-Milestone 4's deterministic campaign controller is implemented ahead of the
-applied families, but its seven-day exit condition has not been run. No applied
-family is implemented or qualified. The legacy package, environments, tests,
+neural candidate protocol replace it; no v0 result carries over. The exact
+`factorlab-small-v1` anchor passed all ten preregistered qualification gates on
+2026-07-13 and is the only tier admitted to automated campaigns. Milestone 4's
+deterministic controller, isolated neural candidate evaluator, provider-crossed
+replication loop, fail-closed preflight, and process supervisor are implemented.
+A seven-day campaign is a post-launch operational study requiring explicit
+operator spend authorization, not a prerequisite hidden inside repository
+finalization. No applied family is implemented or qualified. The legacy package, environments, tests,
 experiments, outputs, reports, prompts, journals, examples, and shell loop have
 been removed; Git history is the archive.
 
@@ -78,8 +82,8 @@ sensitivity while non-target factors remain bounded.
 
 ## Milestone 3: applied families
 
-Implement SlateMarket, GraphOps, and AssemblyLab one at a time. Each stays under
-calibration until it has a feasibility bound, learner evidence, headroom,
+Implement SlateMarket, GraphOps, and AssemblyLab one at a time. Each remains not
+admitted until it has a feasibility bound, learner evidence, headroom,
 generalization results, runtime measurements, and an independent audit.
 
 Exit condition: at least two families are qualified and a known mechanism found
@@ -94,9 +98,14 @@ in FactorLab transfers under the same fixed-budget protocol.
 - generate daily human briefs and weekly contradiction/prior-art audits; and
 - record harness incidents as a dataset for scheduler improvement.
 
-Exit condition: seven uninterrupted days of restart-safe operation with no
-benchmark mutation, no lost run provenance, bounded failure retries, and at
-least one independently replicated algorithmic result (positive or negative).
+Initial-release exit condition: the full primary/replica evidence DAG passes a
+bounded end-to-end test; termination/restart recovery, protected-path checks,
+candidate process isolation, and budget exhaustion are tested; and `doctor`
+passes against the committed qualified tier and authenticated providers.
+
+Operational validation target: seven uninterrupted days with no benchmark
+mutation, no lost run provenance, bounded failure retries, and at least one
+independently replicated algorithmic result (positive or negative).
 
 ## Milestone 5: remove legacy — completed 2026-07-13
 
@@ -104,18 +113,9 @@ Delete the old packages, tests, docs, prompts, baselines, results, and shell
 loop. Rewrite the root README and project metadata around the new system. Run a
 final audit that no new module imports or relies on legacy code.
 
-## Immediate next implementation slice
+## Post-release expansion
 
-Complete Neural FactorLab v1 qualification rather than adding benchmark stories:
-
-1. extend isolated evaluation to every action and vector-objective protocol;
-2. implement the remaining compact neural contrastive reference algorithms;
-3. execute the preregistered fractional factor-sensitivity study across worlds
-   and training seeds;
-4. build an independent causal/oracle audit path;
-5. freeze v0 only if all ten evidence gates pass; and
-6. then implement one applied family and require a diagnostic mechanism to
-   transfer under the same fixed-budget protocol.
-
-In parallel, run provider integration tests and then a bounded soak before any
-seven-day campaign. Live model output remains untrusted input throughout.
+The running system is restricted to `factorlab-small-v1`. Future work may add
+memory-lag tiers, other action/objective protocols, additional compact neural
+references, and applied families only through new frozen qualification studies.
+Live model output remains untrusted input throughout.

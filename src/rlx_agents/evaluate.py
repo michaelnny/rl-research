@@ -28,19 +28,19 @@ PROTOCOL_VERSION = "rlx-neural-candidate-jsonl-v2"
 
 @dataclass(frozen=True)
 class CandidateEvaluationConfig:
-    horizon: int = 128
-    n_factors: int = 8
+    horizon: int = 64
+    n_factors: int = 4
     levels_per_factor: int = 4
-    signal_dim: int = 16
-    context_dim: int = 8
-    state_dim: int = 8
-    teacher_hidden_dim: int = 32
-    max_causal_lag: int = 128
+    signal_dim: int = 8
+    context_dim: int = 4
+    state_dim: int = 4
+    teacher_hidden_dim: int = 16
+    max_causal_lag: int = 64
     memory_lag: int = 0
     reward_events: int = 1
     conflict_strength: float = 0.75
-    terminal_state_weight: float = 2.0
-    training_episodes: int = 512
+    terminal_state_weight: float = 1.0
+    training_episodes: int = 1024
     training_batch_size: int = 16
     training_trials: int = 3
     public_worlds: int = 16
@@ -519,19 +519,19 @@ def evaluate_candidate(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="rlx-evaluate-candidate")
-    parser.add_argument("--horizon", type=int, default=128)
-    parser.add_argument("--n-factors", type=int, default=8)
+    parser.add_argument("--horizon", type=int, default=64)
+    parser.add_argument("--n-factors", type=int, default=4)
     parser.add_argument("--levels-per-factor", type=int, default=4)
-    parser.add_argument("--signal-dim", type=int, default=16)
-    parser.add_argument("--context-dim", type=int, default=8)
-    parser.add_argument("--state-dim", type=int, default=8)
-    parser.add_argument("--teacher-hidden-dim", type=int, default=32)
-    parser.add_argument("--max-causal-lag", type=int, default=128)
+    parser.add_argument("--signal-dim", type=int, default=8)
+    parser.add_argument("--context-dim", type=int, default=4)
+    parser.add_argument("--state-dim", type=int, default=4)
+    parser.add_argument("--teacher-hidden-dim", type=int, default=16)
+    parser.add_argument("--max-causal-lag", type=int, default=64)
     parser.add_argument("--memory-lag", type=int, default=0)
     parser.add_argument("--reward-events", type=int, default=1)
     parser.add_argument("--conflict-strength", type=float, default=0.75)
-    parser.add_argument("--terminal-state-weight", type=float, default=2.0)
-    parser.add_argument("--training-episodes", type=int, default=512)
+    parser.add_argument("--terminal-state-weight", type=float, default=1.0)
+    parser.add_argument("--training-episodes", type=int, default=1024)
     parser.add_argument("--training-batch-size", type=int, default=16)
     parser.add_argument("--training-trials", type=int, default=3)
     parser.add_argument("--public-worlds", type=int, default=16)

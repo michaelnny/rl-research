@@ -1,0 +1,162 @@
+{
+  "benchmark_revision": "factorlab-v1",
+  "checks": [
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "continuous_heldout_signal_count": 2048,
+        "continuous_public_signal_count": 1024,
+        "joint_action_choices": 256,
+        "mps_available": true,
+        "neural_admissibility": true,
+        "nonlinear_midpoint_residual": 0.09709870296071405,
+        "observation_width": 27,
+        "parameter_budget": 2000000,
+        "passed": true,
+        "public_heldout_signal_overlap": 0,
+        "selected_device": "mps",
+        "transitions_per_second": 14495.044688705959
+      },
+      "name": "mechanics",
+      "status": "verified"
+    },
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "minimum_detection_rate": 1.0,
+        "unexpected_edges": 0,
+        "worlds": 8
+      },
+      "name": "causal_audit",
+      "status": "verified"
+    },
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "exact_scalar_value": 2.8615563921014617,
+        "exact_sequences": 8,
+        "independent_audit": {
+          "nonlinear_midpoint_residual": 0.17333334947910534,
+          "normalization_max_abs_error": 0.0,
+          "oracle_max_abs_error": 0.0,
+          "passed": true,
+          "random_fingerprint_max_abs_error": 0.0,
+          "score_max_abs_error": 0.0,
+          "trajectory_max_abs_error": 0.0
+        }
+      },
+      "name": "feasibility",
+      "status": "verified"
+    },
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "failures": 0,
+        "improvement_bootstrap_ci": [0.24307653014310607, 0.2786114450555291],
+        "mean_improvement_over_random": 0.26084398759931754,
+        "neural_architecture": "residual_mlp",
+        "training_seeds": 5
+      },
+      "name": "learnability",
+      "status": "verified"
+    },
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "mean_reference_utility": 0.8052715827914717,
+        "regret_to_upper_bound": 0.1947284172085283
+      },
+      "name": "headroom",
+      "status": "verified"
+    },
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "failures": 0,
+        "joint_action_choices": 1000000000000,
+        "mean_paired_memory_gain": 0.04588667473952431,
+        "memory_architecture": "transformer"
+      },
+      "name": "factor_sensitivity",
+      "status": "verified"
+    },
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "matched_reward_timing_return_max_abs_error": 1.4210854715202004e-14
+      },
+      "name": "specificity",
+      "status": "verified"
+    },
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "heldout_identifiers_exposed": false,
+        "heldout_worlds": 32,
+        "maximum_public_heldout_gap": 0.012308500835936487
+      },
+      "name": "generalization",
+      "status": "verified"
+    },
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "bootstrap_draws": 10000,
+        "confidence": 0.95,
+        "failure_count": 0,
+        "improvement_ci": [0.24307653014310607, 0.2786114450555291],
+        "independent_training_seeds": 5
+      },
+      "name": "statistics",
+      "status": "verified"
+    },
+    {
+      "evidence_refs": [
+        "sha256:ccb825c466e6e996e222906861859495075f1a269d469322a72dc82276040622",
+        "protocol-sha256:8f08b8e1101b99eb5d7ec7fc8b35d9ada92688485954119f71663761bee034cf"
+      ],
+      "measurements": {
+        "nonlinear_midpoint_residual": 0.17333334947910534,
+        "normalization_max_abs_error": 0.0,
+        "oracle_max_abs_error": 0.0,
+        "passed": true,
+        "random_fingerprint_max_abs_error": 0.0,
+        "score_max_abs_error": 0.0,
+        "trajectory_max_abs_error": 0.0
+      },
+      "name": "independent_audit",
+      "status": "verified"
+    }
+  ],
+  "qualified": true,
+  "report_id": "flq-56bca4fcc1c5ccabf69f86ce22a17c3909a0a2af01066219965d0d947af3ec9a",
+  "suite_id": "fls-3582b3f1b91169275a65b266d3fc1da0125806e7b993d724b2fccb121d46f721",
+  "task_id": "factorlab-v1-67d95a8943aec8d0"
+}

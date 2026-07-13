@@ -65,7 +65,7 @@ def build_parser() -> argparse.ArgumentParser:
             "tests/bench",
             "tests/agents",
             "tests/lab",
-            "campaigns/factorlab_v0",
+            "campaigns/factorlab_v1",
             "campaigns/schemas",
             "design",
         ],

@@ -16,7 +16,7 @@ def _suite(key_index: int = 123) -> EvaluatorWorldSuite:
     return EvaluatorWorldSuite(
         FactorLabConfig(horizon=8, n_factors=2, max_causal_lag=4),
         WorldSuiteSpec(
-            namespace="factorlab-calibration",
+            namespace="factorlab-suite-test",
             version=1,
             master_key=_key(key_index),
             public_worlds=2,

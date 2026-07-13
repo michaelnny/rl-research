@@ -105,6 +105,8 @@ class CampaignPolicy:
             raise ValueError("campaign wall limits must be positive")
         if not self.primary_provider or not self.independent_provider:
             raise ValueError("campaign providers cannot be empty")
+        if {self.primary_provider, self.independent_provider} - {"codex", "claude"}:
+            raise ValueError("campaign providers must be codex or claude")
         if not self.benchmark_tier:
             raise ValueError("campaign benchmark_tier cannot be empty")
         normalized = {SearchLane(key): float(value) for key, value in self.portfolio.items()}
@@ -577,6 +579,14 @@ class CampaignController:
             str(policy.evaluation_teacher_hidden_dim),
             "--max-causal-lag",
             str(policy.evaluation_horizon),
+            "--memory-lag",
+            "0",
+            "--reward-events",
+            "1",
+            "--conflict-strength",
+            "0.75",
+            "--terminal-state-weight",
+            "1.0",
             "--training-episodes",
             str(policy.evaluation_training_episodes),
             "--training-batch-size",

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -9,6 +10,8 @@ import sys
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+from rlx_bench.qualification import REQUIRED_QUALIFICATION_CHECKS
 
 from rlx_lab.executor import macos_deny_read_command
 from rlx_lab.models import CampaignStatus, JobMode
@@ -152,13 +155,87 @@ def run_preflight(
         definition = json.loads(definition_path.read_text(encoding="utf-8"))
         benchmark_tier = str(policy.get("benchmark_tier", ""))
         admitted = definition.get("admitted_tiers", [])
-        tier_ok = benchmark_tier in admitted
+        qualification = definition.get("qualification_reports", {}).get(
+            benchmark_tier, {}
+        )
+        report_path = (repository / str(qualification.get("report_path", ""))).resolve()
+        protocol_path = (repository / str(qualification.get("protocol_path", ""))).resolve()
+        if repository not in report_path.parents or repository not in protocol_path.parents:
+            raise ValueError("qualification paths escape the repository")
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        protocol = json.loads(protocol_path.read_text(encoding="utf-8"))
+        protocol_digest = hashlib.sha256(
+            json.dumps(protocol, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        evidence_ref = f"sha256:{qualification.get('evidence_sha256', '')}"
+        protocol_ref = f"protocol-sha256:{protocol_digest}"
+        report_checks = report.get("checks", [])
+        scope = qualification.get("admitted_scope", {})
+        expected_scope = {
+            "objective_protocol": "preference_conditioned",
+            "n_objectives": 2,
+            "action_mode": "factored_discrete",
+            "horizon": policy.get("evaluation_horizon"),
+            "n_factors": policy.get("evaluation_factors"),
+            "levels_per_factor": policy.get("evaluation_levels_per_factor"),
+            "signal_dim": policy.get("evaluation_signal_dim"),
+            "context_dim": policy.get("evaluation_context_dim"),
+            "state_dim": policy.get("evaluation_state_dim"),
+            "teacher_hidden_dim": policy.get("evaluation_teacher_hidden_dim"),
+            "max_causal_lag": policy.get("evaluation_horizon"),
+            "memory_lag": 0,
+            "reward_events": 1,
+            "conflict_strength": 0.75,
+            "terminal_state_weight": 1.0,
+            "effects": ["additive", "dynamics"],
+            "training_episodes": policy.get("evaluation_training_episodes"),
+            "training_batch_size": policy.get("evaluation_training_batch_size"),
+            "training_trials": policy.get("evaluation_training_trials"),
+            "public_worlds": policy.get("evaluation_public_worlds"),
+            "heldout_worlds": policy.get("evaluation_heldout_worlds"),
+            "max_trainable_parameters": policy.get("evaluation_max_parameters"),
+        }
+        report_payload = {
+            "task_id": report.get("task_id"),
+            "suite_id": report.get("suite_id"),
+            "benchmark_revision": report.get("benchmark_revision"),
+            "checks": report_checks,
+        }
+        expected_report_id = "flq-" + hashlib.sha256(
+            json.dumps(
+                report_payload,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode()
+        ).hexdigest()
+        expected_check_names = list(REQUIRED_QUALIFICATION_CHECKS)
+        evidence_digest = str(qualification.get("evidence_sha256", ""))
+        tier_ok = (
+            benchmark_tier in admitted
+            and report.get("qualified") is True
+            and report.get("report_id") == qualification.get("report_id")
+            and report.get("report_id") == expected_report_id
+            and report.get("benchmark_revision") == definition.get("benchmark_revision")
+            and protocol_digest == qualification.get("protocol_sha256")
+            and protocol.get("tier_id") == benchmark_tier
+            and scope == expected_scope
+            and len(evidence_digest) == 64
+            and all(character in "0123456789abcdef" for character in evidence_digest)
+            and [check.get("name") for check in report_checks] == expected_check_names
+            and all(
+                check.get("status") == "verified"
+                and evidence_ref in check.get("evidence_refs", [])
+                and protocol_ref in check.get("evidence_refs", [])
+                for check in report_checks
+            )
+        )
         tier_detail = (
             f"{benchmark_tier} admitted by {definition_path.relative_to(repository)}"
             if tier_ok
             else f"{benchmark_tier or '<missing>'} is not an admitted benchmark tier"
         )
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+    except (AttributeError, KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
         tier_ok = False
         tier_detail = f"cannot validate benchmark admission: {exc}"
     checks.append(PreflightCheck("qualified_benchmark_tier", tier_ok, tier_detail))
@@ -215,6 +292,9 @@ def run_preflight(
         "claude": (("claude", "--help"), ("--safe-mode", "--json-schema", "--permission-mode")),
     }
     for provider in sorted(required_providers):
+        if provider not in provider_requirements:
+            checks.append(PreflightCheck(f"provider_{provider}", False, "unsupported provider"))
+            continue
         argv, required = provider_requirements[provider]
         executable = shutil.which(argv[0])
         if executable is None:
@@ -243,6 +323,11 @@ def run_preflight(
         }
         provider_types = {"codex": CodexProvider, "claude": ClaudeProvider}
         for provider in sorted(required_providers):
+            if provider not in provider_types:
+                checks.append(
+                    PreflightCheck(f"provider_{provider}_live", False, "unsupported provider")
+                )
+                continue
             try:
                 adapter = provider_types[provider](unreadable_roots=(runtime,))
                 output = adapter.run(
