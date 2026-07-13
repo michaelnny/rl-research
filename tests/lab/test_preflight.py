@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 import rlx_lab.preflight as preflight
+from rlx_bench.factorlab import FactorLabConfig
 from rlx_bench.qualification import (
     REQUIRED_QUALIFICATION_CHECKS,
     CheckStatus,
@@ -16,6 +17,9 @@ from rlx_bench.qualification import (
 from rlx_lab.campaign import create_controlled_campaign
 from rlx_lab.secrets import CampaignSecretStore
 from rlx_lab.store import ResearchStore
+
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def _git(repository: Path, *args: str) -> None:
@@ -34,21 +38,26 @@ def test_preflight_requires_a_committed_rebuild_and_valid_secret(tmp_path, monke
         path = repository / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{}\n" if path.suffix == ".json" else "# fixture\n")
-    protocol = {"protocol_id": "fixture", "tier_id": "factorlab-long-5k-v1"}
+    protocol = json.loads(
+        (ROOT / "campaigns/factorlab_long_v1/qualification_protocol.json").read_text()
+    )
     protocol_bytes = json.dumps(protocol, sort_keys=True, separators=(",", ":")).encode()
     protocol_digest = hashlib.sha256(protocol_bytes).hexdigest()
     evidence_digest = "e" * 64
     qualification_dir = repository / "campaigns/factorlab_long_v1/qualification"
     qualification_dir.mkdir(parents=True)
-    protocol_path = repository / "campaigns/factorlab_long_v1/protocol.json"
+    protocol_path = repository / "campaigns/factorlab_long_v1/qualification_protocol.json"
     protocol_path.write_text(json.dumps(protocol))
     report_path = qualification_dir / "report.json"
     evidence_refs = (
         f"sha256:{evidence_digest}",
         f"protocol-sha256:{protocol_digest}",
     )
+    anchor = dict(protocol["anchor_configuration"])
+    anchor["levels_per_factor"] = (anchor["levels_per_factor"],)
+    anchor["effects"] = tuple(anchor["effects"])
     qualification_report = make_qualification_report(
-        task_id="fixture-task",
+        task_id=FactorLabConfig(**anchor).task_id,
         suite_id="fixture-suite",
         benchmark_revision="factorlab-long-v1",
         checks=[
@@ -66,7 +75,7 @@ def test_preflight_requires_a_committed_rebuild_and_valid_secret(tmp_path, monke
                 "qualification_reports": {
                     "factorlab-long-5k-v1": {
                         "report_path": "campaigns/factorlab_long_v1/qualification/report.json",
-                        "protocol_path": "campaigns/factorlab_long_v1/protocol.json",
+                        "protocol_path": "campaigns/factorlab_long_v1/qualification_protocol.json",
                         "report_id": report_id,
                         "protocol_sha256": protocol_digest,
                         "evidence_sha256": evidence_digest,
@@ -97,9 +106,13 @@ def test_preflight_requires_a_committed_rebuild_and_valid_secret(tmp_path, monke
                             "public_worlds": 32,
                             "heldout_worlds": 16,
                             "max_trainable_parameters": 2_000_000,
+                            "wall_seconds_total": 14_400.0,
                         },
+                        "reviewed_on": "2026-07-13",
+                        "reviewed_by": "fixture-reviewer",
                     }
                 },
+                "status": "qualified",
             }
         )
     )

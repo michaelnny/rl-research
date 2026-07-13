@@ -2,8 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 from rlx_lab.cli import main
+
+
+REPOSITORY = Path(__file__).resolve().parents[2]
 
 
 def test_cli_initializes_campaign_and_reports_status(tmp_path, capsys):
@@ -68,3 +72,60 @@ def test_cli_controls_campaign_lifecycle_and_detailed_status(tmp_path, capsys):
             == 0
         )
         assert json.loads(capsys.readouterr().out)["status"] == expected
+
+
+def test_cli_execution_entry_points_refuse_an_unadmitted_tier(tmp_path, capsys):
+    runtime = tmp_path / "runtime"
+    assert (
+        main(
+            [
+                "--repo",
+                str(REPOSITORY),
+                "--runtime",
+                str(runtime),
+                "init",
+                "--name",
+                "blocked",
+                "--question",
+                "should not execute",
+            ]
+        )
+        == 0
+    )
+    campaign = capsys.readouterr().out.strip()
+
+    assert (
+        main(
+            [
+                "--repo",
+                str(REPOSITORY),
+                "--runtime",
+                str(runtime),
+                "controller",
+                "--once",
+                "--campaign",
+                campaign,
+            ]
+        )
+        == 2
+    )
+    refusal = json.loads(capsys.readouterr().err)
+    assert refusal["ready"] is False
+    assert any(check["name"] == "qualified_benchmark_tier" for check in refusal["checks"])
+
+    assert (
+        main(
+            [
+                "--repo",
+                str(REPOSITORY),
+                "--runtime",
+                str(runtime),
+                "worker",
+                "--once",
+                "--campaign",
+                campaign,
+            ]
+        )
+        == 2
+    )
+    assert json.loads(capsys.readouterr().err)["ready"] is False

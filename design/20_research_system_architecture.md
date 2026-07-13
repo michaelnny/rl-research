@@ -2,6 +2,10 @@
 
 Status: automated harness implemented; long-horizon benchmark admission pending
 
+Repository finalization does not run benchmark qualification or a live provider
+campaign. Those are separate execution sessions governed by
+`design/50_execution_handoff.md`.
+
 The implementation now covers the graph, artifacts, queue/leases/recovery,
 provider adapters, worktree isolation, structured run parsing, campaign
 lifecycle, hard attempt/wall budgets, portfolio branch allocation, incidents,

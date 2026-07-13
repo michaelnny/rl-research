@@ -12,7 +12,7 @@ Build a compute-light scientific instrument and an autonomous research system
 for discovering reinforcement-learning mechanisms that remain useful when all
 of the following are present:
 
-- decisions have causal consequences hundreds or thousands of steps later;
+- decisions have causal consequences 5,000--20,000 steps later;
 - actions are high-dimensional, very numerous, combinatorial, conditional, or
   some mixture of those forms;
 - external feedback is sparse and may be terminal-only; and
@@ -34,11 +34,11 @@ multi-node accelerator requirements.
 
 Every reported run declares and the evaluator bounds trainable parameters,
 environment transitions, wall time, accelerator time, peak device memory, and
-the number of training seeds. The initial Small envelope is at most two million
-trainable learner parameters, four accelerator-hours per training seed, five
-million transitions, and one accelerator with at most 24 GiB of memory. Smaller
-probe budgets precede it. Larger confirmation envelopes require an explicit,
-versioned campaign amendment.
+the number of training seeds. The initial long-horizon envelope is at most two
+million trainable learner parameters, four accelerator-hours per training seed,
+five million transitions, and one accelerator with at most 24 GiB of memory.
+Smaller probe budgets precede it. Larger confirmation envelopes require an
+explicit, versioned campaign amendment.
 
 Reference agents and research candidates may use MLPs, CNNs, recurrent nets,
 attention, graph networks, or other compact neural architectures. Pretrained

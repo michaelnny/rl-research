@@ -170,7 +170,7 @@ def test_neural_candidate_evaluator_batches_training_and_restarts_from_binary_ch
         training_trials=2,
         public_worlds=2,
         heldout_worlds=2,
-        wall_seconds=20,
+        wall_seconds_total=20,
         response_seconds=2,
         max_parameters=1000,
     )
@@ -218,7 +218,7 @@ def test_parameter_budget_violation_becomes_scientific_error_record(tmp_path) ->
             training_trials=1,
             public_worlds=1,
             heldout_worlds=1,
-            wall_seconds=10,
+            wall_seconds_total=10,
             max_parameters=100,
         ),
         sandbox=False,

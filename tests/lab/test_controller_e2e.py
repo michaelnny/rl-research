@@ -103,7 +103,7 @@ def test_controller_runs_real_isolated_primary_and_replication_evaluations(tmp_p
         evaluation_training_trials=1,
         evaluation_public_worlds=4,
         evaluation_heldout_worlds=2,
-        evaluation_wall_seconds=20,
+        evaluation_wall_seconds_total=20,
     )
     campaign = create_controlled_campaign(
         store,

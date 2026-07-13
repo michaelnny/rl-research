@@ -41,7 +41,7 @@
     "public_worlds": 32,
     "heldout_worlds": 16,
     "max_trainable_parameters": 2000000,
-    "wall_seconds_per_trial": 14400
+    "wall_seconds_total": 14400
   },
   "qualification_checks": ["mechanics", "causal_audit", "feasibility", "learnability", "headroom", "factor_sensitivity", "specificity", "generalization", "statistics", "independent_audit"],
   "implemented_references": ["compact_branching_residual_ppo", "compact_branching_residual_gru_ppo", "compact_branching_causal_attention_ppo", "random_policy_control", "evaluator_only_exact_tiny_solver"],

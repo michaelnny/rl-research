@@ -22,8 +22,8 @@ memory; LLM-scale learner training is outside the target envelope.
 - [Candidate protocol](design/40_candidate_protocol.md) defines batched neural
   interaction, model manifests, and bounded binary checkpoints.
 
-The rejected tabular-centered implementation and the later 64-step smoke tier
-are not research benchmarks. Neither is admitted to automated research.
+The rejected tabular-centered implementation and the later 64-step experiment
+are not research benchmarks. Both remain only in Git history.
 
 ## Long-horizon Neural FactorLab v1
 
@@ -89,11 +89,13 @@ PYTHONPATH=src:. .venv/bin/python -m rlx_agents.cli \
   --output-dir runtime/qualification/factorlab-long-5k-v1
 ```
 
+This repository-finalization task does not run that command. A separate
+qualification session follows [the execution handoff](design/50_execution_handoff.md).
 The command exits successfully only if all ten scientific gates pass. Raw
 held-out evidence remains under `runtime/`; only reviewed aggregate evidence
 and its content digest may be promoted into the versioned campaign definition.
 
-## Campaign operation
+## Campaign operation (separate session, after admission)
 
 The canonical branch must be clean and committed because implementation
 worktrees are derived from `HEAD`.

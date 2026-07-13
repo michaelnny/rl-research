@@ -73,7 +73,7 @@ class CampaignPolicy:
     evaluation_public_worlds: int = 32
     evaluation_heldout_worlds: int = 16
     evaluation_max_parameters: int = 2_000_000
-    evaluation_wall_seconds: float = 14_400.0
+    evaluation_wall_seconds_total: float = 14_400.0
 
     def __post_init__(self) -> None:
         integer_limits = (
@@ -101,7 +101,7 @@ class CampaignPolicy:
             raise ValueError("campaign policy integer limits must be positive")
         if self.concurrent_branches > self.max_branches:
             raise ValueError("concurrent_branches cannot exceed max_branches")
-        if self.max_wall_seconds <= 0.0 or self.evaluation_wall_seconds <= 0.0:
+        if self.max_wall_seconds <= 0.0 or self.evaluation_wall_seconds_total <= 0.0:
             raise ValueError("campaign wall limits must be positive")
         if not self.primary_provider or not self.independent_provider:
             raise ValueError("campaign providers cannot be empty")
@@ -183,6 +183,10 @@ class CampaignController:
         incidents: list[str] = []
         try:
             campaign = self.store.get_campaign(campaign_id)
+            if campaign.status is not CampaignStatus.ACTIVE:
+                return ControllerTick(
+                    campaign_id, (), (), 0, 0, campaign.status
+                )
             policy = self._policy(campaign.config)
             usage = self.store.campaign_usage(campaign_id)
             if self._budget_exhausted(policy, usage):
@@ -597,8 +601,8 @@ class CampaignController:
             str(policy.evaluation_public_worlds),
             "--heldout-worlds",
             str(policy.evaluation_heldout_worlds),
-            "--wall-seconds",
-            str(policy.evaluation_wall_seconds),
+            "--wall-seconds-total",
+            str(policy.evaluation_wall_seconds_total),
             "--max-parameters",
             str(policy.evaluation_max_parameters),
             "--suite-namespace",
@@ -610,7 +614,7 @@ class CampaignController:
             **self._base_payload(stage=stage, branch_id=branch_id, lane=lane),
             "argv": evaluator_argv,
             "cwd_from_dependency_worktree": True,
-            "timeout_seconds": policy.evaluation_wall_seconds + 60.0,
+            "timeout_seconds": policy.evaluation_wall_seconds_total + 60.0,
             "output_bytes": 2_000_000,
             "env": {"PYTHONPATH": "src:.", "PYTHONDONTWRITEBYTECODE": "1"},
             "candidate_evaluation": True,

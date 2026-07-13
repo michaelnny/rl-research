@@ -49,7 +49,7 @@
     "truncated_bptt_steps": 256,
     "max_parameters": 500000,
     "max_wall_seconds_per_seed": 14400,
-    "device": "mps",
+    "device": "auto",
     "training_seeds": [101, 211, 307, 401, 503],
     "random_policies": 8
   },

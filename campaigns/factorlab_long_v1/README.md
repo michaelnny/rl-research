@@ -7,4 +7,5 @@ and compact neural learners. A 20,000-step contrast is mandatory evidence for
 scaling and causal-span claims.
 
 Only tiers listed in `definition.json` under `admitted_tiers` may be used by
-the automated research controller. The retired 64-step suite is smoke-only.
+the automated research controller. The rejected 64-step experiment is not
+part of the working tree or the evidence base.

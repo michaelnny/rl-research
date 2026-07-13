@@ -45,7 +45,7 @@ class CandidateEvaluationConfig:
     training_trials: int = 3
     public_worlds: int = 32
     heldout_worlds: int = 16
-    wall_seconds: float = 14_400.0
+    wall_seconds_total: float = 14_400.0
     response_seconds: float = 30.0
     max_parameters: int = 2_000_000
     max_checkpoint_bytes: int = 64 * 1024 * 1024
@@ -63,7 +63,7 @@ class CandidateEvaluationConfig:
         )
         if any(value < 1 for value in counts):
             raise ValueError("episode, batch, trial, and world counts must be positive")
-        if self.wall_seconds <= 0.0 or self.response_seconds <= 0.0:
+        if self.wall_seconds_total <= 0.0 or self.response_seconds <= 0.0:
             raise ValueError("time limits must be positive")
         if self.max_parameters < 1 or self.max_checkpoint_bytes < 1024:
             raise ValueError("model and checkpoint limits must be positive")
@@ -319,7 +319,7 @@ def evaluate_candidate(
         BudgetLimits(
             transitions=total_episodes * config.horizon,
             episodes=total_episodes,
-            wall_seconds=config.wall_seconds,
+            wall_seconds=config.wall_seconds_total,
             policies=config.training_trials,
         )
     )
@@ -536,7 +536,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--training-trials", type=int, default=3)
     parser.add_argument("--public-worlds", type=int, default=32)
     parser.add_argument("--heldout-worlds", type=int, default=16)
-    parser.add_argument("--wall-seconds", type=float, default=14_400.0)
+    parser.add_argument("--wall-seconds-total", type=float, default=14_400.0)
     parser.add_argument("--response-seconds", type=float, default=30.0)
     parser.add_argument("--max-parameters", type=int, default=2_000_000)
     parser.add_argument("--max-checkpoint-bytes", type=int, default=64 * 1024 * 1024)
@@ -600,7 +600,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             training_trials=args.training_trials,
             public_worlds=args.public_worlds,
             heldout_worlds=args.heldout_worlds,
-            wall_seconds=args.wall_seconds,
+            wall_seconds_total=args.wall_seconds_total,
             response_seconds=args.response_seconds,
             max_parameters=args.max_parameters,
             max_checkpoint_bytes=args.max_checkpoint_bytes,

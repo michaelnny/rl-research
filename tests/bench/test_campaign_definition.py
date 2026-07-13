@@ -10,7 +10,6 @@ from rlx_bench.factorlab import FactorLabConfig
 ROOT = Path(__file__).resolve().parents[2]
 DEFINITION = ROOT / "campaigns" / "factorlab_long_v1" / "definition.json"
 PROTOCOL = ROOT / "campaigns" / "factorlab_long_v1" / "qualification_protocol.json"
-SMOKE_DEFINITION = ROOT / "campaigns" / "factorlab_v1" / "definition.json"
 
 
 def test_factorlab_campaign_requires_compact_neural_learners_and_hidden_kernel() -> None:
@@ -33,10 +32,8 @@ def test_factorlab_campaign_requires_compact_neural_learners_and_hidden_kernel()
     assert evaluator.training_episodes == protocol["reference"]["episodes"]
     assert evaluator.public_worlds == protocol["suite"]["public_worlds"]
     assert evaluator.heldout_worlds == protocol["suite"]["heldout_worlds"]
-
-    smoke = json.loads(SMOKE_DEFINITION.read_text())
-    assert smoke["status"] == "retired_smoke_only"
-    assert smoke["admitted_tiers"] == []
+    assert definition["evaluation_protocol"]["wall_seconds_total"] == 14_400
+    assert protocol["reference"]["device"] == "auto"
 
 
 def test_campaign_covers_extremes_with_consumer_gpu_budgets() -> None:

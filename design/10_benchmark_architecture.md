@@ -10,7 +10,8 @@ intervention audit, evaluator budgets, protocol-specific metrics, and committed
 public/held-out suite boundaries. Preference-conditioned factored-discrete
 evaluation is executable through the batched neural candidate protocol v2.
 
-The former 64-step result is smoke evidence only and has no research admission.
+The former 64-step experiment is rejected as research evidence and exists only
+in Git history.
 The frozen `factorlab-long-5k-v1` study uses a 5,000-step terminal-return anchor
 and a mandatory 20,000-step scaling contrast. Until its reviewed report passes
 all gates, no tier is admitted. Memory-lag variants, world shifts, other

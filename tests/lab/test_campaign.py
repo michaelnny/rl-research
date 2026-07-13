@@ -182,3 +182,16 @@ def test_claim_enforces_hard_campaign_attempt_budget(tmp_path):
     assert store.claim_job("second", lease_seconds=30, providers=("codex",)) is None
     assert store.get_campaign(campaign).status is CampaignStatus.BUDGET_EXHAUSTED
     assert store.get_job("job-1").status is JobStatus.CANCELLED
+
+
+def test_controller_does_not_schedule_a_paused_campaign(tmp_path):
+    store = ResearchStore(tmp_path / "state.db")
+    campaign = create_controlled_campaign(store, "campaign", "question")
+    store.set_campaign_status(campaign, CampaignStatus.PAUSED)
+    controller = CampaignController(repository=REPOSITORY, store=store, owner="controller")
+
+    result = controller.tick(campaign)
+
+    assert result.campaign_status is CampaignStatus.PAUSED
+    assert result.scheduled_jobs == ()
+    assert store.list_jobs(campaign_id=campaign) == []

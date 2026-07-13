@@ -1,16 +1,17 @@
 # Rebuild plan
 
-Status: long-horizon correction in qualification
+Status: implementation complete; separate long-horizon qualification pending
 
 Progress on 2026-07-13: Milestone 1's replacement kernel is implemented and
 tested. The original Milestone 2 implementation was rejected because it made
 tabular cue lookup the central learner. Neural FactorLab v1 and the batched
 neural candidate protocol replace it; no v0 result carries over. The later
-64-step tier is now explicitly smoke-only because it does not represent the
-required 5,000--20,000-step regime. The frozen `factorlab-long-5k-v1` protocol
-must pass before automated campaigns are admitted. Milestone 4's
-deterministic controller, isolated neural candidate evaluator, provider-crossed
-replication loop, fail-closed preflight, and process supervisor are implemented.
+64-step tier was removed because it does not represent the required
+5,000--20,000-step regime. The frozen `factorlab-long-5k-v1` protocol must pass
+in a separate qualification session before automated campaigns are admitted.
+Milestone 4's deterministic controller, isolated neural candidate evaluator,
+provider-crossed replication loop, fail-closed preflight, and process
+supervisor are implemented.
 A seven-day campaign is a post-launch operational study requiring explicit
 operator spend authorization, not a prerequisite hidden inside repository
 finalization. No applied family is implemented or qualified. The legacy package, environments, tests,
@@ -114,7 +115,7 @@ Delete the old packages, tests, docs, prompts, baselines, results, and shell
 loop. Rewrite the root README and project metadata around the new system. Run a
 final audit that no new module imports or relies on legacy code.
 
-## Post-release expansion
+## Post-qualification expansion
 
 The controller is fail-closed until `factorlab-long-5k-v1` is admitted. Future
 work may add the 10k/20k training tiers, memory-lag variants, other

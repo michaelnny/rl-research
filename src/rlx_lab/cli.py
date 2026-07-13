@@ -18,7 +18,7 @@ from rlx_lab.brief import render_brief
 from rlx_lab.campaign import CampaignController, CampaignPolicy, create_controlled_campaign
 from rlx_lab.models import CampaignStatus, JobMode
 from rlx_lab.providers import ClaudeProvider, CodexProvider
-from rlx_lab.preflight import run_preflight
+from rlx_lab.preflight import PreflightCheck, check_benchmark_admission, run_preflight
 from rlx_lab.secrets import CampaignSecretStore
 from rlx_lab.store import ResearchStore
 from rlx_lab.worker import Worker
@@ -88,7 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
     worker.add_argument("--lease-seconds", type=float, default=1800.0)
     worker.add_argument("--codex-model")
     worker.add_argument("--claude-model")
-    worker.add_argument("--campaign", help="only claim jobs from one campaign")
+    worker.add_argument("--campaign", required=True, help="only claim jobs from one campaign")
 
     subparsers.add_parser("recover", help="recover expired worker leases")
     status = subparsers.add_parser("status", help="show queue or campaign status")
@@ -117,6 +117,41 @@ def build_parser() -> argparse.ArgumentParser:
     brief.add_argument("--campaign")
     brief.add_argument("--output", type=Path)
     return parser
+
+
+def _execution_admission(
+    repository: Path, store: ResearchStore, campaign_id: str
+) -> tuple[bool, tuple[PreflightCheck, ...]]:
+    try:
+        campaign = store.get_campaign(campaign_id)
+    except KeyError:
+        checks = (PreflightCheck("active_campaign", False, "campaign not found"),)
+        return False, checks
+    active = PreflightCheck(
+        "active_campaign",
+        campaign.status is CampaignStatus.ACTIVE,
+        campaign.status.value,
+    )
+    policy = campaign.config.get("policy", {})
+    if not isinstance(policy, dict):
+        admission = PreflightCheck(
+            "qualified_benchmark_tier", False, "campaign policy is malformed"
+        )
+    else:
+        admission = check_benchmark_admission(repository, policy)
+    checks = (active, admission)
+    return all(check.passed for check in checks), checks
+
+
+def _print_execution_refusal(checks: tuple[PreflightCheck, ...]) -> None:
+    print(
+        json.dumps(
+            {"ready": False, "checks": [asdict(check) for check in checks]},
+            sort_keys=True,
+            indent=2,
+        ),
+        file=sys.stderr,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -254,6 +289,10 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"id": campaign.id, "status": campaign.status.value}))
         return 0
     if args.command == "controller":
+        admitted, checks = _execution_admission(repository, store, args.campaign)
+        if not admitted:
+            _print_execution_refusal(checks)
+            return 2
         controller = CampaignController(repository=repository, store=store)
         if args.once:
             print(json.dumps(asdict(controller.tick(args.campaign)), default=str, sort_keys=True))
@@ -357,6 +396,10 @@ def main(argv: list[str] | None = None) -> int:
             print(args.output)
         return 0
     if args.command == "worker":
+        admitted, checks = _execution_admission(repository, store, args.campaign)
+        if not admitted:
+            _print_execution_refusal(checks)
+            return 2
         artifacts = ArtifactStore(runtime / "artifacts")
         worktree_root = repository.parent / f".{repository.name}-rlx-worktrees"
         providers = {
