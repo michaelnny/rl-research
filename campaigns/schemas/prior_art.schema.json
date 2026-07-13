@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "search_scope": {"type": "string", "minLength": 20},
+    "sources": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "properties": {
+          "title": {"type": "string", "minLength": 3},
+          "url": {"type": "string", "minLength": 10},
+          "year": {"type": "integer", "minimum": 1950},
+          "mechanism": {"type": "string", "minLength": 10},
+          "relationship": {"type": "string", "enum": ["direct", "adjacent", "background"]}
+        },
+        "required": ["title", "url", "year", "mechanism", "relationship"],
+        "additionalProperties": false
+      }
+    },
+    "crowded_mechanisms": {"type": "array", "items": {"type": "string"}},
+    "unresolved_gaps": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "queries_run": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+  },
+  "required": ["search_scope", "sources", "crowded_mechanisms", "unresolved_gaps", "queries_run"],
+  "additionalProperties": false
+}

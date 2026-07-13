@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "statement": {"type": "string", "minLength": 10},
+    "relation": {"type": "string", "enum": ["supports", "contradicts", "inconclusive", "infrastructure_only"]},
+    "effect": {"type": "number"},
+    "uncertainty": {"type": "number", "minimum": 0},
+    "evidence_run_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "confounds": {"type": "array", "items": {"type": "string"}},
+    "next_information_needed": {"type": "string", "minLength": 3}
+  },
+  "required": ["statement", "relation", "effect", "uncertainty", "evidence_run_ids", "confounds", "next_information_needed"],
+  "additionalProperties": false
+}

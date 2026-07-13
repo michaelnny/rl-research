@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "weakest_assumption": {"type": "string", "minLength": 10},
+    "confounds": {"type": "array", "items": {"type": "string"}, "minItems": 2},
+    "cheapest_falsifiers": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "prior_art_collision": {"type": "string", "minLength": 3},
+    "recommendation": {"type": "string", "enum": ["proceed", "revise", "reject"]},
+    "reason": {"type": "string", "minLength": 20}
+  },
+  "required": ["weakest_assumption", "confounds", "cheapest_falsifiers", "prior_art_collision", "recommendation", "reason"],
+  "additionalProperties": false
+}

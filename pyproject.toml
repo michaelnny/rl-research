@@ -3,14 +3,14 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rlh-bench"
-version = "0.2.0"
-description = "Recoverable long-horizon sparse-feedback RL benchmark environments"
+name = "rlx-research"
+version = "0.1.0"
+description = "Compute-light RL benchmark and autonomous scientific workflow"
 readme = "README.md"
 requires-python = ">=3.10"
-authors = [{name = "RLH Bench contributors"}]
+authors = [{name = "RLX Research contributors"}]
 license = {text = "MIT"}
-keywords = ["reinforcement-learning", "benchmark", "sparse-reward", "multi-objective", "long-horizon"]
+keywords = ["reinforcement-learning", "benchmark", "research-agents", "multi-objective", "long-horizon"]
 classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -20,6 +20,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = ["numpy>=1.23"]
+
+[project.scripts]
+rlx-lab = "rlx_lab.cli:main"
+rlx-calibrate = "rlx_agents.cli:main"
 
 [project.optional-dependencies]
 torch = ["torch>=2.0"]

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "live_mechanisms": {"type": "array", "items": {"type": "string"}},
+    "contradictions": {"type": "array", "items": {"type": "string"}},
+    "replicated_results": {"type": "array", "items": {"type": "string"}},
+    "dead_ends": {"type": "array", "items": {"type": "string"}},
+    "highest_value_uncertainties": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "portfolio_adjustment": {"type": "string", "minLength": 10}
+  },
+  "required": ["live_mechanisms", "contradictions", "replicated_results", "dead_ends", "highest_value_uncertainties", "portfolio_adjustment"],
+  "additionalProperties": false
+}
