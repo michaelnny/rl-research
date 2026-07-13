@@ -36,6 +36,7 @@ def audit_causal_contract(
     world: FactorLabWorld,
     *,
     max_action_candidates: int = 64,
+    max_intervention_times: int = 64,
     atol: float = 1e-10,
     min_detection_rate: float = 0.8,
 ) -> CausalAuditResult:
@@ -51,6 +52,8 @@ def audit_causal_contract(
     candidates = _candidate_actions(world, max_action_candidates)
     if len(candidates) < 2:
         raise ValueError("causal audit needs at least two distinguishable actions")
+    if max_intervention_times < 1:
+        raise ValueError("max_intervention_times must be positive")
     baseline_decisions = [candidates[0]] * config.decision_count
     preference = (
         (1.0,) + (0.0,) * (config.n_objectives - 1)
@@ -63,7 +66,22 @@ def audit_causal_contract(
     )
     recovered: set[ObservedEdge] = set()
     interventions = 0
-    for decision_index in range(config.decision_count):
+    intervention_count = min(config.decision_count, max_intervention_times)
+    decision_indices = tuple(
+        dict.fromkeys(
+            int(value)
+            for value in np.linspace(
+                0,
+                config.decision_count - 1,
+                num=intervention_count,
+                dtype=np.int64,
+            )
+        )
+    )
+    action_times = {
+        config.memory_lag + decision_index for decision_index in decision_indices
+    }
+    for decision_index in decision_indices:
         action_time = config.memory_lag + decision_index
         best_edges: set[ObservedEdge] = set()
         for alternative in candidates[1:]:
@@ -88,6 +106,7 @@ def audit_causal_contract(
     declared = frozenset(
         (edge.action_time, edge.reward_time, objective)
         for edge in inspector.influence_edges()
+        if edge.action_time in action_times
         for objective in edge.objectives
     )
     unexpected = frozenset(recovered - declared)

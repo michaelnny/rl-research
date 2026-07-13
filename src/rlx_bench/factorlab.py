@@ -1,4 +1,4 @@
-"""Neural FactorLab: controlled diagnostics for compact neural RL.
+"""Long-horizon Neural FactorLab: controlled diagnostics for compact neural RL.
 
 FactorLab is deliberately not a finite cue/action lookup problem.  Every world
 contains continuous procedural observations and shares an evaluator-owned,
@@ -44,25 +44,28 @@ ACTION_MODES = frozenset(
     }
 )
 
+BENCHMARK_REVISION = "factorlab-long-v1"
+BENCHMARK_VERSION = 2
+
 
 @dataclass(frozen=True)
 class FactorLabConfig:
     """Public task dimensions; no hidden task-kernel parameters live here."""
 
-    horizon: int = 128
+    horizon: int = 5000
     n_objectives: int = 2
-    n_factors: int = 8
+    n_factors: int = 12
     action_mode: str = "factored_discrete"
-    levels_per_factor: tuple[int, ...] = (4,)
+    levels_per_factor: tuple[int, ...] = (10,)
     catalog_size: int = 256
     signal_dim: int = 16
     context_dim: int = 8
     state_dim: int = 8
-    teacher_hidden_dim: int = 32
+    teacher_hidden_dim: int = 16
     signal_autocorrelation: float = 0.2
-    signal_target_scale: float = 1.5
-    context_target_scale: float = 0.75
-    state_target_scale: float = 0.75
+    signal_target_scale: float = 0.25
+    context_target_scale: float = 2.0
+    state_target_scale: float = 0.25
     max_causal_lag: int | None = None
     memory_lag: int = 0
     reward_events: int = 1
@@ -76,7 +79,7 @@ class FactorLabConfig:
     prerequisite_span: int = 4
     threshold: float = 0.72
     threshold_bonus: float = 0.5
-    terminal_state_weight: float = 2.0
+    terminal_state_weight: float = 1.0
     state_decay: float = 0.85
     action_influence: float = 0.25
     exogenous_influence: float = 0.15
@@ -111,7 +114,7 @@ class FactorLabConfig:
             self.state_target_scale,
         ) <= 0.0:
             raise ValueError("target channel scales must be positive")
-        lag = min(64, self.horizon) if self.max_causal_lag is None else self.max_causal_lag
+        lag = self.horizon if self.max_causal_lag is None else self.max_causal_lag
         if not 1 <= lag <= self.horizon:
             raise ValueError("max_causal_lag must lie in [1, horizon]")
         object.__setattr__(self, "max_causal_lag", int(lag))
@@ -184,7 +187,7 @@ class FactorLabConfig:
     @property
     def task_id(self) -> str:
         payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
-        return f"factorlab-v1-{hashlib.sha256(payload.encode()).hexdigest()[:16]}"
+        return f"{BENCHMARK_REVISION}-{hashlib.sha256(payload.encode()).hexdigest()[:16]}"
 
 
 FloatVector = tuple[float, ...]
@@ -267,7 +270,7 @@ def derive_task_kernel(config: FactorLabConfig, kernel_key: bytes) -> NeuralTask
         (config.n_objectives, config.state_dim, config.context_dim),
     )
     identity = hashlib.sha256(
-        kernel_key + b"|factorlab-neural-kernel-v1|" + repr(dimensions).encode()
+        kernel_key + b"|factorlab-long-neural-kernel-v1|" + repr(dimensions).encode()
     ).hexdigest()
     return NeuralTaskKernel(
         encoder=_nested_tuple(encoder),
@@ -282,17 +285,23 @@ def derive_task_kernel(config: FactorLabConfig, kernel_key: bytes) -> NeuralTask
     )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class FactorLabWorld:
     config: FactorLabConfig
     seed: int
-    signals: tuple[FloatVector, ...]
+    signals: np.ndarray
     context: FloatVector
     initial_state: FloatVector
-    intrinsic_lags: tuple[int, ...]
+    intrinsic_lags: np.ndarray
     task_kernel: NeuralTaskKernel
     action_spec: ActionSpec
     world_id: str
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, FactorLabWorld) and self.world_id == other.world_id
+
+    def __hash__(self) -> int:
+        return hash(self.world_id)
 
     @property
     def reward_schedule(self) -> tuple[int, ...]:
@@ -336,7 +345,10 @@ def reward_schedule(horizon: int, reward_events: int) -> tuple[int, ...]:
 
 
 def _release_time(world: FactorLabWorld, action_time: int) -> tuple[int, int]:
-    maturity = min(world.config.horizon, action_time + world.intrinsic_lags[action_time])
+    maturity = min(
+        world.config.horizon,
+        action_time + int(world.intrinsic_lags[action_time]),
+    )
     release = next(time for time in world.reward_schedule if time >= maturity)
     return maturity, release
 
@@ -353,7 +365,7 @@ def generate_world(
         raise ValueError("world seed must be an integer")
     seed = int(seed)
     if kernel_key is None:
-        kernel_key = hashlib.sha256(b"factorlab-v1-standalone-test-kernel").digest()
+        kernel_key = hashlib.sha256(b"factorlab-long-v1-standalone-test-kernel").digest()
     kernel = derive_task_kernel(config, kernel_key)
     rng = np.random.default_rng(seed)
     context = np.tanh(rng.normal(size=config.context_dim))
@@ -379,15 +391,19 @@ def generate_world(
         catalog_size=config.catalog_size,
         seed=seed ^ 0xA5A5A5A5,
     )
+    signals = np.ascontiguousarray(signals, dtype=np.float32)
+    signals.setflags(write=False)
+    lag_array = np.ascontiguousarray(lags, dtype=np.int32)
+    lag_array.setflags(write=False)
     payload = {
         "family": "factorlab",
-        "version": 1,
+        "version": BENCHMARK_VERSION,
         "config": config.to_dict(),
         "seed": seed,
-        "signals": _nested_tuple(signals),
+        "signals_sha256": hashlib.sha256(signals.tobytes()).hexdigest(),
         "context": _nested_tuple(context),
         "initial_state": _nested_tuple(initial_state),
-        "intrinsic_lags": lags,
+        "intrinsic_lags_sha256": hashlib.sha256(lag_array.tobytes()).hexdigest(),
         "kernel_id": kernel.kernel_id,
         "action_schema": action_spec.public_schema(),
     }
@@ -396,10 +412,10 @@ def generate_world(
     return FactorLabWorld(
         config=config,
         seed=seed,
-        signals=_nested_tuple(signals),
+        signals=signals,
         context=_nested_tuple(context),
         initial_state=_nested_tuple(initial_state),
-        intrinsic_lags=tuple(lags),
+        intrinsic_lags=lag_array,
         task_kernel=kernel,
         action_spec=action_spec,
         world_id=world_id,
@@ -476,7 +492,6 @@ class FactorLabEnv:
         self._preference: tuple[float, ...] | None = None
         self._state = np.asarray(world.initial_state, dtype=np.float64)
         self._previous_action = np.zeros(world.config.n_factors, dtype=np.float64)
-        self._canonical_actions: dict[int, tuple[float, ...]] = {}
         self._base_scores: dict[int, tuple[float, ...]] = {}
         self._pending: dict[int, np.ndarray] = {}
         self._return = np.zeros(world.config.n_objectives, dtype=np.float64)
@@ -485,7 +500,7 @@ class FactorLabEnv:
         config = self._world.config
         reveal_for = self._time + config.memory_lag
         signal = self._world.signals[reveal_for] if reveal_for < config.horizon else None
-        signal_values = signal or (0.0,) * config.signal_dim
+        signal_values = signal if signal is not None else (0.0,) * config.signal_dim
         preference = self._preference or (0.0,) * config.n_objectives
         phase = 2.0 * math.pi * self._time / config.horizon
         action_required = config.memory_lag <= self._time < config.horizon
@@ -504,7 +519,7 @@ class FactorLabEnv:
         return {
             "time": self._time,
             "action_required": action_required,
-            "signal": list(signal) if signal is not None else None,
+            "signal": [float(value) for value in signal] if signal is not None else None,
             "signal_for_time": reveal_for if signal is not None else None,
             "state": [float(value) for value in self._state],
             "context": list(self._world.context),
@@ -520,7 +535,6 @@ class FactorLabEnv:
         self._started = True
         self._state = np.asarray(self._world.initial_state, dtype=np.float64)
         self._previous_action = np.zeros(self._world.config.n_factors, dtype=np.float64)
-        self._canonical_actions.clear()
         self._base_scores.clear()
         self._pending.clear()
         self._return = np.zeros(self._world.config.n_objectives, dtype=np.float64)
@@ -528,7 +542,7 @@ class FactorLabEnv:
         public_info = {
             "task_id": config.task_id,
             "family": "factorlab",
-            "version": 1,
+            "version": BENCHMARK_VERSION,
             "horizon": config.horizon,
             "observation_spec": {"kind": "dense_float", "width": config.observation_width},
             "objective_names": [f"objective_{index}" for index in range(config.n_objectives)],
@@ -556,8 +570,12 @@ class FactorLabEnv:
         scores = score_canonical_action(
             world, world.signals[action_time], self._state, canonical
         )
-        self._canonical_actions[action_time] = canonical
-        self._base_scores[action_time] = scores
+        if (
+            EffectKind.PAIRWISE in config.effects
+            or EffectKind.PREREQUISITE in config.effects
+            or EffectKind.THRESHOLD in config.effects
+        ):
+            self._base_scores[action_time] = scores
         contribution = np.asarray(scores, dtype=np.float64)
         if EffectKind.PREREQUISITE in config.effects:
             relative = action_time - config.memory_lag
@@ -653,7 +671,7 @@ class FactorLabInspector:
         world = self.world
         return {
             "family": "factorlab",
-            "version": 1,
+            "version": BENCHMARK_VERSION,
             "config": world.config.to_dict(),
             "world_id": world.world_id,
             "world_seed": world.seed,
@@ -669,6 +687,11 @@ class FactorLabInspector:
         config = world.config
         objectives = tuple(range(config.n_objectives))
         edges: set[InfluenceEdge] = set()
+        dynamics_last_action_by_release: dict[int, int] = {}
+        if EffectKind.DYNAMICS in config.effects:
+            for affected_time in range(config.memory_lag, config.horizon):
+                _, affected_release = _release_time(world, affected_time)
+                dynamics_last_action_by_release[affected_release] = affected_time
         for action_time in range(config.memory_lag, config.horizon):
             maturity, release = _release_time(world, action_time)
             edges.add(InfluenceEdge(action_time, maturity, release, objectives, EffectKind.ADDITIVE))
@@ -682,14 +705,13 @@ class FactorLabInspector:
                 if anchor != action_time:
                     edges.add(InfluenceEdge(anchor, maturity, release, objectives, EffectKind.PREREQUISITE))
             if EffectKind.DYNAMICS in config.effects:
-                for affected_time in range(action_time + 1, config.horizon):
-                    affected_maturity, affected_release = _release_time(
-                        world, affected_time
-                    )
+                for affected_release, last_action in dynamics_last_action_by_release.items():
+                    if last_action <= action_time:
+                        continue
                     edges.add(
                         InfluenceEdge(
                             action_time,
-                            affected_maturity,
+                            affected_release,
                             affected_release,
                             objectives,
                             EffectKind.DYNAMICS,

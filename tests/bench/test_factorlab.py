@@ -43,7 +43,9 @@ def test_world_generation_is_deterministic_continuous_and_content_addressed() ->
     assert first.world_id == second.world_id
     assert first.world_id != other.world_id
     assert first.task_kernel.kernel_id == other.task_kernel.kernel_id
-    assert len(set(first.signals)) == config.horizon
+    assert len({signal.tobytes() for signal in first.signals}) == config.horizon
+    assert first.signals.flags.writeable is False
+    assert first.intrinsic_lags.flags.writeable is False
     assert first.intrinsic_lags[0] == config.max_causal_lag
 
 
@@ -53,7 +55,7 @@ def test_task_id_changes_with_declared_factor_but_not_world_seed() -> None:
 
     assert generate_world(base, 1).config.task_id == generate_world(base, 2).config.task_id
     assert base.task_id != changed.task_id
-    assert base.task_id.startswith("factorlab-v1-")
+    assert base.task_id.startswith("factorlab-long-v1-")
 
 
 def test_hidden_task_mapping_is_nonlinear_and_objectives_conflict() -> None:
@@ -124,7 +126,8 @@ def test_matched_action_renderings_hold_neural_world_and_returns_fixed() -> None
     flat = generate_world(FactorLabConfig(**common, action_mode="flat_discrete"), 11)
     continuous = generate_world(FactorLabConfig(**common, action_mode="continuous"), 11)
 
-    assert factored.signals == flat.signals == continuous.signals
+    assert np.array_equal(factored.signals, flat.signals)
+    assert np.array_equal(factored.signals, continuous.signals)
     assert factored.task_kernel == flat.task_kernel == continuous.task_kernel
     factored_actions = [(0, 1)] * factored.config.decision_count
     canonical = [factored.action_spec.decode(action) for action in factored_actions]
@@ -231,5 +234,6 @@ def test_returns_stay_inside_declared_bounds_and_lifecycle_is_strict() -> None:
     ],
 )
 def test_invalid_factor_configurations_are_rejected(field: str, value: object) -> None:
+    values = {"horizon": 128, field: value}
     with pytest.raises(ValueError):
-        FactorLabConfig(**{field: value})
+        FactorLabConfig(**values)

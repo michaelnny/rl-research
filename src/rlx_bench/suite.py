@@ -62,7 +62,7 @@ class PublicSuiteManifest:
 
 
 def _derive(spec: WorldSuiteSpec, purpose: str) -> bytes:
-    payload = f"rlx-suite-v1|{spec.namespace}|{spec.version}|{purpose}".encode()
+    payload = f"rlx-long-suite-v1|{spec.namespace}|{spec.version}|{purpose}".encode()
     return hmac.new(spec.master_key, payload, hashlib.sha256).digest()
 
 
@@ -109,7 +109,7 @@ class EvaluatorWorldSuite:
         }
         kernel_commitment = hmac.new(
             spec.master_key,
-            b"rlx-suite-v1|neural-kernel-commitment|" + hashlib.sha256(
+            b"rlx-long-suite-v1|neural-kernel-commitment|" + hashlib.sha256(
                 self._kernel_key
             ).digest(),
             hashlib.sha256,
@@ -134,6 +134,7 @@ class EvaluatorWorldSuite:
             band_commitments=commitments,
             neural_kernel_commitment=kernel_commitment,
         )
+        self._world_cache: dict[tuple[WorldBand, int], FactorLabWorld] = {}
 
     def public_manifest(self) -> PublicSuiteManifest:
         return self._public_manifest
@@ -146,7 +147,12 @@ class EvaluatorWorldSuite:
         seeds = self._seeds[normalized]
         if isinstance(index, bool) or not isinstance(index, int) or not 0 <= index < len(seeds):
             raise IndexError("world index is out of range")
-        return generate_world(self.config, seeds[index], kernel_key=self._kernel_key)
+        key = (normalized, index)
+        world = self._world_cache.get(key)
+        if world is None:
+            world = generate_world(self.config, seeds[index], kernel_key=self._kernel_key)
+            self._world_cache[key] = world
+        return world
 
     def replay_token(self, band: WorldBand | str, index: int, episode: int) -> str:
         if episode < 0:

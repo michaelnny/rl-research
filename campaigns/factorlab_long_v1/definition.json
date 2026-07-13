@@ -1,0 +1,49 @@
+{
+  "campaign_id": "factorlab-long-v1-neural",
+  "status": "qualification_pending",
+  "benchmark_revision": "factorlab-long-v1",
+  "admitted_tiers": [],
+  "qualification_reports": {},
+  "scientific_question": "Which compact neural RL mechanisms remain effective with 5,000--20,000 decisions, terminal vector feedback, and combinatorial structured actions?",
+  "learner_class": {
+    "required": "compact_neural_policy",
+    "excluded": ["tabular_policy", "cue_keyed_lookup", "enumerated_joint_action_policy", "pretrained_foundation_model"],
+    "max_trainable_parameters": 2000000,
+    "max_accelerator_seconds_per_seed": 14400,
+    "max_device_memory_bytes": 25769803776,
+    "max_transitions_per_seed": 5000000
+  },
+  "target_horizons": [5000, 10000, 20000],
+  "anchor_configuration": {
+    "objective_protocol": "preference_conditioned",
+    "preference": [1.0, 0.0],
+    "n_objectives": 2,
+    "action_mode": "factored_discrete",
+    "horizon": 5000,
+    "n_factors": 12,
+    "levels_per_factor": 10,
+    "joint_choices": 1000000000000,
+    "signal_dim": 16,
+    "context_dim": 8,
+    "state_dim": 8,
+    "teacher_hidden_dim": 16,
+    "max_causal_lag": 5000,
+    "memory_lag": 0,
+    "reward_events": 1,
+    "conflict_strength": 0.75,
+    "terminal_state_weight": 1.0,
+    "effects": ["additive", "dynamics"]
+  },
+  "evaluation_protocol": {
+    "training_episodes": 256,
+    "training_batch_size": 64,
+    "training_trials": 3,
+    "public_worlds": 32,
+    "heldout_worlds": 16,
+    "max_trainable_parameters": 2000000,
+    "wall_seconds_per_trial": 14400
+  },
+  "qualification_checks": ["mechanics", "causal_audit", "feasibility", "learnability", "headroom", "factor_sensitivity", "specificity", "generalization", "statistics", "independent_audit"],
+  "implemented_references": ["compact_branching_residual_ppo", "compact_branching_residual_gru_ppo", "compact_branching_causal_attention_ppo", "random_policy_control", "evaluator_only_exact_tiny_solver"],
+  "not_admitted": ["memory_lag_greater_than_zero", "other_action_renderings", "policy_coverage", "constrained_control", "applied_families"]
+}

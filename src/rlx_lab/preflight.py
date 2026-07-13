@@ -150,7 +150,9 @@ def run_preflight(
         required_providers = {"codex", "claude"}
     checks.append(PreflightCheck("active_campaign", campaign_ok, campaign_detail))
 
-    definition_path = repository / "campaigns" / "factorlab_v1" / "definition.json"
+    definition_path = (
+        repository / "campaigns" / "factorlab_long_v1" / "definition.json"
+    )
     try:
         definition = json.loads(definition_path.read_text(encoding="utf-8"))
         benchmark_tier = str(policy.get("benchmark_tier", ""))
@@ -173,6 +175,7 @@ def run_preflight(
         scope = qualification.get("admitted_scope", {})
         expected_scope = {
             "objective_protocol": "preference_conditioned",
+            "preference": [1.0, 0.0],
             "n_objectives": 2,
             "action_mode": "factored_discrete",
             "horizon": policy.get("evaluation_horizon"),
@@ -182,6 +185,9 @@ def run_preflight(
             "context_dim": policy.get("evaluation_context_dim"),
             "state_dim": policy.get("evaluation_state_dim"),
             "teacher_hidden_dim": policy.get("evaluation_teacher_hidden_dim"),
+            "signal_target_scale": 0.25,
+            "context_target_scale": 2.0,
+            "state_target_scale": 0.25,
             "max_causal_lag": policy.get("evaluation_horizon"),
             "memory_lag": 0,
             "reward_events": 1,

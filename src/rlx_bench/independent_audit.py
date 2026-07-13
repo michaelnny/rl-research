@@ -84,7 +84,7 @@ def independent_trajectory(
             canonical = np.asarray(world.action_spec.decode(actions[decision_index]))
             decision_index += 1
             scores = independent_scores(world, world.signals[time], state, canonical)
-            maturity = min(config.horizon, time + world.intrinsic_lags[time])
+            maturity = min(config.horizon, time + int(world.intrinsic_lags[time]))
             release = next(value for value in schedule if value >= maturity)
             pending.setdefault(release, np.zeros(config.n_objectives))
             pending[release] += scores

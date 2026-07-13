@@ -39,7 +39,7 @@ PROTECTED_PATHS = (
     "tests/bench",
     "tests/agents",
     "tests/lab",
-    "campaigns/factorlab_v1",
+    "campaigns/factorlab_long_v1",
     "campaigns/schemas",
     "design",
 )
@@ -47,7 +47,7 @@ PROTECTED_PATHS = (
 
 @dataclass(frozen=True)
 class CampaignPolicy:
-    benchmark_tier: str = "factorlab-small-v1"
+    benchmark_tier: str = "factorlab-long-5k-v1"
     concurrent_branches: int = 3
     max_branches: int = 24
     max_inflight_jobs: int = 12
@@ -60,18 +60,18 @@ class CampaignPolicy:
         default_factory=lambda: dict(DEFAULT_PORTFOLIO)
     )
     synthesis_interval_findings: int = 4
-    evaluation_horizon: int = 64
-    evaluation_factors: int = 4
-    evaluation_levels_per_factor: int = 4
-    evaluation_signal_dim: int = 8
-    evaluation_context_dim: int = 4
-    evaluation_state_dim: int = 4
+    evaluation_horizon: int = 5000
+    evaluation_factors: int = 12
+    evaluation_levels_per_factor: int = 10
+    evaluation_signal_dim: int = 16
+    evaluation_context_dim: int = 8
+    evaluation_state_dim: int = 8
     evaluation_teacher_hidden_dim: int = 16
-    evaluation_training_episodes: int = 1024
-    evaluation_training_batch_size: int = 16
+    evaluation_training_episodes: int = 256
+    evaluation_training_batch_size: int = 64
     evaluation_training_trials: int = 3
-    evaluation_public_worlds: int = 16
-    evaluation_heldout_worlds: int = 32
+    evaluation_public_worlds: int = 32
+    evaluation_heldout_worlds: int = 16
     evaluation_max_parameters: int = 2_000_000
     evaluation_wall_seconds: float = 14_400.0
 
@@ -602,7 +602,7 @@ class CampaignController:
             "--max-parameters",
             str(policy.evaluation_max_parameters),
             "--suite-namespace",
-            f"{campaign_id}-factorlab-v1-neural",
+            f"{campaign_id}-factorlab-long-v1-neural",
             "--candidate",
             *normalized_candidate,
         ]

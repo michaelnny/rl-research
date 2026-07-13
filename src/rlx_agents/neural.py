@@ -35,6 +35,10 @@ class NeuralReferenceConfig:
     value_coefficient: float = 0.5
     episodes: int = 512
     batch_episodes: int = 16
+    optimization_batch_size: int = 8192
+    optimization_epochs: int = 4
+    ppo_clip: float = 0.2
+    truncated_bptt_steps: int = 256
     gradient_clip: float = 1.0
     max_parameters: int = 1_000_000
     device: str = "auto"
@@ -54,8 +58,16 @@ class NeuralReferenceConfig:
             raise ValueError("optimizer settings must be positive")
         if self.entropy_coefficient < 0.0 or self.value_coefficient < 0.0:
             raise ValueError("loss coefficients cannot be negative")
-        if self.episodes < 1 or self.batch_episodes < 1:
+        if min(
+            self.episodes,
+            self.batch_episodes,
+            self.optimization_batch_size,
+            self.optimization_epochs,
+            self.truncated_bptt_steps,
+        ) < 1:
             raise ValueError("episode counts must be positive")
+        if not 0.0 < self.ppo_clip < 1.0:
+            raise ValueError("ppo_clip must lie in (0, 1)")
         if self.gradient_clip <= 0.0 or self.max_parameters < 1:
             raise ValueError("gradient and parameter limits must be positive")
         if self.device not in {"auto", "cpu", "cuda", "mps"}:
@@ -323,7 +335,13 @@ def train_actor_critic(
     config: NeuralReferenceConfig = NeuralReferenceConfig(),
     seed: int = 0,
 ) -> NeuralTrainingResult:
-    """Train a compact Monte-Carlo actor-critic on procedural public worlds."""
+    """Train a compact Monte-Carlo actor-critic on procedural public worlds.
+
+    Rollouts are collected without autograd, then replayed through the current
+    policy for one bounded optimization pass. This keeps memory linear and
+    bounded at 5k--20k steps instead of retaining a full-horizon computation
+    graph while the environment is running.
+    """
 
     worlds = _check_worlds(worlds)
     task = worlds[0].config
@@ -346,91 +364,240 @@ def train_actor_critic(
 
     for batch_start in range(0, config.episodes, config.batch_episodes):
         batch_size = min(config.batch_episodes, config.episodes - batch_start)
-        environments = [
-            FactorLabEnv(worlds[(batch_start + offset) % len(worlds)])
-            for offset in range(batch_size)
+        batch_worlds = [
+            worlds[(batch_start + offset) % len(worlds)] for offset in range(batch_size)
         ]
+        environments = [FactorLabEnv(world) for world in batch_worlds]
         observations = [env.reset(preference=preference_tuple)[0] for env in environments]
         memory = model.initial_state(batch_size, device)
-        log_prob_steps: list[torch.Tensor] = []
-        entropy_steps: list[torch.Tensor] = []
-        value_steps: list[torch.Tensor] = []
-        reward_steps: list[torch.Tensor] = []
-        action_masks: list[torch.Tensor] = []
+        feature_steps = np.empty(
+            (task.horizon, batch_size, task.observation_width), dtype=np.float32
+        )
+        action_steps = np.zeros(
+            (task.horizon, batch_size, task.n_factors), dtype=np.int64
+        )
+        behavior_log_prob_steps = np.zeros(
+            (task.horizon, batch_size), dtype=np.float32
+        )
+        action_masks = np.empty((task.horizon, batch_size), dtype=bool)
         batch_returns = np.zeros((batch_size, task.n_objectives), dtype=np.float64)
 
-        for _ in range(task.horizon):
-            observation_tensor = torch.as_tensor(
-                np.asarray([item["features"] for item in observations], dtype=np.float32),
-                device=device,
-            )
-            logits, values, memory = model(observation_tensor, memory)
-            distributions = tuple(Categorical(logits=value) for value in logits)
-            sampled = torch.stack(tuple(distribution.sample() for distribution in distributions), dim=1)
-            log_prob = torch.stack(
-                tuple(
-                    distribution.log_prob(sampled[:, factor])
-                    for factor, distribution in enumerate(distributions)
-                ),
-                dim=1,
-            ).mean(dim=1)
-            entropy = torch.stack(
-                tuple(distribution.entropy() for distribution in distributions), dim=1
-            ).mean(dim=1)
-            required = np.asarray([item["action_required"] for item in observations], dtype=bool)
-            rewards = np.zeros((batch_size, task.n_objectives), dtype=np.float64)
-            next_observations: list[dict[str, Any]] = []
-            for index, env in enumerate(environments):
-                action: Any = tuple(int(value) for value in sampled[index].detach().cpu().tolist())
-                if not required[index]:
-                    action = None
-                next_observation, reward, _, _, _ = env.step(action)
-                next_observations.append(next_observation)
-                rewards[index] = reward
-            normalized_scalar_rewards = (rewards / upper) @ weights
-            log_prob_steps.append(log_prob)
-            entropy_steps.append(entropy)
-            value_steps.append(values)
-            reward_steps.append(
-                torch.as_tensor(normalized_scalar_rewards, dtype=torch.float32, device=device)
-            )
-            action_masks.append(torch.as_tensor(required, dtype=torch.bool, device=device))
-            batch_returns += rewards
-            observations = next_observations
-            transitions += batch_size
+        with torch.no_grad():
+            for time_index in range(task.horizon):
+                features = np.asarray(
+                    [item["features"] for item in observations], dtype=np.float32
+                )
+                feature_steps[time_index] = features
+                observation_tensor = torch.as_tensor(features, device=device)
+                logits, _, memory = model(observation_tensor, memory)
+                sampled = torch.stack(
+                    tuple(
+                        torch.multinomial(torch.softmax(value, dim=-1), 1).squeeze(1)
+                        for value in logits
+                    ),
+                    dim=1,
+                )
+                sampled_cpu = sampled.cpu().numpy()
+                action_steps[time_index] = sampled_cpu
+                behavior_log_prob_steps[time_index] = (
+                    torch.stack(
+                        tuple(
+                            torch.log_softmax(value, dim=-1)
+                            .gather(1, sampled[:, factor : factor + 1])
+                            .squeeze(1)
+                            for factor, value in enumerate(logits)
+                        ),
+                        dim=1,
+                    )
+                    .sum(dim=1)
+                    .cpu()
+                    .numpy()
+                )
+                required = np.asarray(
+                    [item["action_required"] for item in observations], dtype=bool
+                )
+                action_masks[time_index] = required
+                rewards = np.zeros((batch_size, task.n_objectives), dtype=np.float64)
+                next_observations: list[dict[str, Any]] = []
+                for index, env in enumerate(environments):
+                    action: Any = tuple(int(value) for value in sampled_cpu[index])
+                    if not required[index]:
+                        action = None
+                    next_observation, reward, _, _, _ = env.step(action)
+                    next_observations.append(next_observation)
+                    rewards[index] = reward
+                batch_returns += rewards
+                observations = next_observations
+                transitions += batch_size
 
-        rewards_tensor = torch.stack(reward_steps)
-        returns_tensor = torch.zeros_like(rewards_tensor)
-        running = torch.zeros(batch_size, device=device)
-        for time in reversed(range(task.horizon)):
-            running = rewards_tensor[time] + config.gamma * running
-            returns_tensor[time] = running
-        values_tensor = torch.stack(value_steps)
-        advantages = returns_tensor - values_tensor
-        masks = torch.stack(action_masks)
-        valid_advantages = advantages.detach()[masks]
-        if valid_advantages.numel() > 1:
-            normalized_advantages = (advantages.detach() - valid_advantages.mean()) / (
-                valid_advantages.std(unbiased=False) + 1e-8
+        normalized_utilities = (batch_returns / upper) @ weights
+        centered = np.empty_like(normalized_utilities)
+        for world_id in {world.world_id for world in batch_worlds}:
+            indices = np.asarray(
+                [world.world_id == world_id for world in batch_worlds], dtype=bool
             )
-        else:
-            normalized_advantages = advantages.detach()
-        log_probs = torch.stack(log_prob_steps)
-        entropy = torch.stack(entropy_steps)
-        policy_loss = -(log_probs[masks] * normalized_advantages[masks]).mean()
-        value_loss = 0.5 * advantages.square().mean()
-        entropy_bonus = entropy[masks].mean()
-        loss = (
-            policy_loss
-            + config.value_coefficient * value_loss
-            - config.entropy_coefficient * entropy_bonus
+            centered[indices] = (
+                normalized_utilities[indices] - normalized_utilities[indices].mean()
+            )
+        if float(centered.std()) <= 1e-8:
+            centered = normalized_utilities - normalized_utilities.mean()
+        scale = float(normalized_utilities.std())
+        if scale > 1e-8:
+            centered /= scale
+        policy_targets = np.broadcast_to(
+            centered[None, :], (task.horizon, batch_size)
         )
-        optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        nn.utils.clip_grad_norm_(model.parameters(), config.gradient_clip)
-        optimizer.step()
-        losses.append(float(loss.detach().cpu()))
-        episode_utilities.extend(((batch_returns / upper) @ weights).tolist())
+        value_targets = np.broadcast_to(
+            normalized_utilities[None, :], (task.horizon, batch_size)
+        )
+        valid_actions = int(action_masks.sum())
+        if valid_actions < 1:
+            raise ValueError("training rollout did not contain any decision steps")
+
+        total_loss = 0.0
+        if not model.recurrent:
+            flat_features = feature_steps.reshape(-1, task.observation_width)
+            flat_actions = action_steps.reshape(-1, task.n_factors)
+            flat_masks = action_masks.reshape(-1)
+            flat_behavior_log_probs = behavior_log_prob_steps.reshape(-1)
+            flat_policy_targets = policy_targets.reshape(-1)
+            flat_value_targets = value_targets.reshape(-1)
+            for _ in range(config.optimization_epochs):
+                optimizer.zero_grad(set_to_none=True)
+                epoch_loss = 0.0
+                for start in range(
+                    0, flat_features.shape[0], config.optimization_batch_size
+                ):
+                    stop = min(
+                        start + config.optimization_batch_size, flat_features.shape[0]
+                    )
+                    mask = torch.as_tensor(
+                        flat_masks[start:stop], dtype=torch.bool, device=device
+                    )
+                    if not bool(mask.any()):
+                        continue
+                    features = torch.as_tensor(flat_features[start:stop], device=device)
+                    actions = torch.as_tensor(flat_actions[start:stop], device=device)
+                    old_log_prob = torch.as_tensor(
+                        flat_behavior_log_probs[start:stop], device=device
+                    )
+                    policy_target = torch.as_tensor(
+                        flat_policy_targets[start:stop], dtype=torch.float32, device=device
+                    )
+                    value_target = torch.as_tensor(
+                        flat_value_targets[start:stop], dtype=torch.float32, device=device
+                    )
+                    logits, values, _ = model(features)
+                    distributions = tuple(
+                        Categorical(logits=value, validate_args=False) for value in logits
+                    )
+                    log_prob = torch.stack(
+                        tuple(
+                            distribution.log_prob(actions[:, factor])
+                            for factor, distribution in enumerate(distributions)
+                        ),
+                        dim=1,
+                    ).sum(dim=1)
+                    entropy = torch.stack(
+                        tuple(distribution.entropy() for distribution in distributions),
+                        dim=1,
+                    ).mean(dim=1)
+                    ratio = torch.exp(log_prob - old_log_prob)
+                    unclipped = ratio * policy_target
+                    clipped = torch.clamp(
+                        ratio, 1.0 - config.ppo_clip, 1.0 + config.ppo_clip
+                    ) * policy_target
+                    policy_loss = -torch.minimum(unclipped[mask], clipped[mask]).mean()
+                    value_loss = 0.5 * (values - value_target).square().mean()
+                    entropy_bonus = entropy[mask].mean()
+                    chunk_weight = float(mask.sum().item()) / valid_actions
+                    loss = chunk_weight * (
+                        policy_loss
+                        + config.value_coefficient * value_loss
+                        - config.entropy_coefficient * entropy_bonus
+                    )
+                    loss.backward()
+                    epoch_loss += float(loss.detach().cpu())
+                nn.utils.clip_grad_norm_(model.parameters(), config.gradient_clip)
+                optimizer.step()
+                total_loss += epoch_loss / config.optimization_epochs
+        else:
+            for _ in range(config.optimization_epochs):
+                optimizer.zero_grad(set_to_none=True)
+                replay_memory = model.initial_state(batch_size, device)
+                epoch_loss = 0.0
+                for start in range(0, task.horizon, config.truncated_bptt_steps):
+                    stop = min(start + config.truncated_bptt_steps, task.horizon)
+                    step_log_probs: list[torch.Tensor] = []
+                    step_entropies: list[torch.Tensor] = []
+                    step_values: list[torch.Tensor] = []
+                    for time_index in range(start, stop):
+                        features = torch.as_tensor(feature_steps[time_index], device=device)
+                        actions = torch.as_tensor(action_steps[time_index], device=device)
+                        logits, values, replay_memory = model(features, replay_memory)
+                        distributions = tuple(
+                            Categorical(logits=value, validate_args=False) for value in logits
+                        )
+                        step_log_probs.append(
+                            torch.stack(
+                                tuple(
+                                    distribution.log_prob(actions[:, factor])
+                                    for factor, distribution in enumerate(distributions)
+                                ),
+                                dim=1,
+                            ).sum(dim=1)
+                        )
+                        step_entropies.append(
+                            torch.stack(
+                                tuple(
+                                    distribution.entropy()
+                                    for distribution in distributions
+                                ),
+                                dim=1,
+                            ).mean(dim=1)
+                        )
+                        step_values.append(values)
+                    mask = torch.as_tensor(
+                        action_masks[start:stop], dtype=torch.bool, device=device
+                    )
+                    old_log_prob = torch.as_tensor(
+                        behavior_log_prob_steps[start:stop], device=device
+                    )
+                    policy_target = torch.as_tensor(
+                        policy_targets[start:stop], dtype=torch.float32, device=device
+                    )
+                    value_target = torch.as_tensor(
+                        value_targets[start:stop], dtype=torch.float32, device=device
+                    )
+                    log_prob = torch.stack(step_log_probs)
+                    entropy = torch.stack(step_entropies)
+                    values = torch.stack(step_values)
+                    ratio = torch.exp(log_prob - old_log_prob)
+                    unclipped = ratio * policy_target
+                    clipped = torch.clamp(
+                        ratio, 1.0 - config.ppo_clip, 1.0 + config.ppo_clip
+                    ) * policy_target
+                    policy_loss = -torch.minimum(
+                        unclipped[mask], clipped[mask]
+                    ).mean()
+                    value_loss = 0.5 * (values - value_target).square().mean()
+                    entropy_bonus = entropy[mask].mean()
+                    chunk_weight = float(mask.sum().item()) / valid_actions
+                    loss = chunk_weight * (
+                        policy_loss
+                        + config.value_coefficient * value_loss
+                        - config.entropy_coefficient * entropy_bonus
+                    )
+                    loss.backward()
+                    epoch_loss += float(loss.detach().cpu())
+                    if replay_memory is not None:
+                        replay_memory = replay_memory.detach()
+                nn.utils.clip_grad_norm_(model.parameters(), config.gradient_clip)
+                optimizer.step()
+                total_loss += epoch_loss / config.optimization_epochs
+
+        losses.append(total_loss)
+        episode_utilities.extend(normalized_utilities.tolist())
 
     return NeuralTrainingResult(
         model=model,
@@ -464,25 +631,46 @@ def evaluate_actor_critic(
     del generator  # torch distributions use the process RNG; seed it explicitly below.
     torch.manual_seed(seed)
     preference_tuple = tuple(float(value) for value in weights)
+    environments = [FactorLabEnv(world) for world in worlds]
+    observations = [
+        environment.reset(preference=preference_tuple)[0]
+        for environment in environments
+    ]
+    memory = model.initial_state(len(environments), target_device)
+    returns = np.zeros((len(environments), task.n_objectives), dtype=np.float64)
+    for _ in range(task.horizon):
+        inputs = torch.as_tensor(
+            np.asarray([observation["features"] for observation in observations]),
+            dtype=torch.float32,
+            device=target_device,
+        )
+        logits, _, memory = model(inputs, memory)
+        if greedy:
+            sampled = torch.stack(tuple(torch.argmax(head, dim=1) for head in logits), dim=1)
+        else:
+            sampled = torch.stack(
+                tuple(
+                    torch.multinomial(torch.softmax(head, dim=-1), 1).squeeze(1)
+                    for head in logits
+                ),
+                dim=1,
+            )
+        sampled_cpu = sampled.cpu().numpy()
+        next_observations = []
+        for index, environment in enumerate(environments):
+            action = (
+                tuple(int(value) for value in sampled_cpu[index])
+                if observations[index]["action_required"]
+                else None
+            )
+            observation, reward, _, _, _ = environment.step(action)
+            next_observations.append(observation)
+            returns[index] += np.asarray(reward)
+        observations = next_observations
+
     results: list[EpisodeResult] = []
-    for world in worlds:
-        env = FactorLabEnv(world)
-        observation, _ = env.reset(preference=preference_tuple)
-        memory = model.initial_state(1, target_device)
-        rewards: list[tuple[float, ...]] = []
-        for _ in range(task.horizon):
-            inputs = torch.as_tensor([observation["features"]], dtype=torch.float32, device=target_device)
-            logits, _, memory = model(inputs, memory)
-            if observation["action_required"]:
-                if greedy:
-                    action = tuple(int(torch.argmax(head[0]).item()) for head in logits)
-                else:
-                    action = tuple(int(Categorical(logits=head[0]).sample().item()) for head in logits)
-            else:
-                action = None
-            observation, reward, _, _, _ = env.step(action)
-            rewards.append(reward)
-        return_vector = tuple(float(value) for value in np.sum(np.asarray(rewards), axis=0))
+    for world, return_values in zip(worlds, returns, strict=True):
+        return_vector = tuple(float(value) for value in return_values)
         normalized_utility = float(
             np.dot(weights, np.asarray(return_vector) / np.asarray(world.return_upper_bound))
         )

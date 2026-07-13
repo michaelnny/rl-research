@@ -1,6 +1,6 @@
 # Benchmark architecture
 
-Status: neural-first architecture; FactorLab Small v1 qualified, broader matrix not admitted
+Status: 5,000--20,000-step neural architecture; long-tier qualification pending
 
 The implemented v1 slice lives in `src/rlx_bench/`. It uses continuous
 procedural observations and an evaluator-owned nonlinear task/dynamics kernel
@@ -10,12 +10,11 @@ intervention audit, evaluator budgets, protocol-specific metrics, and committed
 public/held-out suite boundaries. Preference-conditioned factored-discrete
 evaluation is executable through the batched neural candidate protocol v2.
 
-This is implementation progress, not qualification. The full fractional study,
-The exact `factorlab-small-v1` preference-conditioned, factored-discrete anchor
-is qualified by the committed report under `campaigns/factorlab_v1/qualification/`.
-Additional algorithms, memory-lag tiers, world-shift modes, objective protocols,
-action renderings, and every applied family remain separate qualification scope.
-No result from an unsupported tier is admitted to a research campaign.
+The former 64-step result is smoke evidence only and has no research admission.
+The frozen `factorlab-long-5k-v1` study uses a 5,000-step terminal-return anchor
+and a mandatory 20,000-step scaling contrast. Until its reviewed report passes
+all gates, no tier is admitted. Memory-lag variants, world shifts, other
+objective/action protocols, and applied families remain separate scope.
 
 ## Suite shape
 
@@ -64,13 +63,13 @@ counterfactual experiments instead of comparing unrelated domain stories.
 
 ### Required diagnostic sweeps
 
-- horizon: 64, 128, 256, 512, 1024;
-- maximum causal lag: 8 through the full horizon;
+- research horizon: 5,000, 10,000, and 20,000 steps;
+- maximum causal lag: 5,000 through the full 20,000-step horizon;
 - joint discrete choices: `10^2` through at least `10^12` via factors;
 - continuous dimensions: 4, 16, 64;
 - reward events: terminal only, 2, 4, and 8 sparse events;
 - objectives: 2, 4, and 8 with controlled conflict strength;
-- memory lag: 0, 16, 64, 256; and
+- memory lag: 0, 128, 512, and 2,048; and
 - world shift: parameter interpolation and unseen composition.
 
 Neural width/depth, recurrent state, parameter count, and accelerator use are

@@ -1,6 +1,6 @@
 # Autonomous research system architecture
 
-Status: initial automated-research release implemented for the admitted FactorLab tier
+Status: automated harness implemented; long-horizon benchmark admission pending
 
 The implementation now covers the graph, artifacts, queue/leases/recovery,
 provider adapters, worktree isolation, structured run parsing, campaign

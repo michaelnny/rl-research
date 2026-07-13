@@ -4,43 +4,45 @@ import json
 from pathlib import Path
 
 from rlx_agents.evaluate import CandidateEvaluationConfig
+from rlx_bench.factorlab import FactorLabConfig
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFINITION = ROOT / "campaigns" / "factorlab_v1" / "definition.json"
+DEFINITION = ROOT / "campaigns" / "factorlab_long_v1" / "definition.json"
+PROTOCOL = ROOT / "campaigns" / "factorlab_long_v1" / "qualification_protocol.json"
+SMOKE_DEFINITION = ROOT / "campaigns" / "factorlab_v1" / "definition.json"
 
 
 def test_factorlab_campaign_requires_compact_neural_learners_and_hidden_kernel() -> None:
     definition = json.loads(DEFINITION.read_text())
 
-    assert definition["status"] == "qualified_tier_available"
-    assert definition["admitted_tiers"] == ["factorlab-small-v1"]
-    report = definition["qualification_reports"]["factorlab-small-v1"]
-    assert len(report["evidence_sha256"]) == 64
-    assert report["admitted_scope"]["memory_lag"] == 0
-    assert "memory_lag_greater_than_zero" in report["not_admitted"]
+    assert definition["status"] == "qualification_pending"
+    assert definition["admitted_tiers"] == []
     assert definition["learner_class"]["required"] == "compact_neural_policy"
     assert "tabular_policy" in definition["learner_class"]["excluded"]
-    assert definition["world_suite"]["shared_hidden_neural_kernel"] is True
-    assert definition["world_suite"]["continuous_procedural_observations"] is True
-    assert definition["world_suite"]["master_key_source"].startswith("runtime/secrets/")
-    assert "master_key" not in definition["world_suite"]
+    assert definition["anchor_configuration"]["horizon"] == 5000
+    assert definition["anchor_configuration"]["joint_choices"] == 10**12
+    assert definition["anchor_configuration"]["reward_events"] == 1
+    assert max(definition["target_horizons"]) == 20_000
 
-    qualification = json.loads((ROOT / report["report_path"]).read_text())
+    protocol = json.loads(PROTOCOL.read_text())
+    anchor = dict(protocol["anchor_configuration"])
+    anchor["levels_per_factor"] = (anchor["levels_per_factor"],)
     evaluator = CandidateEvaluationConfig()
-    assert evaluator.factor_config().task_id == qualification["task_id"]
-    assert evaluator.training_episodes == report["admitted_scope"]["training_episodes"]
-    assert evaluator.public_worlds == report["admitted_scope"]["public_worlds"]
-    assert evaluator.heldout_worlds == report["admitted_scope"]["heldout_worlds"]
+    assert evaluator.factor_config().task_id == FactorLabConfig(**anchor).task_id
+    assert evaluator.training_episodes == protocol["reference"]["episodes"]
+    assert evaluator.public_worlds == protocol["suite"]["public_worlds"]
+    assert evaluator.heldout_worlds == protocol["suite"]["heldout_worlds"]
+
+    smoke = json.loads(SMOKE_DEFINITION.read_text())
+    assert smoke["status"] == "retired_smoke_only"
+    assert smoke["admitted_tiers"] == []
 
 
 def test_campaign_covers_extremes_with_consumer_gpu_budgets() -> None:
     definition = json.loads(DEFINITION.read_text())
-    sweeps = definition["diagnostic_sweeps"]
-
-    assert max(sweeps["horizon"]) >= 1024
-    assert max(item["joint_choices"] for item in sweeps["joint_discrete_designs"]) >= 10**12
-    assert max(sweeps["continuous_dimensions"]) >= 64
-    assert definition["budgets"]["probe"]["accelerator_seconds"] > 0
-    assert definition["budgets"]["confirmation"]["max_trainable_parameters"] == 2_000_000
-    assert definition["fractional_design"]["forbidden"] == "unreviewed full Cartesian sweep"
+    assert min(definition["target_horizons"]) >= 5000
+    assert max(definition["target_horizons"]) >= 20_000
+    assert definition["learner_class"]["max_accelerator_seconds_per_seed"] == 14_400
+    assert definition["learner_class"]["max_trainable_parameters"] == 2_000_000
+    assert definition["learner_class"]["max_transitions_per_seed"] == 5_000_000

@@ -29,18 +29,18 @@ def test_preflight_requires_a_committed_rebuild_and_valid_secret(tmp_path, monke
         "src/rlx_agents/evaluate.py",
         "src/rlx_bench/suite.py",
         "campaigns/schemas/example.json",
-        "campaigns/factorlab_v1/definition.json",
+        "campaigns/factorlab_long_v1/definition.json",
     ):
         path = repository / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("{}\n" if path.suffix == ".json" else "# fixture\n")
-    protocol = {"protocol_id": "fixture", "tier_id": "factorlab-small-v1"}
+    protocol = {"protocol_id": "fixture", "tier_id": "factorlab-long-5k-v1"}
     protocol_bytes = json.dumps(protocol, sort_keys=True, separators=(",", ":")).encode()
     protocol_digest = hashlib.sha256(protocol_bytes).hexdigest()
     evidence_digest = "e" * 64
-    qualification_dir = repository / "campaigns/factorlab_v1/qualification"
+    qualification_dir = repository / "campaigns/factorlab_long_v1/qualification"
     qualification_dir.mkdir(parents=True)
-    protocol_path = repository / "campaigns/factorlab_v1/protocol.json"
+    protocol_path = repository / "campaigns/factorlab_long_v1/protocol.json"
     protocol_path.write_text(json.dumps(protocol))
     report_path = qualification_dir / "report.json"
     evidence_refs = (
@@ -50,7 +50,7 @@ def test_preflight_requires_a_committed_rebuild_and_valid_secret(tmp_path, monke
     qualification_report = make_qualification_report(
         task_id="fixture-task",
         suite_id="fixture-suite",
-        benchmark_revision="factorlab-v1",
+        benchmark_revision="factorlab-long-v1",
         checks=[
             QualificationCheck(name, CheckStatus.VERIFIED, {}, evidence_refs)
             for name in REQUIRED_QUALIFICATION_CHECKS
@@ -58,40 +58,44 @@ def test_preflight_requires_a_committed_rebuild_and_valid_secret(tmp_path, monke
     )
     report_id = qualification_report.report_id
     report_path.write_text(json.dumps(qualification_report.to_dict()))
-    (repository / "campaigns/factorlab_v1/definition.json").write_text(
+    (repository / "campaigns/factorlab_long_v1/definition.json").write_text(
         json.dumps(
             {
-                "benchmark_revision": "factorlab-v1",
-                "admitted_tiers": ["factorlab-small-v1"],
+                "benchmark_revision": "factorlab-long-v1",
+                "admitted_tiers": ["factorlab-long-5k-v1"],
                 "qualification_reports": {
-                    "factorlab-small-v1": {
-                        "report_path": "campaigns/factorlab_v1/qualification/report.json",
-                        "protocol_path": "campaigns/factorlab_v1/protocol.json",
+                    "factorlab-long-5k-v1": {
+                        "report_path": "campaigns/factorlab_long_v1/qualification/report.json",
+                        "protocol_path": "campaigns/factorlab_long_v1/protocol.json",
                         "report_id": report_id,
                         "protocol_sha256": protocol_digest,
                         "evidence_sha256": evidence_digest,
                         "admitted_scope": {
                             "objective_protocol": "preference_conditioned",
+                            "preference": [1.0, 0.0],
                             "n_objectives": 2,
                             "action_mode": "factored_discrete",
-                            "horizon": 64,
-                            "n_factors": 4,
-                            "levels_per_factor": 4,
-                            "signal_dim": 8,
-                            "context_dim": 4,
-                            "state_dim": 4,
+                            "horizon": 5000,
+                            "n_factors": 12,
+                            "levels_per_factor": 10,
+                            "signal_dim": 16,
+                            "context_dim": 8,
+                            "state_dim": 8,
                             "teacher_hidden_dim": 16,
-                            "max_causal_lag": 64,
+                            "signal_target_scale": 0.25,
+                            "context_target_scale": 2.0,
+                            "state_target_scale": 0.25,
+                            "max_causal_lag": 5000,
                             "memory_lag": 0,
                             "reward_events": 1,
                             "conflict_strength": 0.75,
                             "terminal_state_weight": 1.0,
                             "effects": ["additive", "dynamics"],
-                            "training_episodes": 1024,
-                            "training_batch_size": 16,
+                            "training_episodes": 256,
+                            "training_batch_size": 64,
                             "training_trials": 3,
-                            "public_worlds": 16,
-                            "heldout_worlds": 32,
+                            "public_worlds": 32,
+                            "heldout_worlds": 16,
                             "max_trainable_parameters": 2_000_000,
                         },
                     }
@@ -142,10 +146,10 @@ def test_preflight_requires_a_committed_rebuild_and_valid_secret(tmp_path, monke
         sys.platform == "darwin" and Path("/usr/bin/sandbox-exec").is_file()
     )
 
-    definition_path = repository / "campaigns/factorlab_v1/definition.json"
+    definition_path = repository / "campaigns/factorlab_long_v1/definition.json"
     definition_bytes = definition_path.read_bytes()
     changed_scope = json.loads(definition_bytes)
-    changed_scope["qualification_reports"]["factorlab-small-v1"]["admitted_scope"][
+    changed_scope["qualification_reports"]["factorlab-long-5k-v1"]["admitted_scope"][
         "memory_lag"
     ] = 8
     definition_path.write_text(json.dumps(changed_scope))

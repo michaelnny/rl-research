@@ -22,10 +22,10 @@ memory; LLM-scale learner training is outside the target envelope.
 - [Candidate protocol](design/40_candidate_protocol.md) defines batched neural
   interaction, model manifests, and bounded binary checkpoints.
 
-The rejected tabular-centered FactorLab v0 implementation and its learners have
-been removed. No v0 result, threshold, or qualification result carries into v1.
+The rejected tabular-centered implementation and the later 64-step smoke tier
+are not research benchmarks. Neither is admitted to automated research.
 
-## Neural FactorLab v1
+## Long-horizon Neural FactorLab v1
 
 `src/rlx_bench/` provides a procedural neural RL diagnostic family with:
 
@@ -33,7 +33,7 @@ been removed. No v0 result, threshold, or qualification result carries into v1.
   dictionary;
 - an evaluator-owned nonlinear neural task/dynamics kernel shared across
   public, tune, held-out, and audit worlds;
-- delayed causal effects over horizons up to 1,024 and terminal-only or sparse
+- delayed causal effects over 5,000, 10,000, and 20,000 steps with terminal-only or sparse
   vector reward;
 - factored discrete spaces reaching at least `10^12` joint choices, plus native
   flat, catalog, continuous, and conditional-hybrid renderings;
@@ -53,12 +53,11 @@ conclusions:
 - candidate protocol v2 with batched rollouts, fresh held-out processes, and
   SHA-256-verified binary checkpoints.
 
-The preregistered Small-tier study in
-`campaigns/factorlab_v1/small_v1_qualification_protocol.json` passed all ten
-gates. Its reviewed report is committed under
-`campaigns/factorlab_v1/qualification/`. Automated campaigns may use only the
-exact `factorlab-small-v1` scope listed in `admitted_tiers`; software tests
-cannot admit another benchmark tier.
+The active frozen protocol is
+`campaigns/factorlab_long_v1/qualification_protocol.json`. Its anchor has a
+5,000-step terminal-only vector return and `10^12` joint actions; qualification
+also requires a measured 20,000-step scaling contrast. Until all ten gates pass
+and a reviewed report is committed, preflight rejects automated research.
 
 ## Autonomous research loop
 
@@ -85,9 +84,9 @@ the frozen protocol:
 
 ```bash
 PYTHONPATH=src:. .venv/bin/python -m rlx_agents.cli \
-  --protocol campaigns/factorlab_v1/small_v1_qualification_protocol.json \
-  --key-file runtime/secrets/factorlab-small-v1.key \
-  --output-dir runtime/qualification/factorlab-small-v1
+  --protocol campaigns/factorlab_long_v1/qualification_protocol.json \
+  --key-file runtime/secrets/factorlab-long-5k-v1.key \
+  --output-dir runtime/qualification/factorlab-long-5k-v1
 ```
 
 The command exits successfully only if all ten scientific gates pass. Raw

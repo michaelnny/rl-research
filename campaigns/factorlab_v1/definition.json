@@ -1,8 +1,8 @@
 {
   "campaign_id": "factorlab-v1-neural",
-  "status": "qualified_tier_available",
+  "status": "retired_smoke_only",
   "benchmark_revision": "factorlab-v1",
-  "admitted_tiers": ["factorlab-small-v1"],
+  "admitted_tiers": [],
   "qualification_reports": {
     "factorlab-small-v1": {
       "report_path": "campaigns/factorlab_v1/qualification/factorlab-small-v1-report.json",

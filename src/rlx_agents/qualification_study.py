@@ -15,7 +15,13 @@ import numpy as np
 import torch
 
 from rlx_bench.audit import audit_causal_contract
-from rlx_bench.factorlab import FactorLabConfig, FactorLabEnv, FactorLabInspector, generate_world
+from rlx_bench.factorlab import (
+    BENCHMARK_REVISION,
+    FactorLabConfig,
+    FactorLabEnv,
+    FactorLabInspector,
+    generate_world,
+)
 from rlx_bench.independent_audit import nonlinear_midpoint_residual, run_independent_audit
 from rlx_bench.oracle import exact_weighted_solution
 from rlx_bench.qualification import (
@@ -141,6 +147,10 @@ def _train_variant(
                     value_coefficient=float(reference["value_coefficient"]),
                     episodes=int(reference["episodes"]),
                     batch_episodes=int(reference["batch_episodes"]),
+                    optimization_batch_size=int(reference["optimization_batch_size"]),
+                    optimization_epochs=int(reference["optimization_epochs"]),
+                    ppo_clip=float(reference["ppo_clip"]),
+                    truncated_bptt_steps=int(reference["truncated_bptt_steps"]),
                     max_parameters=int(reference["max_parameters"]),
                     device=device,
                 ),
@@ -249,6 +259,7 @@ def _mechanics(
         "nonlinear_midpoint_residual": residual,
         "transitions_per_second": transitions / elapsed,
         "joint_action_choices": suite.config.joint_discrete_choices,
+        "horizon": suite.config.horizon,
         "observation_width": suite.config.observation_width,
         "selected_device": device,
         "mps_available": bool(
@@ -256,9 +267,55 @@ def _mechanics(
         ),
         "passed": (
             not (public_signals & heldout_signals)
+            and suite.config.horizon >= int(thresholds["minimum_anchor_horizon"])
+            and suite.config.joint_discrete_choices
+            >= int(thresholds["minimum_joint_choices"])
             and residual >= float(thresholds["minimum_nonlinear_residual"])
-            and transitions / elapsed >= float(thresholds["minimum_env_transitions_per_second"])
+            and transitions / elapsed
+            >= float(thresholds["minimum_env_transitions_per_second"])
         ),
+    }
+
+
+def _scaling_contrast(
+    anchor_world: Any,
+    protocol: Mapping[str, Any],
+    master_key: bytes,
+) -> dict[str, Any]:
+    contrast = protocol["scaling_contrast"]
+    long_horizon = int(contrast["horizon"])
+    long_config = dataclasses.replace(
+        anchor_world.config,
+        horizon=long_horizon,
+        max_causal_lag=long_horizon,
+    )
+    world = generate_world(long_config, 20_000, kernel_key=master_key)
+    environment = FactorLabEnv(world)
+    observation, _ = environment.reset(preference=(1.0, 0.0))
+    rng = np.random.default_rng(20_000)
+    started = time.monotonic()
+    for _ in range(long_horizon):
+        action = world.action_spec.sample(rng) if observation["action_required"] else None
+        observation, _, _, _, _ = environment.step(action)
+    elapsed = max(time.monotonic() - started, 1e-9)
+    edges = FactorLabInspector(world).influence_edges()
+    return {
+        "anchor_horizon": anchor_world.config.horizon,
+        "long_horizon": long_horizon,
+        "horizon_ratio": long_horizon / anchor_world.config.horizon,
+        "long_transitions_per_second": long_horizon / elapsed,
+        "long_rollout_seconds": elapsed,
+        "signal_storage_bytes": int(world.signals.nbytes),
+        "lag_storage_bytes": int(world.intrinsic_lags.nbytes),
+        "storage_bytes_per_step": (
+            world.signals.nbytes + world.intrinsic_lags.nbytes
+        )
+        / long_horizon,
+        "maximum_declared_causal_span": max(
+            (edge.reward_time - edge.action_time for edge in edges), default=0
+        ),
+        "joint_action_choices": long_config.joint_discrete_choices,
+        "branch_logits": sum(long_config.levels_per_factor),
     }
 
 
@@ -280,7 +337,6 @@ def run_qualification_study(
     requested_device = device_override or str(reference["device"])
     device = requested_device
     main_seeds = tuple(int(value) for value in reference["training_seeds"])
-    sensitivity_seeds = tuple(int(value) for value in reference["sensitivity_seeds"])
 
     mechanics = _mechanics(suite, thresholds, device)
     causal_records = []
@@ -343,67 +399,7 @@ def run_qualification_study(
         confidence=float(statistics["confidence"]),
     ) if improvements else (-1.0, -1.0)
 
-    memory_lag = int(protocol["memory_contrast"]["memory_lag"])
-    memory_config = dataclasses.replace(
-        anchor,
-        memory_lag=memory_lag,
-        signal_autocorrelation=float(protocol["memory_contrast"]["signal_autocorrelation"]),
-        signal_target_scale=float(protocol["memory_contrast"]["signal_target_scale"]),
-        context_target_scale=float(protocol["memory_contrast"]["context_target_scale"]),
-        state_target_scale=float(protocol["memory_contrast"]["state_target_scale"]),
-    )
-    memory_suite = _suite(
-        memory_config, protocol, master_key, namespace_suffix="-memory-contrast"
-    )
-    memory_reference = dict(reference)
-    memory_reference["episodes"] = int(protocol["memory_contrast"]["episodes"])
-    memoryless_records, memoryless_failures = _train_variant(
-        memory_suite,
-        memory_reference,
-        str(reference["anchor_architecture"]),
-        sensitivity_seeds,
-        preference,
-        device,
-    )
-    attention_records, attention_failures = _train_variant(
-        memory_suite,
-        memory_reference,
-        str(reference["memory_architecture"]),
-        sensitivity_seeds,
-        preference,
-        device,
-    )
-    memoryless_by_seed = {
-        int(record["training_seed"]): float(record["heldout_utility_mean"])
-        for record in _successful(memoryless_records)
-    }
-    attention_by_seed = {
-        int(record["training_seed"]): float(record["heldout_utility_mean"])
-        for record in _successful(attention_records)
-    }
-    paired_memory_gains = [
-        attention_by_seed[seed] - memoryless_by_seed[seed]
-        for seed in sensitivity_seeds
-        if seed in attention_by_seed and seed in memoryless_by_seed
-    ]
-
-    stress = dataclasses.replace(
-        anchor,
-        horizon=min(anchor.horizon, 64),
-        n_factors=12,
-        levels_per_factor=(10,),
-        state_dim=max(anchor.state_dim, 8),
-    )
-    stress_suite = _suite(stress, protocol, master_key, namespace_suffix="-action-stress")
-    stress_world = stress_suite.world(WorldBand.PUBLIC, 0)
-    stress_observation, _ = FactorLabEnv(stress_world).reset(preference=preference)
-    action_stress = {
-        "joint_action_choices": stress.joint_discrete_choices,
-        "observation_width": stress.observation_width,
-        "sample_action_valid": len(stress_world.action_spec.sample(np.random.default_rng(1)))
-        == stress.n_factors,
-        "initial_observation_finite": bool(np.all(np.isfinite(stress_observation["features"]))),
-    }
+    scaling = _scaling_contrast(suite.world(WorldBand.PUBLIC, 0), protocol, master_key)
     timing_error = _matched_reward_timing_specificity(anchor, master_key)
 
     generalization_gaps = [
@@ -412,9 +408,6 @@ def run_qualification_study(
     ]
     mean_improvement = float(np.mean(improvements)) if improvements else -1.0
     mean_heldout = float(np.mean(heldout_means)) if heldout_means else -1.0
-    mean_memory_gain = (
-        float(np.mean(paired_memory_gains)) if paired_memory_gains else -1.0
-    )
     measurements = {
         "mechanics": mechanics,
         "causal_audit": causal_records,
@@ -429,13 +422,7 @@ def run_qualification_study(
             "mean_heldout_utility": mean_heldout,
         },
         "factor_sensitivity": {
-            "memory_lag": memory_lag,
-            "memoryless_runs": memoryless_records,
-            "attention_runs": attention_records,
-            "paired_attention_gains": paired_memory_gains,
-            "mean_paired_attention_gain": mean_memory_gain,
-            "failures": memoryless_failures + attention_failures,
-            "action_stress": action_stress,
+            "scaling_contrast": scaling,
         },
         "specificity": {"matched_reward_timing_return_max_abs_error": timing_error},
         "generalization": {
@@ -451,7 +438,7 @@ def run_qualification_study(
         "tier_id": protocol["tier_id"],
         "task_id": anchor.task_id,
         "suite_id": suite.suite_id,
-        "benchmark_revision": "factorlab-v1",
+        "benchmark_revision": BENCHMARK_REVISION,
         "software": {
             "python": platform.python_version(),
             "numpy": np.__version__,
@@ -476,6 +463,10 @@ def run_qualification_study(
     learnability_pass = (
         not main_failures
         and len(successful_main) == len(main_seeds)
+        and all(
+            float(record["wall_seconds"]) <= float(reference["max_wall_seconds_per_seed"])
+            for record in successful_main
+        )
         and mean_improvement >= float(thresholds["minimum_mean_improvement"])
         and ci[0] >= float(thresholds["minimum_improvement_ci_lower"])
     )
@@ -484,11 +475,13 @@ def run_qualification_study(
         and 1.0 - mean_heldout >= float(thresholds["minimum_headroom"])
     )
     sensitivity_pass = (
-        not (memoryless_failures + attention_failures)
-        and len(paired_memory_gains) == len(sensitivity_seeds)
-        and mean_memory_gain >= float(thresholds["minimum_memory_architecture_gain"])
-        and action_stress["joint_action_choices"] >= int(thresholds["minimum_joint_choices"])
-        and action_stress["sample_action_valid"]
+        scaling["long_horizon"] >= int(thresholds["minimum_long_horizon"])
+        and scaling["long_transitions_per_second"]
+        >= float(thresholds["minimum_long_transitions_per_second"])
+        and scaling["storage_bytes_per_step"]
+        <= float(thresholds["maximum_storage_bytes_per_step"])
+        and scaling["maximum_declared_causal_span"] >= scaling["long_horizon"] - 1
+        and scaling["joint_action_choices"] >= int(thresholds["minimum_joint_choices"])
     )
     specificity_pass = timing_error <= float(thresholds["maximum_specificity_error"])
     generalization_pass = (
@@ -533,6 +526,10 @@ def run_qualification_study(
                 "training_seeds": len(successful_main),
                 "mean_improvement_over_random": mean_improvement,
                 "improvement_bootstrap_ci": list(ci),
+                "maximum_seed_wall_seconds": max(
+                    (float(record["wall_seconds"]) for record in successful_main),
+                    default=0.0,
+                ),
                 "failures": main_failures,
             },
         ),
@@ -545,10 +542,7 @@ def run_qualification_study(
             "factor_sensitivity",
             sensitivity_pass,
             {
-                "memory_architecture": reference["memory_architecture"],
-                "mean_paired_memory_gain": mean_memory_gain,
-                "joint_action_choices": action_stress["joint_action_choices"],
-                "failures": memoryless_failures + attention_failures,
+                **scaling,
             },
         ),
         check(
@@ -581,7 +575,7 @@ def run_qualification_study(
     report = make_qualification_report(
         task_id=anchor.task_id,
         suite_id=suite.suite_id,
-        benchmark_revision="factorlab-v1",
+        benchmark_revision=BENCHMARK_REVISION,
         checks=checks,
     )
     return QualificationStudyResult(report, bundle, evidence_sha)

@@ -28,29 +28,29 @@ PROTOCOL_VERSION = "rlx-neural-candidate-jsonl-v2"
 
 @dataclass(frozen=True)
 class CandidateEvaluationConfig:
-    horizon: int = 64
-    n_factors: int = 4
-    levels_per_factor: int = 4
-    signal_dim: int = 8
-    context_dim: int = 4
-    state_dim: int = 4
+    horizon: int = 5000
+    n_factors: int = 12
+    levels_per_factor: int = 10
+    signal_dim: int = 16
+    context_dim: int = 8
+    state_dim: int = 8
     teacher_hidden_dim: int = 16
-    max_causal_lag: int = 64
+    max_causal_lag: int = 5000
     memory_lag: int = 0
     reward_events: int = 1
     conflict_strength: float = 0.75
     terminal_state_weight: float = 1.0
-    training_episodes: int = 1024
-    training_batch_size: int = 16
+    training_episodes: int = 256
+    training_batch_size: int = 64
     training_trials: int = 3
-    public_worlds: int = 16
-    heldout_worlds: int = 32
+    public_worlds: int = 32
+    heldout_worlds: int = 16
     wall_seconds: float = 14_400.0
     response_seconds: float = 30.0
     max_parameters: int = 2_000_000
     max_checkpoint_bytes: int = 64 * 1024 * 1024
     preference: tuple[float, ...] = (1.0, 0.0)
-    suite_namespace: str = "factorlab-v1-neural-eval"
+    suite_namespace: str = "factorlab-long-v1-neural-eval"
     suite_version: int = 1
 
     def __post_init__(self) -> None:
@@ -519,28 +519,28 @@ def evaluate_candidate(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="rlx-evaluate-candidate")
-    parser.add_argument("--horizon", type=int, default=64)
-    parser.add_argument("--n-factors", type=int, default=4)
-    parser.add_argument("--levels-per-factor", type=int, default=4)
-    parser.add_argument("--signal-dim", type=int, default=8)
-    parser.add_argument("--context-dim", type=int, default=4)
-    parser.add_argument("--state-dim", type=int, default=4)
+    parser.add_argument("--horizon", type=int, default=5000)
+    parser.add_argument("--n-factors", type=int, default=12)
+    parser.add_argument("--levels-per-factor", type=int, default=10)
+    parser.add_argument("--signal-dim", type=int, default=16)
+    parser.add_argument("--context-dim", type=int, default=8)
+    parser.add_argument("--state-dim", type=int, default=8)
     parser.add_argument("--teacher-hidden-dim", type=int, default=16)
-    parser.add_argument("--max-causal-lag", type=int, default=64)
+    parser.add_argument("--max-causal-lag", type=int, default=5000)
     parser.add_argument("--memory-lag", type=int, default=0)
     parser.add_argument("--reward-events", type=int, default=1)
     parser.add_argument("--conflict-strength", type=float, default=0.75)
     parser.add_argument("--terminal-state-weight", type=float, default=1.0)
-    parser.add_argument("--training-episodes", type=int, default=1024)
-    parser.add_argument("--training-batch-size", type=int, default=16)
+    parser.add_argument("--training-episodes", type=int, default=256)
+    parser.add_argument("--training-batch-size", type=int, default=64)
     parser.add_argument("--training-trials", type=int, default=3)
-    parser.add_argument("--public-worlds", type=int, default=16)
-    parser.add_argument("--heldout-worlds", type=int, default=32)
+    parser.add_argument("--public-worlds", type=int, default=32)
+    parser.add_argument("--heldout-worlds", type=int, default=16)
     parser.add_argument("--wall-seconds", type=float, default=14_400.0)
     parser.add_argument("--response-seconds", type=float, default=30.0)
     parser.add_argument("--max-parameters", type=int, default=2_000_000)
     parser.add_argument("--max-checkpoint-bytes", type=int, default=64 * 1024 * 1024)
-    parser.add_argument("--suite-namespace", default="factorlab-v1-neural-eval")
+    parser.add_argument("--suite-namespace", default="factorlab-long-v1-neural-eval")
     parser.add_argument("--suite-version", type=int, default=1)
     parser.add_argument("--key-file-env", default="RLX_FACTORLAB_SUITE_KEY_FILE")
     parser.add_argument("--no-sandbox", action="store_true")

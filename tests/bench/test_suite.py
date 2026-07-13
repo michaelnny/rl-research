@@ -52,6 +52,7 @@ def test_suite_and_world_derivation_are_reproducible() -> None:
     assert first.world(WorldBand.HELDOUT, 2).world_id == second.world(
         WorldBand.HELDOUT, 2
     ).world_id
+    assert first.world(WorldBand.HELDOUT, 2) is first.world(WorldBand.HELDOUT, 2)
     assert "master_key" not in repr(first.spec)
 
 
