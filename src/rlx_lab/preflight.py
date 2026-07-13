@@ -98,6 +98,17 @@ def check_benchmark_admission(
         qualification = definition.get("qualification_reports", {}).get(
             benchmark_tier, {}
         )
+        if (
+            definition.get("status") != "qualified"
+            or benchmark_tier not in admitted
+            or not isinstance(qualification, dict)
+            or not qualification
+        ):
+            return PreflightCheck(
+                "qualified_benchmark_tier",
+                False,
+                f"{benchmark_tier or '<missing>'} is not an admitted benchmark tier",
+            )
         report_path = (repository / str(qualification.get("report_path", ""))).resolve()
         protocol_path = (repository / str(qualification.get("protocol_path", ""))).resolve()
         if qualification_root not in report_path.parents:
