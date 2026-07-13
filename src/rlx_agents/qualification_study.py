@@ -6,6 +6,7 @@ import dataclasses
 import hashlib
 import json
 import platform
+import sys
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -41,6 +42,14 @@ class QualificationStudyResult:
     report: QualificationReport
     evidence_bundle: dict[str, Any]
     evidence_sha256: str
+
+
+def _progress(event: str, **fields: Any) -> None:
+    print(
+        json.dumps({"event": event, **fields}, sort_keys=True),
+        file=sys.stderr,
+        flush=True,
+    )
 
 
 def _canonical_bytes(value: Any) -> bytes:
@@ -130,6 +139,7 @@ def _train_variant(
     records: list[dict[str, Any]] = []
     failures = 0
     for seed in seeds:
+        _progress("reference_seed_started", architecture=architecture, seed=int(seed))
         started = time.monotonic()
         try:
             trained = train_actor_critic(
@@ -188,6 +198,12 @@ def _train_variant(
                     ),
                 }
             )
+            _progress(
+                "reference_seed_completed",
+                architecture=architecture,
+                seed=int(seed),
+                wall_seconds=time.monotonic() - started,
+            )
         except Exception as exc:  # a failed seed is scientific evidence, not a retry
             failures += 1
             records.append(
@@ -198,6 +214,12 @@ def _train_variant(
                     "failure_detail": str(exc)[:500],
                     "wall_seconds": time.monotonic() - started,
                 }
+            )
+            _progress(
+                "reference_seed_failed",
+                architecture=architecture,
+                seed=int(seed),
+                failure_class=type(exc).__name__,
             )
     return records, failures
 
@@ -338,7 +360,10 @@ def run_qualification_study(
     device = requested_device
     main_seeds = tuple(int(value) for value in reference["training_seeds"])
 
+    _progress("qualification_phase_started", phase="mechanics")
     mechanics = _mechanics(suite, thresholds, device)
+    _progress("qualification_phase_completed", phase="mechanics")
+    _progress("qualification_phase_started", phase="causal_audit")
     causal_records = []
     for world in _worlds(suite, WorldBand.AUDIT):
         result = audit_causal_contract(world, min_detection_rate=0.95)
@@ -352,6 +377,7 @@ def run_qualification_study(
                 "interventions": result.interventions,
             }
         )
+    _progress("qualification_phase_completed", phase="causal_audit")
 
     tiny_config = FactorLabConfig(
         horizon=3,
@@ -374,6 +400,7 @@ def run_qualification_study(
         "independent_audit": asdict(independent),
     }
 
+    _progress("qualification_phase_started", phase="learnability")
     main_records, main_failures = _train_variant(
         suite,
         reference,
@@ -382,6 +409,7 @@ def run_qualification_study(
         preference,
         device,
     )
+    _progress("qualification_phase_completed", phase="learnability")
     successful_main = _successful(main_records)
     random_mean, random_std = _random_reference(
         suite, preference, policies=int(reference["random_policies"])
@@ -399,8 +427,10 @@ def run_qualification_study(
         confidence=float(statistics["confidence"]),
     ) if improvements else (-1.0, -1.0)
 
+    _progress("qualification_phase_started", phase="scaling_and_specificity")
     scaling = _scaling_contrast(suite.world(WorldBand.PUBLIC, 0), protocol, master_key)
     timing_error = _matched_reward_timing_specificity(anchor, master_key)
+    _progress("qualification_phase_completed", phase="scaling_and_specificity")
 
     generalization_gaps = [
         abs(float(record["public_utility_mean"]) - float(record["heldout_utility_mean"]))
